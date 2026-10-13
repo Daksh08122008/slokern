@@ -1,4 +1,25 @@
-# Purpose: Keeps secrets and bulky raw artifacts out of Git.
-# Owner: Rajdeep
-artifacts/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Frontend
+node_modules/
+dist/
+coverage/
+
+# Local environment and editor files
 .env
+.env.*
+!.env.example
+.DS_Store
+.vscode/
+.idea/
+
+# Generated and local artifacts
+artifacts/
+*.log
