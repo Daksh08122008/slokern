@@ -1,0 +1,2 @@
+# Purpose: CI pipeline for lint, types, import boundaries, tests, contract drift and secret checks.
+# Owner: Rajdeep

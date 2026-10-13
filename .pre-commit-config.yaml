@@ -1,0 +1,2 @@
+# Purpose: Local lint, format and secret-scan hooks run before each commit.
+# Owner: Rajdeep
