@@ -179,7 +179,7 @@ The frontend-only prototype may simulate interactions, but synthetic results mus
 | **Rajdeep — Technical Lead / Architecture** | Scope, architecture, contracts, deterministic decision policy, integration and final narrative | Working end-to-end system and coherent technical story |
 | **Aman — Serving / GPU Infrastructure** | Model/runtime setup, serving adapter, supported settings, environment metadata | Reliable endpoint and verified configuration application |
 | **Daksh — Verification / Evaluation** | Constraint evaluator, verification protocol, edge cases and evidence audit | Deterministic verdicts and independent verification |
-| **Saptak — Benchmarking** | Workload fixtures, load generation, raw timings, metric aggregation and run validity | Reproducible benchmark artifacts |
+| **Adriraj — Benchmarking** | Workload fixtures, load generation, raw timings, metric aggregation and run validity | Reproducible benchmark artifacts |
 | **Rohan — Optimization / Search** | Candidate space, baseline search, adaptive strategy and selection rationale | Bounded optimizer with transparent decisions |
 
 Each component has one accountable owner. Pairing and review are welcome; ambiguous shared ownership is not. See **[ROADMAP.md](ROADMAP.md)** for the daily sprint plan, task handoffs, dependencies, and acceptance gates.

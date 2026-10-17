@@ -209,7 +209,7 @@ Respect the current workstream ownership:
 | **Rajdeep — Technical Lead / Architecture** | Scope, architecture, shared contracts, integration, deterministic policy, end-to-end quality, demo narrative |
 | **Aman — Serving / GPU Infrastructure** | Model/runtime setup, serving adapter, supported settings, environment metadata |
 | **Daksh — Verification / Evaluation** | Constraint evaluator, verification protocol, edge cases, evidence audit |
-| **Saptak — Benchmarking** | Workload fixtures, load generation, raw timings, metric aggregation, run validity |
+| **Adriraj — Benchmarking** | Workload fixtures, load generation, raw timings, metric aggregation, run validity |
 | **Rohan — Optimization / Search** | Legal candidate space, baseline search, bounded optimization, selection rationale |
 
 Ownership means one accountable person per deliverable, not isolated work. Coordinate through agreed schemas and documented handoffs.
