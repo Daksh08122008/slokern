@@ -286,12 +286,12 @@ Every day assigns a concrete responsibility to **all five members**. If a task i
 
 | Owner | Daily tasks | Required evidence |
 |---|---|---|
-| **Rajdeep** | 1. Freeze first demo workload/SLO specification. 2. Define experiment-level budgets and stop conditions. 3. Ensure the report references spec, environment and raw artifacts. | Versioned demo spec and budget policy |
-| **Aman** | 1. Run the reference/default serving configuration. 2. Confirm each proposed tuning parameter changes the effective configuration. 3. Record memory/resource constraints. | Baseline run and verified parameter support matrix |
+| **Rajdeep** | 1. Freeze first demo workload/SLO specification. 2. Lock experiment campaign budget to strictly six benchmark runs (1 baseline + 4 candidates + 1 verification rerun; preliminary preflight smoke test counted separately). 3. Ensure the report references spec, environment and raw artifacts. | Versioned demo spec, strict 6 benchmark run budget policy, and calibration guidelines |
+| **Aman** | 1. Run preliminary preflight smoke test for `Nemotron-3-Nano-30B-A3B` (FP8). 2. Confirm which two parameters in the 2×2 matrix are actually supported by the serving interface. 3. Calibrate warmup and measurement duration from overhead. | Baseline run and verified parameter support matrix (pending confirmation) |
 | **Daksh** | 1. Evaluate baseline against every required hard constraint. 2. Review the verdict against raw evidence. 3. Check that missing/unsupported SLOs are not silently passed. | Baseline verdict and audit notes |
-| **Adriraj** | 1. Run the baseline with the finalized workload protocol. 2. Save raw samples, metrics and run-validity flags. 3. Repeat if time/quota allows to estimate variability. | Baseline artifacts with sample counts and methodology |
-| **Rohan** | 1. Finalize the small legal configuration space using Aman’s confirmed controls. 2. Generate stable candidate IDs. 3. Enforce max candidate and runtime budgets. 4. Estimate run count and wall-clock needs. | Reproducible candidate manifest within budget |
-| **Joint gate** | Baseline and at least two legal candidates are available for the next phase. | No candidate changes the workload silently |
+| **Adriraj** | 1. Run the baseline with the calibrated workload protocol. 2. Save raw samples, metrics and run-validity flags. 3. Ensure offered vs achieved load and saturation flags are captured. | Baseline artifacts with sample counts and methodology |
+| **Rohan** | 1. Finalize the 2×2 legal configuration space (4 candidates) once Aman confirms supported controls. 2. Generate stable candidate IDs. 3. Enforce the strict six-run benchmark budget. 4. Record candidate proposal order and selection rationale. | Reproducible candidate manifest within locked 6 benchmark run budget |
+| **Joint gate** | Baseline and all four legal candidates in the 2×2 space are ready for execution within the 6 benchmark run budget. | Strict 6 benchmark run campaign plan locked; no candidate changes workload silently |
 
 ---
 

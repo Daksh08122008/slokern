@@ -29,6 +29,8 @@
 - [Validation and reproducibility](#validation-and-reproducibility)
 - [Roadmap](#roadmap)
 - [Hackathon deliverables](#hackathon-deliverables)
+- [Official Hackathon Compliance & Requirements Matrix](docs/hackathon-compliance.md)
+- [Project Flow & Mental Model Guide](docs/project-flow-and-mental-model.md)
 - [Known decisions to finalize](#known-decisions-to-finalize)
 
 ## Why SLOKern?
@@ -59,15 +61,15 @@ An AI-assisted layer may help draft specifications or explain results, but **det
 
 ### In scope
 
-- One NVIDIA open-source model supported by the chosen hackathon environment.
-- One serving runtime/environment.
+- One NVIDIA open-source model supported by the chosen hackathon environment (selected compliance candidate: `Nemotron-3-Nano-30B-A3B` with FP8, pending runtime verification via smoke test; internal development baseline: `meta-llama/Meta-Llama-3-8B-Instruct`).
+- One serving runtime/environment (vLLM container or Nebius Token Factory streaming endpoint on Nebius Cloud GPU infrastructure).
 - One reproducible workload fixture or small set of named profiles.
-- A small configuration space containing only parameters the adapter can actually apply.
+- A small configuration space containing only parameters the adapter can actually apply (fixed 2×2 candidate matrix, with dimensions and values pending confirmation from the serving interface; client/workload parameters distinguished from serving-engine parameters).
 - Controlled load generation, with offered and achieved load reported separately.
 - TTFT, inter-token latency (ITL), throughput, errors, and latency percentiles.
 - A deterministic feasibility evaluator.
-- Baseline plus bounded search.
-- Independent verification of the selected candidate.
+- Baseline plus bounded search (strict budget of six benchmark runs: 1 baseline + 4 candidates in a fixed 2×2 matrix + 1 independent verification rerun; preliminary preflight smoke test counted separately).
+- Independent verification of the selected candidate under a fresh run ID.
 - Machine-readable artifacts, a readable report, and a polished dashboard.
 
 ### Out of scope for the MVP

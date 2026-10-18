@@ -167,21 +167,59 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 
 ---
 
+### DEC-0009: Official NVIDIA Model Compliance Target & 5-Tier Architecture Reconciliation
+- **Date:** 2026-10-18
+- **Question:** How should SLOKern reconcile its accepted serving target (`meta-llama/Meta-Llama-3-8B-Instruct`) with the official hackathon rule mandating an NVIDIA open-source model?
+- **Options Considered:**
+  1. Continue relying solely on `meta-llama/Meta-Llama-3-8B-Instruct` and argue that it is NVIDIA-optimized. (Rejected: High risk of disqualification).
+  2. Switch to `nvidia/Llama-3.1-Nemotron-70B-Instruct` as the only target. (Rejected: 70B parameter model is unverified in the team's catalog and cannot fit on a single 80GB GPU instance without multi-GPU tensor parallelism or heavy quantization).
+  3. Select `Nemotron-3-Nano-30B-A3B` (FP8) as the primary **Hackathon Compliance Target Model Candidate** on Nebius Cloud, while retaining `meta-llama/Meta-Llama-3-8B-Instruct` as an internal pipeline development and comparison baseline.
+- **Decision:** Option 3. Select `Nemotron-3-Nano-30B-A3B` (FP8) from the Nebius catalog as the primary compliance target candidate.
+- **Reason:** `Nemotron-3-Nano-30B-A3B` satisfies the official NVIDIA open-source model mandate. Design specifications cite a hybrid Mamba-2 MoE architecture (~30B total, ~3B active parameters per token in design) with FP8 quantization. Serving throughput, memory pressure, and latency percentiles are unmeasured and subject to empirical measurement during live runs.
+- **Owner:** Rajdeep (Architecture) & Aman (Serving Infrastructure)
+- **Affected Contracts/Components:** `docs/adr/0001-model-runtime.md` (Addendum 0001-B), `docs/deployment.md`, `docs/hackathon-compliance.md`
+- **Evidence:** Official Devpost Rules (§ Technical Requirements) and Nebius Token Factory catalog specifications.
+- **Trade-offs:** The exact Nebius API identifier string and catalog access in the team's account are pending runtime verification via preflight smoke test before live benchmarks are claimed.
+- **Revisit Condition:** When Aman completes preflight smoke test on Nebius.
+
+---
+
+### DEC-0010: Experiment Budget Lock (Strict 6 Benchmark Runs, Fixed 2×2 Search Space) & Parameter Legality
+- **Date:** 2026-10-18
+- **Question:** How do we constrain the benchmark execution budget to protect hackathon GPU credits while ensuring statistically sound and reproducible optimization?
+- **Decision:**
+  1. **Strict Six-Run Benchmark Budget:** The benchmark budget is defined as exactly six benchmark runs: 1 Baseline + 4 Candidates + 1 Independent Verification Rerun under a fresh `verification_run_id`.
+  2. **Preflight Smoke Test Separated:** The preflight smoke test is a separate preliminary single-request verification (checking connectivity, model ID, and streaming headers) and is **not counted among the six benchmark runs**.
+  3. **Fixed 2×2 Search Space Pending Interface Confirmation:** Candidate exploration is restricted to a fixed 2×2 parameter matrix (4 candidates total) as a design requirement. Its two specific dimensions and candidate values are **pending confirmation from the actual serving interface** during Aman's preflight check.
+  4. **Distinguishing Client/Workload vs. Serving-Engine Knobs:**
+     - Client/workload knobs (e.g. client concurrency limit, request output token limits) govern client request dispatch. **Changing workload parameters does not prove GPU-serving optimization.**
+     - Serving-engine knobs (e.g. batch concurrency, GPU memory utilization, max model length) govern the internal serving runtime on the GPU.
+     - Neither set of parameters is confirmed supported until verified by runtime read-back on the live Nebius endpoint.
+  5. **Architectural Blocker Notice:** If the chosen endpoint interface (such as a managed Token Factory endpoint) exposes only client request parameters and lacks serving-engine controls, this constitutes an architectural blocker. Resolving this blocker requires an explicit architecture decision by Rajdeep and Aman (such as deploying containerized vLLM on a dedicated Nebius Compute GPU instance).
+  6. **Duration Policy & Calibration:** The original 60s warm-up + 180s measurement schedule remains **labelled illustrative**. Proposed shorter durations remain **strictly unvalidated** until actual timing, overhead, and measurement-quality evidence is gathered during live runs.
+  7. **Fake-Adapter-First Workflow:** Implement and validate the feasibility evaluator, metrics pipeline, search controller, report generator, and dashboard primarily against the deterministic fake adapter (`DEMO DATA` labeled) before consuming real GPU credits.
+- **Owners:** Rajdeep (Architecture), Aman (Serving), Rohan (Search), Daksh (Evaluator), Adriraj (Benchmarking)
+- **Affected Contracts/Components:** `docs/deployment.md`, `docs/architecture.md`, `README.md`, `ROADMAP.md`
+
+---
+
 ## 3. Pending Decisions to Finalize
 
 The following decisions remain open and are assigned for resolution during Phases 1 and 2:
 
-1. **Exact Nebius GPU Instance & Runtime Revision (Aman / Oct 15):** Finalize exact GPU model (e.g., 1× H100 80GB SXM) and serving container version (vLLM version).
-2. **Confirmed Search Space Dimensions (Aman & Rohan / Oct 18):** Confirm whether `kv_cache_dtype` (fp8 vs. fp16) and `gpu_memory_utilization` are reliably tunable on the deployed instance.
-3. **Official Deadline & Submission Verification (Rajdeep / Oct 18):** Reconfirm target deadline of October 30, 2026, 10:00 AM PDT / 10:30 PM IST with hackathon organizers.
+1. **Exact Nebius GPU Instance & Runtime Revision (Aman / Oct 15–18):** Finalize exact GPU model (e.g., 1× H100 80GB SXM) and confirm exact Nebius API model identifier string and endpoint access for `Nemotron-3-Nano-30B-A3B` (FP8).
+2. **Confirmed Search Space Dimensions & Blocker Resolution (Aman & Rohan / Oct 18):** Confirm whether the serving endpoint exposes serving-engine controls (vLLM batch concurrency + memory utilization) or only client request parameters. If controls are insufficient, escalate for an architectural decision.
+3. **Official Deadline & Submission Verification (Rajdeep / Oct 18):** Target deadline confirmed: **October 30, 2026, 10:00 AM PDT / 10:30 PM IST**.
 
 ---
 
 ## 4. Related Documentation
 
+- [Hackathon Compliance Matrix](hackathon-compliance.md)
 - [System Architecture](architecture.md)
 - [MVP Checklist & Scope Boundaries](mvp-checklist.md)
 - [Ownership & Team Matrix](ownership.md)
 - [ADR 0001: MVP Scope & Evidence Policy](adr/0001-mvp-scope-and-evidence.md)
 - [ADR 0002: Dual-Mode Cost Accounting](adr/0002-cost-model.md)
+
 

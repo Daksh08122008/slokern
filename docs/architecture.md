@@ -93,6 +93,26 @@ flowchart TD
 
 ## 3. End-to-End Execution Pipeline
 
+### 3.1 Canonical Seven-Step Pipeline Mapping
+
+SLOKern structures its user-facing and architectural flow into seven canonical conceptual steps:
+
+$$\text{Specify} \to \text{Validate} \to \text{Measure} \to \text{Evaluate} \to \text{Optimize} \to \text{Verify} \to \text{Explain}$$
+
+To prevent measurement contamination and ensure auditability, these conceptual steps are mapped cleanly to concrete orchestration phases:
+
+| Conceptual Step | Primary Owner | Concrete Orchestration Phase | Function & Invariant |
+|---|---|---|---|
+| **1. Specify** | Rajdeep | Phase 0: Specification | User defines workload traffic profile, hard SLO thresholds, and experiment budget. |
+| **2. Validate** | Rajdeep / Aman | Phase 0: Pre-Flight | Pydantic v2 validation enforces structural integrity; serving adapter rejects unsupported candidate parameters before GPU allocation. |
+| **3. Measure** | Adriraj / Aman | Phase 1 (Baseline) & Phase 2 (Candidates) | Subprocess load generator executes warmup followed by the active window. **Baseline establishment is executed first** as an explicit anchor before candidate exploration. Raw timestamps recorded in JSONL. |
+| **4. Evaluate** | Daksh | Phase 1 & Phase 2 | Deterministic Feasibility Evaluator calculates MetricSet and audits each hard constraint against thresholds (`FEASIBLE`, `INFEASIBLE`, `INCONCLUSIVE`). |
+| **5. Optimize** | Rohan | Phase 2 (Search Loop) | Bounded search controller proposes legal configurations and ranks feasible candidates by declared objective (Mode A monetary cost or Mode B systems proxy). |
+| **6. Verify** | Daksh | Phase 3 (Verification) | Mandatory independent rerun of top-ranked feasible candidate under a fresh `verification_run_id`. Recalculates metrics and audits for threshold drift. Emits formal enum: `VERIFIED`, `VERIFICATION_FAILED`, or `VERIFICATION_INCONCLUSIVE`. |
+| **7. Explain** | Rajdeep | Phase 4 (Reporting) | Publishes immutable `ReportArtifact` linking recommendation, hardware fingerprint, raw evidence, and declared limitations. |
+
+### 3.2 Concrete Orchestration Sequence
+
 The execution sequence follows a strict, non-negotiable critical path:
 
 ```mermaid
@@ -205,9 +225,9 @@ Specifies the non-negotiable service-level objectives against which candidates a
 #### 3. `CandidateConfig` (Owners: Rohan & Aman)
 Represents a concrete serving configuration. Distinguishes intent from verified runtime reality.
 - `candidate_id`: Stable deterministic hash of canonical parameter values.
-- `model_name`: Formal model identifier (e.g., `"meta-llama/Meta-Llama-3-8B-Instruct"`).
+- `model_name`: Formal model identifier (e.g., `"Nemotron-3-Nano-30B-A3B"` (FP8) as selected hackathon candidate pending runtime verification, or `"meta-llama/Meta-Llama-3-8B-Instruct"` for internal baseline).
 - `runtime_name`: Serving engine (e.g., `"vllm"`, `"tensorrt-llm"`).
-- `requested_settings`: Key-value pairs requested by the search controller (e.g., `{"max_model_len": 4096, "gpu_memory_utilization": 0.90, "max_num_seqs": 64}`).
+- `requested_settings`: Key-value pairs requested by the search controller (illustrative examples: `{"max_num_seqs": 32, "gpu_memory_utilization": 0.85}`; specific 2×2 candidate dimensions and values are pending confirmation from the serving interface).
 - `effective_settings`: Key-value pairs confirmed by the adapter via runtime read-back.
 - `parameter_status`: Map of parameters to status: `"applied"`, `"unsupported"`, `"rejected"`, `"default_fallback"`.
 - `environment_fingerprint`: Hash/dictionary of GPU hardware, driver, CUDA version, and runtime software commit.
@@ -356,9 +376,9 @@ SLOKern explicitly resolves cost accounting into a dual-mode model to prevent fa
 - **Precondition:** Cloud provider pricing is missing, variable, or unverified.
 - **Reporting:** Monetary cost is explicitly declared **`unavailable`**.
 - **Objective Proxy:** Optimization ranks feasible candidates by a declared non-monetary systems efficiency objective:
-  1. *Resource-Time:* GPU seconds consumed per successful request.
+  1. *Resource-Time:* GPU seconds consumed per successful request. *(Note: If GPU instance count and dedicated residency cannot be verified, such as on managed serverless endpoints where physical GPU allocation is hidden, GPU-seconds per request is also reported as `unavailable`, and ranking falls back to Throughput Under SLO).*
   2. *Throughput Under SLO:* Maximum achieved output tokens/second while satisfying all hard latency constraints.
-- **Rule:** A non-monetary proxy must **never** be described as monetary savings or dollar amounts.
+- **Rule:** A non-monetary proxy must **never** be described as monetary savings or dollar amounts. Disambiguate request throughput (completed requests/s) and achieved load from hardware GPU utilization (compute/memory occupancy %).
 
 ---
 
