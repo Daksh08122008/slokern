@@ -3,7 +3,7 @@
 
 > **Event:** Nebius × NVIDIA Global AI Hackathon  
 > **Canonical Pipeline:** `SPECIFY > VALIDATE > MEASURE > EVALUATE > OPTIMIZE > VERIFY > EXPLAIN`  
-> **Team:** Rajdeep (Architecture), Aman (Serving Reality), Daksh (Decision Correctness), Adriraj (Measurement Credibility), Rohan (Search Intelligence)  
+> **Execution Model:** Consolidated Single-Owner Technical Execution led by Rajdeep (incorporating initial design contributions from Aman, Daksh, Adriraj, and Rohan)  
 > **Document Status:** Authoritative Presentation & Mental Model Source (Reconciled with Accepted Architecture & Hackathon Rules)  
 > **Rule:** *Illustrative values are examples only, not benchmark results. Mock fixtures must be labelled DEMO DATA.*
 
@@ -94,12 +94,12 @@ The user opens the SLOKern dashboard and defines the optimization problem:
 ### Step 2: Validate the Legal Search Space & Restrict Budget
 
 To protect hackathon GPU credits, SLOKern restricts candidate exploration to a **fixed 2×2 configuration space (4 candidates total)** as a design requirement. However:
-- **Pending Interface Confirmation:** The two specific dimensions and their candidate values are **pending confirmation from the actual serving interface** during Aman's preflight check.
+- **Pending Interface Confirmation:** The two specific dimensions and their candidate values are **pending confirmation from the actual serving interface** during Rajdeep's preflight check.
 - **Distinguishing Client/Workload from Serving-Engine Knobs:**
   - *Client/Workload Parameters (e.g. client concurrency limit, max output tokens):* Control client traffic generation and request payload bounds. **Changing workload parameters does not prove GPU-serving optimization.**
   - *Serving-Engine Parameters (e.g. batch concurrency, GPU memory utilization, max model length):* Directly configure the inference runtime on the GPU.
   - Neither parameter set is confirmed supported until verified by runtime read-back on the live Nebius endpoint.
-- **Architectural Blocker Notice:** If the deployment interface (such as a managed Token Factory endpoint) exposes only client request parameters and lacks serving-engine controls, this is an **architectural blocker**. Resolving this blocker requires an explicit architecture decision by Rajdeep and Aman (such as deploying containerized vLLM on a dedicated Nebius Compute GPU instance).
+- **Architectural Blocker Notice:** If the deployment interface (such as a managed Token Factory endpoint) exposes only client request parameters and lacks serving-engine controls, this is an **architectural blocker**. Resolving this blocker requires an explicit architecture decision by Rajdeep (such as deploying containerized vLLM on a dedicated Nebius Compute GPU instance).
 
 The candidate space evaluates four combinations of two supported dimensions:
 * **Candidate 1:** Knob1_Low / Knob2_Low
@@ -166,7 +166,7 @@ Raw timestamps are evidence. Metrics are derived interpretations of that evidenc
 
 ### Deterministic SLO Evaluation
 
-Daksh's Feasibility Evaluator applies versioned, deterministic rules against the `MetricSet`. Consider these hypothetical results (SLO: p95 TTFT $\le 500\text{ ms}$, Error Rate $\le 1.0\%$):
+The deterministic Feasibility Evaluator applies versioned, deterministic rules against the `MetricSet`. Consider these hypothetical results (SLO: p95 TTFT $\le 500\text{ ms}$, Error Rate $\le 1.0\%$):
 
 | Candidate | p95 TTFT | Error Rate | Evidence Validity | Feasibility Verdict | Audit Reason Code |
 |---|---|---|---|---|---|
@@ -181,7 +181,7 @@ Daksh's Feasibility Evaluator applies versioned, deterministic rules against the
 
 ## 5. Step 5: Optimize (Candidate Ranking & Cost Policy)
 
-Rohan's search controller ranks only **evidenced feasible** candidates. It operates inside a strict budget:
+The search controller ranks only **evidenced feasible** candidates. It operates inside a strict budget:
 
 ```text
 Choose legal candidate ──► Run experiment ──► Evaluate feasibility ──► Record in SearchResult ──► Continue / Stop
@@ -238,10 +238,10 @@ The system compiles an immutable `ReportArtifact` containing:
 | Component | Primary Owner | Architectural Responsibility |
 |---|---|---|
 | **Dashboard & Control Plane** | Rajdeep | Accepts specs, manages experiment lifecycle, streams SSE events, presents cyberpunk UI. |
-| **Experiment Runner & Controller** | Rajdeep / Rohan | Orchestrates baseline, candidate iterations, stopping conditions, and verification dispatch. |
-| **Serving Adapter** | Aman | Applies candidate settings to inference runtime container, verifies read-back, captures environment fingerprint. |
-| **Load Generator** | Adriraj | Generates scheduled request arrival patterns in an isolated subprocess; logs microsecond timestamps. |
-| **Metrics Engine & Evaluator** | Adriraj / Daksh | Computes percentile distributions and evaluates deterministic SLO rules and reason codes. |
+| **Experiment Runner & Controller** | Rajdeep | Orchestrates baseline, candidate iterations, stopping conditions, and verification dispatch. |
+| **Serving Adapter** | Rajdeep | Applies candidate settings to inference runtime container, verifies read-back, captures environment fingerprint. |
+| **Load Generator** | Rajdeep | Generates scheduled request arrival patterns in an isolated subprocess; logs microsecond timestamps. |
+| **Metrics Engine & Evaluator** | Rajdeep | Computes percentile distributions and evaluates deterministic SLO rules and reason codes. |
 | **Artifact Store & Reporting** | Rajdeep | Persists raw JSONL records, manifests, reports, and ensures secret redaction. |
 | **Shared Contracts** | Rajdeep | Pydantic v2 data models enforcing exact schemas across API, worker, CLI, and frontend. |
 
@@ -276,15 +276,15 @@ Most naive systems collapse execution state, data validity, feasibility, and ver
 
 ---
 
-## 10. Who Owns Which Part of the Flow?
+## 10. Architectural Roles and the Five Disciplines of Truth
 
-The project has five people, divided by which truth each person is responsible for establishing:
+While all engineering execution is unified under **Rajdeep** as sole technical owner, the system enforces five distinct architectural disciplines to ensure integrity:
 
-* **Aman (Serving Reality):** Says what the server and GPU can really do; owns runtime deployment and effective parameter read-back.
-* **Adriraj (Measurement Credibility):** Says what the experiment really measured; owns load generation, timestamps, metric calculations, and validity flags.
-* **Daksh (Decision Correctness):** Says what the evidence actually proves; owns deterministic feasibility rules and independent verification.
-* **Rohan (Search Intelligence):** Proposes legal candidate configurations and ranks feasible options against the declared objective.
-* **Rajdeep (Architecture & Integration):** Makes sure all parts form one coherent, demonstrable, and compliant system.
+* **1. Serving Reality:** Validates what the physical runtime and GPU can actually do; verifies parameter read-back and records the environment fingerprint (`src/slokern/engine/serving/`).
+* **2. Measurement Credibility:** Captures what the benchmark experiment actually observed; owns microsecond timestamping, arrival distribution, metric aggregation, and saturation detection (`src/slokern/engine/loadgen/`, `src/slokern/core/metrics/`).
+* **3. Decision Correctness:** Certifies what the collected evidence strictly proves; applies deterministic SLO rules, reason codes, and independent verification rerun protocols (`src/slokern/core/evaluator/`, `src/slokern/core/verification/`).
+* **4. Search Intelligence:** Proposes legal candidate configurations within the declared budget and ranks feasible options against the declared objective (`src/slokern/core/search/`).
+* **5. Architecture & Integration:** Ensures all subsystems adhere to shared contracts, produces inspectable reports, and maintains system-level defensibility.
 
 ---
 
@@ -303,7 +303,7 @@ The Cyberpunk Technical Command Center presents 7 coherent views:
 
 ---
 
-## 12. Your 60-Second Explanation to the Team
+## 12. Your 60-Second Explanation to Judges and Reviewers
 
 > *"SLOKern is an evidence-driven optimizer for LLM inference serving.  
 > We start with one model candidate (`Nemotron-3-Nano-30B-A3B` with FP8, pending runtime verification via smoke test), one serving environment on Nebius Cloud, a defined workload, and explicit service-level objectives. We validate which configuration parameters the runtime actually supports, establish an empirical baseline anchor, and benchmark a bounded 2×2 candidate space (pending interface confirmation) under controlled load within a strict budget of six benchmark runs (preliminary smoke test counted separately).  

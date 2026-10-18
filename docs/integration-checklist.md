@@ -2,46 +2,44 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Status:** Active Operational Guide  
-> **Owner:** Rajdeep (Technical Lead / Architecture)  
+> **Owner:** Rajdeep (Single Technical Owner & Integration Authority)  
 > **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
 
 ---
 
-## 1. Daily Integration Ritual
+## 1. Single-Owner Daily Engineering Ritual
 
-To prevent "merge hell" and guarantee continuous system coherence, the 5-person team adheres to a structured daily integration ritual.
+To maintain continuous system coherence and rigorous validation, Rajdeep adheres to a structured daily engineering and integration workflow:
 
-### 1.1 Morning Synchronization (10–15 minutes)
-Every owner posts or speaks to three questions:
-1. **Today's Single Deliverable:** What concrete artifact, PR, or test will move the critical path today?
-2. **Blockers & Dependencies:** What external service, hardware access, or upstream contract could block it?
-3. **Midday Fallback:** What is the contingency plan if that dependency is not unblocked by 1:00 PM?
+### 1.1 Daily Objective & Dependency Check
+At the start of each development block:
+1. **Single High-Value Deliverable:** What concrete artifact, module, or test suite will advance the critical path today?
+2. **Blockers & External Dependencies:** Are cloud instance availability, credentials, or API tokens verified?
+3. **Contingency Plan:** What is the fallback if an external dependency or runtime access stalls?
 
-### 1.2 Individual Build Block
-Owners implement on isolated feature branches (`<owner>/<feature-name>`). Direct commits to `main` are prohibited.
+### 1.2 Implementation & Verification Block
+- Implement on clean, focused topic branches (`feat/<milestone-name>`).
+- Enforce contract adherence against `src/slokern/contracts/`.
+- Run contract validation tests (`pytest tests/contract` or test runners).
+- Run targeted unit tests on changed components before merging to `main`.
 
-### 1.3 Afternoon Integration Window (15–25 minutes)
-- Review open PRs across workstreams.
-- Run contract validation tests (`pytest tests/contract`).
-- Merge verified small PRs into `main`.
-- Run an end-to-end smoke test against the latest `main` branch.
+### 1.3 End-of-Day Evidence & Progress Audit
+Log progress, test output, and remaining risks in the project records:
 
-### 1.4 End-of-Day Status Handoff (5–10 minutes)
-Each owner posts the completed stand-up record into the team channel.
-
-#### Stand-Up Record Template
+#### Daily Progress Log Template
 ```text
 Date: YYYY-MM-DD
-Owner: [Name]
+Owner: Rajdeep
+Phase: [ Phase A | Phase B | Phase C | Phase D | Phase E | Phase F ]
 Status: [ TODO | IN PROGRESS | BLOCKED | DONE ]
 
-Today's Single Deliverable: [Exact file, PR, artifact, or test]
-Evidence / Test Output: [Command run and passing result]
-Blocker / Dependency: [Person, system, or decision blocking progress]
-Fallback Plan Executed: [What was done if blocked]
-Handoff To: [Named receiver and expected schema/format]
-Risk to Critical Path: [None | Low | High - describe threat]
-Tomorrow's Next Action: [Next milestone task]
+Deliverable: [Exact file, PR, artifact, or test suite]
+Evidence / Test Output: [Command executed and actual result]
+Blocker / Dependency: [External system or environment blocker]
+Contingency / Fallback Executed: [What was done if blocked]
+Artifacts Produced: [Generated JSON/JSONL, reports, or test summaries]
+Remaining Risks: [Critical path or demo risks]
+Next Action: [Next milestone deliverable]
 ```
 
 ---
@@ -89,29 +87,29 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
 
 ### Stage Checkpoints
 
-- [ ] **Step 1: Serving Smoke Test (Aman):**
+- [ ] **Step 1: Serving Smoke Test (Rajdeep):**
   - Run `slokern smoke-test` against live endpoint.
   - Verify model name, runtime version, and GPU fingerprint are returned.
   - Assert HTTP 200 response and valid non-empty token stream.
-- [ ] **Step 2: Single-Run Measurement (Adriraj):**
+- [ ] **Step 2: Single-Run Measurement (Rajdeep):**
   - Dispatch small workload (e.g., 20 requests at 2 req/s).
   - Verify `RawRequestMeasurement` records are written to JSONL with non-zero timestamps.
   - Verify `MetricSet` calculates TTFT, ITL, throughput, and error rate.
-- [ ] **Step 3: Deterministic Evaluator (Daksh):**
+- [ ] **Step 3: Deterministic Evaluator (Rajdeep):**
   - Feed single-run `MetricSet` into `FeasibilityEvaluator`.
   - Assert that an exact threshold violation produces `INFEASIBLE` with the correct reason code.
   - Assert that insufficient samples produce `INCONCLUSIVE`.
-- [ ] **Step 4: Baseline Establishment (Aman & Adriraj):**
+- [ ] **Step 4: Baseline Establishment (Rajdeep):**
   - Execute the default/reference serving configuration.
   - Archive baseline raw measurements, metric summary, and verdict.
-- [ ] **Step 5: Bounded Search (Rohan):**
-  - Execute `slokern optimize` across 3–5 legal candidates within budget.
+- [ ] **Step 5: Bounded Search (Rajdeep):**
+  - Execute `slokern optimize` across 3–5 legal candidates within budget (fixed 2×2 matrix).
   - Verify each candidate settings change is applied and verified by the adapter.
   - Verify search stops when budget is exhausted.
-- [ ] **Step 6: Candidate Selection (Rohan & Daksh):**
+- [ ] **Step 6: Candidate Selection (Rajdeep):**
   - Verify that only `FEASIBLE` candidates are ranked.
   - Verify candidate with best declared objective is selected with documented rationale.
-- [ ] **Step 7: Independent Verification (Daksh & Aman):**
+- [ ] **Step 7: Independent Verification (Rajdeep):**
   - Automatically dispatch `slokern verify` for the winning candidate.
   - Confirm a NEW unique `run_id` is assigned.
   - Verify raw measurements are collected afresh.
@@ -119,7 +117,7 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
 - [ ] **Step 8: Dashboard & Report Integration (Rajdeep):**
   - Verify web UI renders the experiment run state, candidate comparison, and verification verdict.
   - Confirm exportable Markdown/JSON report compiles and saves to disk.
-- [ ] **Step 9: Demo Hardening (Team):**
+- [ ] **Step 9: Demo Hardening (Rajdeep):**
   - Run clean environment setup test.
   - Validate demo script timing (3–5 minutes).
 
@@ -152,7 +150,7 @@ Before preparing the final hackathon submission package, execute the following a
 
 - [System Architecture](architecture.md)
 - [MVP Scope & Acceptance Checklist](mvp-checklist.md)
-- [Team Ownership & Collaboration Model](ownership.md)
+- [Engineering Ownership & Execution Model](ownership.md)
 - [Architecture Decision Log](decision-log.md)
 - [Demo Script & Fallback Plan](demo-script.md)
 

@@ -2,7 +2,7 @@
 
 > **Purpose:** Staging register for the compulsory tool feedback required by the Nebius × NVIDIA Global AI Hackathon submission form.  
 > **Audited Date:** 2026-10-18  
-> **Owners:** Aman (Serving/GPU Infrastructure), Adriraj (Benchmarking), Rajdeep (Technical Lead)
+> **Owner:** Rajdeep (Sole Technical Owner; Consolidated Feedback)
 
 ---
 

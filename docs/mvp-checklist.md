@@ -1,8 +1,8 @@
 # SLOKern MVP Scope & Acceptance Checklist
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
-> **Status:** Active Reference / Scope Boundary  
-> **Owner:** Rajdeep (Technical Lead / Architecture)  
+> **Status:** Active Reference / Scope Boundary (Single-Owner Execution)  
+> **Sole Technical Owner & Integration Authority:** Rajdeep  
 > **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
 
 ---
@@ -49,12 +49,12 @@ Every task in the project is evaluated against whether it advances this core end
 
 Project advancement is governed by evidence, not elapsed calendar days. A gate is passed only when its required evidence is committed and verified.
 
-### Gate A — Scope Locked (Target: End of Oct 13)
-- [ ] One model/runtime path selected or blocker escalated to leadership.
-- [ ] MVP scope, non-goals, and operating principles written and acknowledged.
-- [ ] Shared schemas (`WorkloadSpec`, `SLOSpec`, `CandidateConfig`, `RunRecord`, `MetricSet`, `FeasibilityResult`, `SearchResult`, `VerificationRecord`, `ReportArtifact`) agreed across all 5 owners.
-- [ ] Experiment budget and stopping limits defined.
-- [ ] All 5 components assigned to unambiguous single owners.
+### Gate A — Scope Locked (Completed: Oct 18 Baseline)
+- [x] One model/runtime path selected as compliance target (`Nemotron-3-Nano-30B-A3B` FP8 on Nebius; pending smoke test).
+- [x] MVP scope, non-goals, and operating principles written and acknowledged.
+- [x] Shared schemas (`WorkloadSpec`, `SLOSpec`, `CandidateConfig`, `RunRecord`, `MetricSet`, `FeasibilityResult`, `SearchResult`, `VerificationRecord`, `ReportArtifact`) defined in `src/slokern/contracts/`.
+- [x] Experiment budget (strict 6 benchmark runs) and stopping limits defined.
+- [x] Consolidated single-owner technical execution led by Rajdeep established.
 
 ### Gate B — Serving Path Works (Target: End of Oct 15)
 - [ ] Dedicated model endpoint responds reliably to a smoke inference request.
@@ -118,8 +118,8 @@ A deliverable or milestone is marked **DONE** only when:
 ---
 
 ## 5. Stop-the-Line Escalation Triggers
-
-The team must pause and escalate to the Technical Lead (Rajdeep) immediately if:
+ 
+Execution must pause and trigger immediate remediation if:
 
 1. **Endpoint Inaccessible:** The serving runtime cannot be contacted or deployed by the milestone deadline (switch to compliant fallback).
 2. **Missing Timings:** The runtime API does not expose first-token or per-token timings required for TTFT/ITL (restrict SLO scope honestly; do not invent values).
@@ -134,7 +134,7 @@ The team must pause and escalate to the Technical Lead (Rajdeep) immediately if:
 ## 6. Related Documentation
 
 - [System Architecture](architecture.md)
-- [Ownership & Team Matrix](ownership.md)
+- [Engineering Ownership & Execution Model](ownership.md)
 - [Architecture Decision Log](decision-log.md)
 - [Daily Integration Checklist](integration-checklist.md)
 - [ADR 0001: MVP Scope & Evidence Policy](adr/0001-mvp-scope-and-evidence.md)

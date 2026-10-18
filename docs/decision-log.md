@@ -203,13 +203,29 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 
 ---
 
+### DEC-0011: Transition to Single-Owner Technical Execution Led by Rajdeep
+- **Date:** 2026-10-18
+- **Question:** How should engineering ownership, integration authority, and delivery accountability be structured for the remaining hackathon period (October 18–30, 2026)?
+- **Options Considered:**
+  1. Maintain the distributed 5-person team plan with separate daily standups and workstream handoffs.
+  2. Consolidate all technical ownership, integration authority, and delivery responsibilities under Rajdeep as sole technical owner.
+- **Decision:** Option 2. Transition to single-owner technical execution led by Rajdeep.
+- **Reason:** The post-October 18 execution window requires rapid, decisive end-to-end integration and rigorous evidence collection. Consolidating all engineering responsibilities under Rajdeep eliminates inter-member coordination overhead and synchronization delays while preserving the modular subsystem boundaries, typed contracts, and deterministic invariants already established.
+- **Owner:** Rajdeep (Sole Technical Owner & Integration Authority)
+- **Affected Contracts/Components:** `AGENTS.md`, `README.md`, `ROADMAP.md`, `docs/ownership.md`, `docs/architecture.md`, `docs/mvp-checklist.md`, `docs/integration-checklist.md`
+- **Evidence:** Repository audit confirming modular contracts (`src/slokern/contracts/`) allow unified execution without code rewrites.
+- **Trade-offs:** Increases individual workload on Rajdeep; requires strict prioritization of core MVP capabilities over secondary extras.
+- **Revisit Condition:** None; locked for hackathon execution.
+
+---
+
 ## 3. Pending Decisions to Finalize
 
-The following decisions remain open and are assigned for resolution during Phases 1 and 2:
+The following technical decisions remain open and are assigned to Rajdeep for resolution during Phases A and B (October 18–22):
 
-1. **Exact Nebius GPU Instance & Runtime Revision (Aman / Oct 15–18):** Finalize exact GPU model (e.g., 1× H100 80GB SXM) and confirm exact Nebius API model identifier string and endpoint access for `Nemotron-3-Nano-30B-A3B` (FP8).
-2. **Confirmed Search Space Dimensions & Blocker Resolution (Aman & Rohan / Oct 18):** Confirm whether the serving endpoint exposes serving-engine controls (vLLM batch concurrency + memory utilization) or only client request parameters. If controls are insufficient, escalate for an architectural decision.
-3. **Official Deadline & Submission Verification (Rajdeep / Oct 18):** Target deadline confirmed: **October 30, 2026, 10:00 AM PDT / 10:30 PM IST**.
+1. **Exact Nebius GPU Instance & Runtime Revision (Rajdeep / Target: Oct 20):** Finalize exact GPU model (e.g., 1× H100 80GB SXM) and confirm exact Nebius API model identifier string and endpoint access for `Nemotron-3-Nano-30B-A3B` (FP8) via preflight smoke test.
+2. **Confirmed Search Space Dimensions & Blocker Resolution (Rajdeep / Target: Oct 21):** Confirm whether the serving endpoint exposes serving-engine controls (vLLM batch concurrency + memory utilization) or only client request parameters. If controls are insufficient, execute the containerized vLLM deployment fallback on Nebius Compute.
+3. **Official Deadline & Submission Verification (Rajdeep / Confirmed: Oct 18):** Target deadline confirmed: **October 30, 2026, 10:00 AM PDT / 10:30 PM IST**.
 
 ---
 
@@ -218,8 +234,9 @@ The following decisions remain open and are assigned for resolution during Phase
 - [Hackathon Compliance Matrix](hackathon-compliance.md)
 - [System Architecture](architecture.md)
 - [MVP Checklist & Scope Boundaries](mvp-checklist.md)
-- [Ownership & Team Matrix](ownership.md)
+- [Engineering Ownership & Execution Model](ownership.md)
 - [ADR 0001: MVP Scope & Evidence Policy](adr/0001-mvp-scope-and-evidence.md)
 - [ADR 0002: Dual-Mode Cost Accounting](adr/0002-cost-model.md)
+
 
 

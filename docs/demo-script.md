@@ -1,9 +1,9 @@
 # SLOKern Demo Narrative & Presentation Runbook
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
-> **Status:** Active Demo Script (Target: 3–5 Minutes)  
-> **Owner:** Rajdeep (Technical Lead / Architecture)  
-> **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
+> **Status:** Active Demo Script (Target: 3–5 Minutes, Solo Presentation)  
+> **Owner:** Rajdeep (Sole Presenter & Technical Lead)  
+> **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 ---
 

@@ -2,8 +2,8 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Status:** Active Specification (Policy Version: 1.0.0)  
-> **Owner:** Daksh (Verification / Evaluation)  
-> **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
+> **Owner:** Rajdeep (Architecture, Verification & Optimization; Historical design: Daksh)  
+> **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 ---
 

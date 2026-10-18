@@ -2,8 +2,8 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Status:** Active Specification (Methodology Version: 1.0.0)  
-> **Owner:** Adriraj (Benchmarking)  
-> **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
+> **Owner:** Rajdeep (Architecture, Benchmarking & Experiments; Historical design: Adriraj)  
+> **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 ---
 

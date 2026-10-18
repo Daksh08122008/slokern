@@ -2,8 +2,8 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Status:** Active Operational Guide  
-> **Owner:** Aman (Serving / GPU Infrastructure)  
-> **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
+> **Owner:** Rajdeep (Architecture, Serving & Infrastructure; Historical design: Aman)  
+> **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 ---
 
@@ -25,7 +25,7 @@ For the Nebius × NVIDIA Global AI Hackathon, SLOKern deploys its target model o
   - **5. Optional Secondary Comparison Model:** `nvidia/Llama-3.1-Nemotron-70B-Instruct`  
     *Status:* Unverified in the team's selected Nebius catalog; purely a hypothetical secondary model for comparison if access and quota are confirmed.
 - **Serving Engine:** Containerized runtime (e.g., `vLLM`) or managed inference endpoint (OpenAI-compatible HTTP/SSE API).
-- **Deployment & Evidence Status:** `PENDING RUNTIME VERIFICATION` (blocked on live smoke test execution by Aman on Nebius). Permitted terminology: `Selected candidate`, `Planned deployment target`, `Pending runtime verification`. Strictly avoid claims of `Successfully deployed`, `Verified model access`, or `Benchmark completed`.
+- **Deployment & Evidence Status:** `PENDING RUNTIME VERIFICATION` (blocked on live smoke test execution by Rajdeep on Nebius). Permitted terminology: `Selected candidate`, `Planned deployment target`, `Pending runtime verification`. Strictly avoid claims of `Successfully deployed`, `Verified model access`, or `Benchmark completed`.
 
 ---
 
@@ -80,7 +80,7 @@ To enforce experiment-budget safety, the campaign is strictly bounded:
 The candidate search space is constrained by explicit design and interface realities:
 
 - **Fixed 2×2 Search Space Design Requirement:**
-  The optimization search is restricted to a fixed 2×2 parameter matrix (4 candidates total). However, its **two specific dimensions and values are pending confirmation from the actual serving interface** during Aman's preflight inspection.
+  The optimization search is restricted to a fixed 2×2 parameter matrix (4 candidates total). However, its **two specific dimensions and values are pending confirmation from the actual serving interface** during Rajdeep's preflight inspection.
 - **Distinguishing Client/Workload from Serving-Engine Controls:**
   - *Client/Workload Parameters (e.g., `concurrency_limit`, `max_tokens`):* Regulate client load generation and prompt payload constraints. **Altering workload parameters does not prove GPU-serving optimization.** Workload tuning merely alters the offered traffic pattern or generation bounds.
   - *Serving-Engine Parameters (e.g., `max_num_seqs`, `gpu_memory_utilization`, `max_model_len`, `kv_cache_dtype`):* Directly configure the internal runtime and GPU memory layout on the serving host.
@@ -88,7 +88,7 @@ The candidate search space is constrained by explicit design and interface reali
 - **Architectural Blocker Notice:**
   If the target deployment interface (such as a managed Token Factory endpoint) exposes only standard client request parameters and lacks observable or tunable serving-engine controls:
   - This constitutes an **architectural blocker** for engine optimization.
-  - The team must make an **explicit architecture decision** (owned by Rajdeep and Aman) — either deploying containerized `vLLM` on a dedicated Nebius Compute GPU instance to access engine-level knobs, or formally refining the optimization problem boundary via an accepted ADR.
+  - An **explicit architecture decision** (owned by Rajdeep) must be made — either deploying containerized `vLLM` on a dedicated Nebius Compute GPU instance to access engine-level knobs, or formally refining the optimization problem boundary via an accepted ADR.
 
 ### 2.4 Cost Policy & Metric Disambiguation
 

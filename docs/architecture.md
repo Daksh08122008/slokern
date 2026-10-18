@@ -2,7 +2,7 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Status:** Draft / Active Specification  
-> **Owner:** Rajdeep (Technical Lead / Architecture)  
+> **Owner:** Rajdeep (Single Technical Owner & Integration Authority)  
 > **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
 
 ---
@@ -29,7 +29,7 @@ SLOKern rejects unverified claims and heuristic guessing. Optimal serving config
 
 ## 2. System Boundaries & Process Model
 
-To eliminate measurement interference while keeping the architecture maintainable for a 5-person sprint, SLOKern adopts a **modular monolith control plane paired with an isolated subprocess experiment worker**.
+To eliminate measurement interference while keeping the architecture maintainable for a focused single-owner sprint, SLOKern adopts a **modular monolith control plane paired with an isolated subprocess experiment worker**.
 
 ```mermaid
 flowchart TD
@@ -101,14 +101,14 @@ $$\text{Specify} \to \text{Validate} \to \text{Measure} \to \text{Evaluate} \to 
 
 To prevent measurement contamination and ensure auditability, these conceptual steps are mapped cleanly to concrete orchestration phases:
 
-| Conceptual Step | Primary Owner | Concrete Orchestration Phase | Function & Invariant |
+| Conceptual Step | Accountable Owner | Concrete Orchestration Phase | Function & Invariant |
 |---|---|---|---|
 | **1. Specify** | Rajdeep | Phase 0: Specification | User defines workload traffic profile, hard SLO thresholds, and experiment budget. |
-| **2. Validate** | Rajdeep / Aman | Phase 0: Pre-Flight | Pydantic v2 validation enforces structural integrity; serving adapter rejects unsupported candidate parameters before GPU allocation. |
-| **3. Measure** | Adriraj / Aman | Phase 1 (Baseline) & Phase 2 (Candidates) | Subprocess load generator executes warmup followed by the active window. **Baseline establishment is executed first** as an explicit anchor before candidate exploration. Raw timestamps recorded in JSONL. |
-| **4. Evaluate** | Daksh | Phase 1 & Phase 2 | Deterministic Feasibility Evaluator calculates MetricSet and audits each hard constraint against thresholds (`FEASIBLE`, `INFEASIBLE`, `INCONCLUSIVE`). |
-| **5. Optimize** | Rohan | Phase 2 (Search Loop) | Bounded search controller proposes legal configurations and ranks feasible candidates by declared objective (Mode A monetary cost or Mode B systems proxy). |
-| **6. Verify** | Daksh | Phase 3 (Verification) | Mandatory independent rerun of top-ranked feasible candidate under a fresh `verification_run_id`. Recalculates metrics and audits for threshold drift. Emits formal enum: `VERIFIED`, `VERIFICATION_FAILED`, or `VERIFICATION_INCONCLUSIVE`. |
+| **2. Validate** | Rajdeep | Phase 0: Pre-Flight | Pydantic v2 validation enforces structural integrity; serving adapter rejects unsupported candidate parameters before GPU allocation. |
+| **3. Measure** | Rajdeep | Phase 1 (Baseline) & Phase 2 (Candidates) | Subprocess load generator executes warmup followed by the active window. **Baseline establishment is executed first** as an explicit anchor before candidate exploration. Raw timestamps recorded in JSONL. |
+| **4. Evaluate** | Rajdeep | Phase 1 & Phase 2 | Deterministic Feasibility Evaluator calculates MetricSet and audits each hard constraint against thresholds (`FEASIBLE`, `INFEASIBLE`, `INCONCLUSIVE`). |
+| **5. Optimize** | Rajdeep | Phase 2 (Search Loop) | Bounded search controller proposes legal configurations and ranks feasible candidates by declared objective (Mode A monetary cost or Mode B systems proxy). |
+| **6. Verify** | Rajdeep | Phase 3 (Verification) | Mandatory independent rerun of top-ranked feasible candidate under a fresh `verification_run_id`. Recalculates metrics and audits for threshold drift. Emits formal enum: `VERIFIED`, `VERIFICATION_FAILED`, or `VERIFICATION_INCONCLUSIVE`. |
 | **7. Explain** | Rajdeep | Phase 4 (Reporting) | Publishes immutable `ReportArtifact` linking recommendation, hardware fingerprint, raw evidence, and declared limitations. |
 
 ### 3.2 Concrete Orchestration Sequence
@@ -176,29 +176,29 @@ sequenceDiagram
 
 ## 4. Shared Data Contracts
 
-SLOKern enforces strict typed schemas across API boundaries, workers, CLI, frontend, and report generators. The canonical source of truth for all contracts is defined in Pydantic v2 within [`src/slokern/contracts/`](file:///c:/Users/paulr/OneDrive/DevArena/slokern/src/slokern/contracts/).
+SLOKern enforces strict typed schemas across API boundaries, workers, CLI, frontend, and report generators. The canonical source of truth for all contracts is defined in Pydantic v2 within [`src/slokern/contracts/`](../src/slokern/contracts/).
 
 ### Contract Summary Table
 
-| Contract Class | Primary Owner | Purpose |
+| Contract Class | Accountable Owner | Purpose |
 |---|---|---|
-| `WorkloadSpec` | Adriraj | Declares request fixture, arrival mode, offered rate, duration, and token policies |
-| `SLOSpec` | Daksh | Defines hard constraint thresholds, target percentiles, operators, and required units |
-| `CandidateConfig` | Rohan (intent) / Aman (reality) | Canonical serving parameter settings (requested vs. effective read-back) |
+| `WorkloadSpec` | Rajdeep | Declares request fixture, arrival mode, offered rate, duration, and token policies |
+| `SLOSpec` | Rajdeep | Defines hard constraint thresholds, target percentiles, operators, and required units |
+| `CandidateConfig` | Rajdeep | Canonical serving parameter settings (requested vs. effective read-back) |
 | `ExperimentSpec` | Rajdeep | Complete submission payload combining workload, SLO, candidate space, and budget |
-| `RunRecord` | Rajdeep / Aman | Single execution run metadata, environment fingerprint, timestamps, and status |
-| `RawRequestMeasurement`| Adriraj | Granular, unaggregated event capture for every request initiated |
-| `MetricSet` | Adriraj | Documented summary statistics derived from valid raw measurements |
-| `FeasibilityResult` | Daksh | Deterministic constraint-by-constraint audit, reason codes, and overall verdict |
-| `SearchResult` | Rohan | Bounded search history, candidate rankings, stopping rationale, and winner selection |
-| `VerificationRecord` | Daksh | Independent verification run linkage, metric comparison, drift, and final verdict |
+| `RunRecord` | Rajdeep | Single execution run metadata, environment fingerprint, timestamps, and status |
+| `RawRequestMeasurement`| Rajdeep | Granular, unaggregated event capture for every request initiated |
+| `MetricSet` | Rajdeep | Documented summary statistics derived from valid raw measurements |
+| `FeasibilityResult` | Rajdeep | Deterministic constraint-by-constraint audit, reason codes, and overall verdict |
+| `SearchResult` | Rajdeep | Bounded search history, candidate rankings, stopping rationale, and winner selection |
+| `VerificationRecord` | Rajdeep | Independent verification run linkage, metric comparison, drift, and final verdict |
 | `ReportArtifact` | Rajdeep | Immutable, publishable bundle of all specs, results, environment metadata, and limitations |
 
 ---
 
 ### Contract Definitions & Specifications
 
-#### 1. `WorkloadSpec` (Owner: Adriraj)
+#### 1. `WorkloadSpec` (Owner: Rajdeep; Historical design: Adriraj)
 Defines the offered traffic profile to ensure benchmark repeatability.
 - `schema_version`: String version identifier (e.g., `"1.0.0"`).
 - `workload_name`: Identifier for the workload profile.
@@ -211,7 +211,7 @@ Defines the offered traffic profile to ensure benchmark repeatability.
 - `max_input_tokens`: Upper bound on input prompt length.
 - `max_output_tokens`: Maximum generated token limit.
 
-#### 2. `SLOSpec` (Owner: Daksh)
+#### 2. `SLOSpec` (Owner: Rajdeep; Historical design: Daksh)
 Specifies the non-negotiable service-level objectives against which candidates are evaluated.
 - `slo_id`: Unique identifier for the SLO declaration.
 - `constraints`: List of hard constraint rules:
@@ -222,7 +222,7 @@ Specifies the non-negotiable service-level objectives against which candidates a
   - `operator`: Comparison operator (`"<="`, `"<"`, `">="`, `">"`).
 - `min_sample_count`: Minimum required valid requests to allow an authoritative verdict.
 
-#### 3. `CandidateConfig` (Owners: Rohan & Aman)
+#### 3. `CandidateConfig` (Owner: Rajdeep; Historical design: Rohan & Aman)
 Represents a concrete serving configuration. Distinguishes intent from verified runtime reality.
 - `candidate_id`: Stable deterministic hash of canonical parameter values.
 - `model_name`: Formal model identifier (e.g., `"Nemotron-3-Nano-30B-A3B"` (FP8) as selected hackathon candidate pending runtime verification, or `"meta-llama/Meta-Llama-3-8B-Instruct"` for internal baseline).
@@ -244,7 +244,7 @@ The root document defining an entire optimization experiment.
   - `max_cost_limit`: Optional expenditure ceiling.
 - `verification_policy`: Rules governing the independent verification rerun (e.g., repetitions, duration multiplier).
 
-#### 5. `RunRecord` (Owners: Rajdeep & Aman)
+#### 5. `RunRecord` (Owner: Rajdeep; Historical design: Rajdeep & Aman)
 Metadata tracking an individual benchmark execution.
 - `run_id`: Unique identifier for this specific execution attempt.
 - `experiment_id`: Parent experiment identifier.
@@ -255,7 +255,7 @@ Metadata tracking an individual benchmark execution.
 - `raw_artifact_uri`: Relative path to raw request recordings (`.jsonl`).
 - `execution_error`: Structured error details if execution failed before measurement completion.
 
-#### 6. `RawRequestMeasurement` (Owner: Adriraj)
+#### 6. `RawRequestMeasurement` (Owner: Rajdeep; Historical design: Adriraj)
 Granular, unaggregated event capture for every request. Must be preserved for reproducibility.
 - `request_id`: Unique request identifier.
 - `run_id`: Associated run identifier.
@@ -271,7 +271,7 @@ Granular, unaggregated event capture for every request. Must be preserved for re
 - `is_warmup`: Boolean indicating if sample occurred during warm-up (excluded from metrics).
 - `is_valid`: Boolean indicating whether sample is free of client-side measurement anomalies.
 
-#### 7. `MetricSet` (Owner: Adriraj)
+#### 7. `MetricSet` (Owner: Rajdeep; Historical design: Adriraj)
 Aggregated performance indicators calculated deterministically from valid measurement windows.
 - `metric_version`: Version of metric calculation policy.
 - `run_id`: Associated run identifier.
@@ -287,7 +287,7 @@ Aggregated performance indicators calculated deterministically from valid measur
 - `error_rate`: Ratio of failed requests to total offered requests.
 - `generator_saturated`: Boolean flag indicating whether client load generator saturated.
 
-#### 8. `FeasibilityResult` (Owner: Daksh)
+#### 8. `FeasibilityResult` (Owner: Rajdeep; Historical design: Daksh)
 Deterministic constraint audit result.
 - `policy_version`: Version of feasibility evaluation rules.
 - `run_id`: Associated run identifier.
@@ -303,7 +303,7 @@ Deterministic constraint audit result.
 - `validity_status`: Enum: `VALID`, `INVALID`, `CONTAMINATED`.
 - `audit_notes`: Structured text explaining edge cases or exclusions.
 
-#### 9. `SearchResult` (Owner: Rohan)
+#### 9. `SearchResult` (Owner: Rajdeep; Historical design: Rohan)
 Bounded search exploration history and candidate ranking.
 - `experiment_id`: Parent experiment identifier.
 - `baseline_candidate_id`: ID of baseline configuration.
@@ -314,7 +314,7 @@ Bounded search exploration history and candidate ranking.
 - `selection_rationale`: Deterministic justification for the winning choice.
 - `stopping_reason`: Reason search halted (`"budget_exhausted"`, `"space_exhausted"`, `"early_convergence"`, `"timeout"`).
 
-#### 10. `VerificationRecord` (Owner: Daksh)
+#### 10. `VerificationRecord` (Owner: Rajdeep; Historical design: Daksh)
 Independent verification audit record for the winning candidate.
 - `verification_id`: Unique identifier for the verification session.
 - `experiment_id`: Associated experiment identifier.
@@ -382,19 +382,19 @@ SLOKern explicitly resolves cost accounting into a dual-mode model to prevent fa
 
 ---
 
-## 7. Component Ownership & Team Responsibilities
+## 7. Component Ownership & Consolidated Engineering Responsibilities
 
-System architecture is mapped cleanly to the 5-person team with zero overlapping accountability:
+Under the consolidated single-owner execution model (effective October 18, 2026), **Rajdeep** assumes sole end-to-end accountability and integration authority across all architectural subsystems. The modular component boundaries originally designed for the distributed team remain strictly enforced to preserve architectural integrity:
 
-| Component | Owner | Deliverable | Enforced Boundary |
+| Component | Accountable Owner | Deliverable | Enforced Subsystem Boundary |
 |---|---|---|---|
-| **Architecture & Integration** | **Rajdeep** | Contracts, control plane, schema validation, API/dashboard alignment, final report narrative | Stable interfaces; cross-workstream contracts |
-| **Serving & Infrastructure** | **Aman** | Serving adapter, model runtime deployment, parameter read-back, environment fingerprint | Declares what parameters are truly mutable; validates adapter reality |
-| **Verification & Evaluator** | **Daksh** | Feasibility evaluator, deterministic SLO logic, reason codes, verification runner | Controls verdict semantics; prevents invalid runs from winning |
-| **Benchmarking & Loadgen** | **Adriraj** | Workload fixtures, load generator, raw timestamp capture, metrics engine | Owns raw data fidelity; flags generator saturation |
-| **Search & Optimization** | **Rohan** | Legal candidate space, bounded search controller, candidate ranking, stopping rules | Generates only legal candidates; respects search budget |
+| **Architecture & Integration** | **Rajdeep** | Contracts, control plane, schema validation, API/dashboard alignment, final report narrative | Stable interfaces; cross-subsystem contracts |
+| **Serving & Infrastructure** | **Rajdeep** *(Historical: Aman)* | Serving adapter, model runtime deployment, parameter read-back, environment fingerprint | Declares what parameters are truly mutable; validates adapter reality |
+| **Verification & Evaluator** | **Rajdeep** *(Historical: Daksh)* | Feasibility evaluator, deterministic SLO logic, reason codes, verification runner | Controls verdict semantics; prevents invalid runs from winning |
+| **Benchmarking & Loadgen** | **Rajdeep** *(Historical: Adriraj)* | Workload fixtures, load generator, raw timestamp capture, metrics engine | Owns raw data fidelity; flags generator saturation |
+| **Search & Optimization** | **Rajdeep** *(Historical: Rohan)* | Legal candidate space, bounded search controller, candidate ranking, stopping rules | Generates only legal candidates; respects search budget |
 
-For detailed interaction rules, see [docs/ownership.md](ownership.md).
+For the complete responsibility matrix, single-owner development loop, and historical attribution, see [docs/ownership.md](ownership.md).
 
 ---
 

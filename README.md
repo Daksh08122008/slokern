@@ -3,326 +3,421 @@
 
 > **SLOKern is an SLO-aware LLM inference optimization system that measures a bounded set of serving configurations, identifies the lowest-cost configuration that satisfies a declared workload and service-level objective (SLO), and independently verifies the recommendation.**
 
-**Hackathon:** Nebius × NVIDIA Global AI Hackathon  
-**Domain:** LLM inference serving, systems performance, SLO-aware optimization  
-**Working name history:** ServeWise → **SLOKern**  
-**CLI concept:** `slokern verify`  
-**Product principle:** **One model, one serving environment, a small configuration space, reproducible experiments.**
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Hackathon: Nebius × NVIDIA 2026](https://img.shields.io/badge/Hackathon-Nebius_%C3%97_NVIDIA_2026-76B900.svg)](https://nebiusglobalaihackathon.devpost.com/)
+[![Track: Coding & Agentic Engineering](https://img.shields.io/badge/Track-Coding_%26_Agentic_Engineering-purple.svg)](https://nebiusglobalaihackathon.devpost.com/)
+[![Status: Single--Owner Execution](https://img.shields.io/badge/Status-Single--Owner_Execution-cyan.svg)](docs/ownership.md)
 
-> [!IMPORTANT]
-> This repository plan describes the intended system. Do not present a feature, command, model, deployment, price, or benchmark result as implemented until it has been tested in the actual repository and target environment. Mock dashboard data must be labelled **DEMO DATA**.
+**Product Principle:** *Do not guess the optimal configuration. Find it experimentally, then verify it.*
 
 ---
 
 ## Contents
 
-- [Why SLOKern?](#why-slokern)
-- [What it does](#what-it-does)
-- [MVP scope](#mvp-scope)
-- [How it works](#how-it-works)
-- [Architecture](#architecture)
-- [Metrics and decision policy](#metrics-and-decision-policy)
-- [Dashboard](#dashboard)
-- [Team and ownership](#team-and-ownership)
-- [Repository layout](#repository-layout)
-- [Quick start](#quick-start)
-- [Validation and reproducibility](#validation-and-reproducibility)
-- [Roadmap](#roadmap)
-- [Hackathon deliverables](#hackathon-deliverables)
-- [Official Hackathon Compliance & Requirements Matrix](docs/hackathon-compliance.md)
-- [Project Flow & Mental Model Guide](docs/project-flow-and-mental-model.md)
-- [Known decisions to finalize](#known-decisions-to-finalize)
-
-## Why SLOKern?
-
-LLM serving is a constrained optimization problem. A configuration can deliver impressive throughput while violating the latency users experience; another may satisfy latency targets but cost more than necessary. Manual tuning is slow, measurements are noisy, and a single lucky benchmark run can produce a false winner.
-
-SLOKern answers:
-
-> **What is the maximum sustainable request rate—and the associated cost—at which a serving configuration can satisfy the specified SLO for a defined workload?**
-
-The product is more than a benchmark script. It connects workload specification, controlled experiments, bounded search, deterministic feasibility decisions, cost-aware ranking, and an independent verification run.
-
-## What it does
-
-1. Accepts a workload profile and explicit SLO requirements.
-2. Validates the specification and experiment budget before expensive work begins.
-3. Establishes a baseline using the same workload protocol as candidate configurations.
-4. Benchmarks a bounded set of legal serving configurations.
-5. Preserves raw measurements and calculates documented metrics.
-6. Excludes candidates that fail hard constraints or lack valid evidence.
-7. Selects a candidate using a declared objective, preferably measured cost at the required load.
-8. reruns the selected candidate under a new run ID.
-9. Produces an inspectable report containing the verdict, environment, configuration, measurements, assumptions, and limitations.
-
-An AI-assisted layer may help draft specifications or explain results, but **deterministic code—not an LLM—owns metric calculation, SLO verdicts, budget enforcement, and final verification**.
-
-## MVP scope
-
-### In scope
-
-- One NVIDIA open-source model supported by the chosen hackathon environment (selected compliance candidate: `Nemotron-3-Nano-30B-A3B` with FP8, pending runtime verification via smoke test; internal development baseline: `meta-llama/Meta-Llama-3-8B-Instruct`).
-- One serving runtime/environment (vLLM container or Nebius Token Factory streaming endpoint on Nebius Cloud GPU infrastructure).
-- One reproducible workload fixture or small set of named profiles.
-- A small configuration space containing only parameters the adapter can actually apply (fixed 2×2 candidate matrix, with dimensions and values pending confirmation from the serving interface; client/workload parameters distinguished from serving-engine parameters).
-- Controlled load generation, with offered and achieved load reported separately.
-- TTFT, inter-token latency (ITL), throughput, errors, and latency percentiles.
-- A deterministic feasibility evaluator.
-- Baseline plus bounded search (strict budget of six benchmark runs: 1 baseline + 4 candidates in a fixed 2×2 matrix + 1 independent verification rerun; preliminary preflight smoke test counted separately).
-- Independent verification of the selected candidate under a fresh run ID.
-- Machine-readable artifacts, a readable report, and a polished dashboard.
-
-### Out of scope for the MVP
-
-- Universal support for all models, runtimes, clouds, and GPU types.
-- Unbounded search or a claim of global optimality.
-- Automatic changes to production deployments.
-- Treating one run as statistically conclusive.
-- Adding complex AI/optimizer features before the measurement pipeline works.
-- Fabricating performance or cost numbers to make the demo look stronger.
-
-## How it works
-
-```text
-Workload + SLO
-     ↓
-Validate specification and budget
-     ↓
-Run baseline
-     ↓
-Generate legal candidate configurations
-     ↓
-Apply configuration → warm up → generate controlled load
-     ↓
-Save raw measurements and environment metadata
-     ↓
-Calculate metrics → evaluate each hard constraint
-     ↓
-Search and rank evidenced feasible candidates
-     ↓
-Rerun selected candidate independently
-     ↓
-Publish report, charts, verdict, and artifacts
-```
-
-### Architecture at a glance
-
-| Component | Responsibility |
-|---|---|
-| Dashboard | Specification builder, tuning controls, progress, comparison, verification and reports |
-| API/control plane | Validation, experiment lifecycle, state, cancellation and artifact access |
-| Serving adapter | Applies supported settings and communicates with the chosen runtime |
-| Load generator | Creates the declared request-arrival pattern and records request-level timing |
-| Metrics engine | Calculates documented metrics from raw measurements |
-| Feasibility evaluator | Applies versioned, deterministic SLO rules |
-| Search controller | Chooses legal next candidates and enforces stopping conditions |
-| Verification runner | Repeats the selected configuration in a separate run |
-| Report generator | Makes the experiment inspectable and reproducible |
-| Optional AI planner | Helps draft or explain; cannot override deterministic verdicts |
-
-For the MVP, use a **modular monolith plus a controlled experiment worker**. Keep the control plane separate from the request-generation path so dashboard/API work does not contaminate measurements. The API process starts and observes an experiment worker; the worker isolates load generation in its own subprocess.
-
-### Stack defaults
-
-The README previously left implementation choices open. These defaults are selected for the five-person hackathon team and can be revised based on what Aman confirms about the serving environment on **October 14**. They describe the intended stack; they do not imply that the corresponding components are already implemented.
-
-| Area | Default | Reason |
-|---|---|---|
-| Core language and packaging | Python 3.11+, one package managed with `uv` | Keeps the team on one backend toolchain and uses mature API and load-generation libraries. |
-| Shared contracts | Pydantic v2 is the source of truth; generate JSON Schema and TypeScript types | Keeps API, worker, CLI, fixtures, and frontend contracts aligned. |
-| API | FastAPI, with server-sent events (SSE) for dashboard progress | Provides OpenAPI documentation and a straightforward progress stream. |
-| Frontend | React, TypeScript, and Vite, using the existing dashboard as the starting point | Fits the proposed dashboard and enables typed API integration. |
-| Artifact storage | Filesystem JSON and JSONL artifacts; no database initially | Keeps experiment evidence inspectable and reproducible. Add SQLite only if run listing becomes a bottleneck. |
-| Process model | API/control-plane process plus a separate experiment worker; load generation isolated in a subprocess | Keeps API and dashboard work out of the measured request path without requiring Celery or Redis. |
-
-Revisit a default if endpoint discovery or a verified environment requirement makes it unsuitable, and record material changes in an architecture decision record.
-
-## Metrics and decision policy
-
-| Metric | Meaning | Typical unit |
-|---|---|---|
-| TTFT | Time from request initiation to first generated token | ms |
-| ITL | Time between successive generated tokens; aggregation must be defined | ms |
-| End-to-end latency | Request start to completion | ms or s |
-| Request throughput | Completed requests per elapsed second | requests/s |
-| Output-token throughput | Generated output tokens per elapsed second | tokens/s |
-| Offered / achieved load | Intended arrival rate / actual delivered rate | requests/s |
-| Error rate | Failed requests divided by the declared population | fraction or % |
-| Cost per request/token | Estimate based on measured usage and disclosed price assumptions | currency/unit |
-
-A candidate is **FEASIBLE** only when valid evidence supports every required hard constraint passing. It is **INFEASIBLE** when valid evidence shows at least one hard constraint failing, and **INCONCLUSIVE** when measurements are invalid, insufficient, or too uncertain. Execution failure is tracked separately from SLO failure.
-
-The final claim is deliberately bounded:
-
-> “Best verified candidate among the configurations tested in the declared search space and environment.”
-
-SLOKern does not claim global optimality.
-
-## Dashboard
-
-The proposed cyberpunk-inspired command center uses midnight/near-black surfaces, electric cyan accents, restrained violet, legible technical typography, subtle grid/glow effects, accessible contrast, and clear state labels. Aesthetics must never imply evidence the backend has not produced.
-
-Proposed views:
-
-1. **Overview / Command Center** — current experiment, progress, SLO status and budget.
-2. **Workload & SLO Builder** — request profile, target rate, thresholds and validation.
-3. **Search Space / Tuning Lab** — legal parameters, ranges, candidate budget and search policy.
-4. **Live Experiment Monitor** — candidate progress, load, timings, errors and run validity.
-5. **Results / Candidate Comparison** — candidate table, trade-offs, baseline and selection rationale.
-6. **Verification / Evidence** — search-run versus fresh verification metrics and final verdict.
-7. **Run Detail / Report** — immutable specification, environment, artifacts and limitations.
-
-The frontend-only prototype may simulate interactions, but synthetic results must be visibly labelled **DEMO DATA** and must never be presented as a live benchmark.
-
-## Team and ownership
-
-| Owner | Primary responsibility | Deliverable |
-|---|---|---|
-| **Rajdeep — Technical Lead / Architecture** | Scope, architecture, contracts, deterministic decision policy, integration and final narrative | Working end-to-end system and coherent technical story |
-| **Aman — Serving / GPU Infrastructure** | Model/runtime setup, serving adapter, supported settings, environment metadata | Reliable endpoint and verified configuration application |
-| **Daksh — Verification / Evaluation** | Constraint evaluator, verification protocol, edge cases and evidence audit | Deterministic verdicts and independent verification |
-| **Adriraj — Benchmarking** | Workload fixtures, load generation, raw timings, metric aggregation and run validity | Reproducible benchmark artifacts |
-| **Rohan — Optimization / Search** | Candidate space, baseline search, adaptive strategy and selection rationale | Bounded optimizer with transparent decisions |
-
-Each component has one accountable owner. Pairing and review are welcome; ambiguous shared ownership is not. See **[ROADMAP.md](ROADMAP.md)** for the daily sprint plan, task handoffs, dependencies, and acceptance gates.
-
-## Repository layout
-
-Proposed layout; create only directories needed by the implementation.
-
-```text
-slokern/
-├── README.md
-├── ROADMAP.md
-├── docs/
-│   ├── architecture.md
-│   ├── experiment-methodology.md
-│   ├── metrics.md
-│   ├── decision-policy.md
-│   ├── deployment.md
-│   ├── demo-script.md
-│   └── adr/
-├── frontend/
-├── backend/
-├── slokern/
-│   ├── cli/
-│   ├── config/
-│   ├── workload/
-│   ├── serving/
-│   ├── loadgen/
-│   ├── metrics/
-│   ├── evaluator/
-│   ├── search/
-│   ├── verification/
-│   ├── cost/
-│   └── reporting/
-├── adapters/
-├── fixtures/
-├── experiments/
-├── tests/
-├── scripts/
-└── artifacts/             # generated locally; do not commit secrets or huge raw runs
-```
-
-## Quick start
-
-> **Status:** Replace this template with commands that have been verified in the repository. Do not claim the commands below exist until implemented.
-
-### Prerequisites
-
-- Access to the permitted Nebius model/serving environment.
-- Required credentials stored locally or in the platform's secret mechanism.
-- Python 3.11+, `uv`, and Node.js for the planned frontend toolchain.
-- Sufficient quota for a small smoke test.
-
-### Intended workflow
-
-```bash
-# Validate the experiment specification
-slokern validate experiments/configs/example.yaml
-
-# Test endpoint and measurement path
-slokern smoke-test --config experiments/configs/example.yaml
-
-# Run a bounded experiment
-slokern optimize --config experiments/configs/example.yaml
-
-# Independently verify a selected run
-slokern verify --run <run-id>
-
-# Export an evidence-backed report
-slokern report --run <run-id> --output reports/<run-id>/
-```
-
-The first experiment should use one model, one fixture, one baseline configuration, a low target rate, a small candidate budget, and short smoke-test windows. Pipeline correctness comes before performance claims.
-
-## Validation and reproducibility
-
-Every report should preserve or reference:
-
-- the exact workload and SLO specification;
-- model/runtime/environment versions and relevant resource metadata;
-- effective configuration for each candidate;
-- raw request-level measurements;
-- metric definitions, units, sample counts and aggregation policy;
-- offered and achieved load;
-- failed, invalid, or contaminated runs;
-- search decisions, stopping reason and cost assumptions;
-- independent verification run and its separate verdict.
-
-Use fixed fixtures, explicit warm-up, controlled arrival patterns, stable metric definitions, and bounded budgets. Never quietly drop failed candidates. If the load generator cannot maintain the declared arrival pattern, flag the run as invalid or contaminated rather than crediting the server with a pass.
-
-## Roadmap
-
-The implementation plan is in **[ROADMAP.md](ROADMAP.md)**. It includes:
-
-- a dated sprint through the hackathon submission window;
-- daily task assignments for all five members;
-- component dependencies and handoff contracts;
-- phase exit gates and definition of done;
-- contingency plans for model/runtime access, noisy results, and demo failure.
-
-## Hackathon deliverables
-
-- [ ] Working permitted model/serving path.
-- [ ] Reproducible workload and SLO specification.
-- [ ] Benchmark engine and raw artifacts.
-- [ ] Deterministic SLO evaluator.
-- [ ] Bounded search and baseline comparison.
-- [ ] Independent verification.
-- [ ] Dashboard that reflects actual backend state, with mock states labelled.
-- [ ] Machine-readable results and readable report.
-- [ ] Tests for key decision and failure paths.
-- [ ] Setup and reproduction instructions.
-- [ ] Architecture diagram, concise presentation and rehearsed demo.
-- [ ] Final performance/cost claims checked against the same source artifacts.
-- [ ] Official eligibility, model/platform rules, deadline and submission format rechecked.
-
-The project context records **October 30, 2026, at 10:00 AM PDT** as the target deadline (October 30, 10:30 PM India Standard Time). Verify this against the official event page and submission portal; official rules override this planning document.
-
-## Known decisions to finalize
-
-Before running expensive experiments, record these in a short architecture decision record:
-
-- exact model and revision;
-- exact Nebius service, serving runtime and version;
-- configuration controls the runtime truly supports;
-- exact serving adapter and runtime interface after environment discovery;
-- workload fixture and arrival policy;
-- SLO thresholds and percentile definitions;
-- measurement budget, timeouts and retry behavior;
-- cost data source and accounting assumptions;
-- search algorithm in the shipped version;
-- artifact retention/redaction policy;
-- authentication and API contract;
-- whether optional AI-assisted planning belongs in the MVP.
-
-Do not assume a model is available because it is NVIDIA-branded, a parameter is tunable because it exists in another runtime, or a price is known because the platform is cloud-hosted.
+- [1. Why SLOKern?](#1-why-slokern)
+- [2. Problem Statement & Core Value](#2-problem-statement--core-value)
+- [3. System Architecture & Component Design](#3-system-architecture--component-design)
+- [4. The 7-Step Execution Pipeline](#4-the-7-step-execution-pipeline)
+- [5. Four-Domain Lifecycle & State Separation](#5-four-domain-lifecycle--state-separation)
+- [6. Supported Models, Serving Path & Search Space](#6-supported-models-serving-path--search-space)
+- [7. Fake-Adapter-First vs. Live Infrastructure](#7-fake-adapter-first-vs-live-infrastructure)
+- [8. Cost Accounting Policy & Systems Proxy](#8-cost-accounting-policy--systems-proxy)
+- [9. Current Implementation Status](#9-current-implementation-status)
+- [10. Quick Start & Execution Instructions](#10-quick-start--execution-instructions)
+- [11. Testing, Validation & Reproducibility](#11-testing-validation--reproducibility)
+- [12. Known Limitations & Risk Management](#12-known-limitations--risk-management)
+- [13. Single-Owner Roadmap (Phases A–F)](#13-single-owner-roadmap-phases-af)
+- [14. Consolidated Engineering Ownership](#14-consolidated-engineering-ownership)
+- [15. Related Documentation & In-Depth Guides](#15-related-documentation--in-depth-guides)
 
 ---
 
-## Final principle
+## 1. Why SLOKern?
 
-SLOKern should earn trust by making a difficult engineering decision **measurable, reproducible, explainable, and independently verifiable**.
+In modern LLM inference serving, high throughput metrics are frequently deceptive. A serving engine configuration may deliver impressive aggregate token generation rates, yet violate critical tail-latency constraints—causing the 95th percentile Time to First Token ($\text{TTFT}_{p95}$) to spike into seconds and destroying interactive user experience. Conversely, over-provisioning GPU instances to guarantee safety margins wastes thousands of dollars in cloud spend.
+
+Manual trial-and-error tuning is slow, noisy, and prone to false positives: a single lucky benchmark run can fool engineering teams into deploying an unstable configuration.
+
+**SLOKern replaces guesswork with automated, deterministic systems engineering.** It accepts declared traffic profiles and non-negotiable service-level objectives, executes a bounded campaign of controlled benchmarks, deterministically eliminates infeasible candidates, selects the most cost-efficient candidate, and **independently verifies the winning configuration** under a fresh run ID before publishing recommendations.
+
+---
+
+## 2. Problem Statement & Core Value
+
+SLOKern answers the fundamental systems engineering question:
+
+> **What is the lowest-cost, verified serving configuration that reliably satisfies declared tail-latency and error-rate SLOs under a specific offered workload?**
+
+### Core Invariants
+
+1. **Deterministic Evaluation:** Feasibility verdicts are calculated strictly by deterministic Python code. No LLM or heuristic scorer may override hard SLO constraints or pass/fail thresholds.
+2. **Missing $\ne$ Passing:** A missing or uncalculable metric returns `INCONCLUSIVE`. It can never be treated as a pass.
+3. **Strict Benchmark Budget:** Total exploration is strictly locked to **six benchmark runs**:
+   - 1 Baseline run (default configuration).
+   - 4 Candidate runs (fixed 2×2 parameter matrix).
+   - 1 Independent verification rerun.
+   *(Preflight smoke test is a preliminary health check counted separately).*
+4. **Mandatory Independent Verification:** A candidate configuration marked `FEASIBLE` during search is never awarded the verified badge until a secondary run under a distinct `verification_run_id` independently satisfies all constraints.
+5. **Traceable Raw Evidence:** Aggregates are never stored alone. Every metric is traceable to microsecond-accurate raw client request traces (`RawRequestMeasurement` in JSONL).
+6. **No Fabricated Pricing:** If authoritative cloud provider rates cannot be verified, monetary cost is reported as **`unavailable`**, and optimization falls back to Mode B (non-monetary systems proxy: GPU-seconds per request or throughput under SLO).
+
+---
+
+## 3. System Architecture & Component Design
+
+SLOKern is architected as a **modular monolith with an isolated experiment worker**. The control plane is decoupled from the request-generation path so that API streaming, logging overhead, and UI interactions never contaminate benchmark measurements.
+
+```mermaid
+flowchart TD
+    subgraph UI_API["Control Plane & Presentation"]
+        Dashboard[Frontend Command Center\nReact + Vite + Tailwind]
+        FastAPIApp[Control Plane API\nFastAPI + SSE Streaming]
+    end
+
+    subgraph CoreEngine["Deterministic Core Engine"]
+        SpecValidator[Contract & Budget Validator\nPydantic v2 Models]
+        SearchController[Search Controller\nFixed 2x2 Candidate Space]
+        MetricsEngine[Metrics Engine\nTTFT, ITL, Load, Percentiles]
+        FeasibilityEval[Feasibility Evaluator\nReason Codes Taxonomy]
+        VerifRunner[Independent Verification Runner\nFresh verification_run_id]
+        ReportBuilder[Report Artifact Generator\nImmutable Publishable Bundle]
+    end
+
+    subgraph IsolatedWorker["Isolated Experiment Worker"]
+        LoadGen[Subprocess Load Generator\nArrival Process & Raw JSONL]
+        ServingAdapter[Serving Adapter\nbase.py / fake.py / nebius.py]
+    end
+
+    subgraph Infrastructure["Inference Runtime (Nebius Cloud)"]
+        TargetRuntime[vLLM / Token Factory\nNVIDIA H100 GPU Instance]
+    end
+
+    Dashboard <-->|SSE Stream & REST| FastAPIApp
+    FastAPIApp --> SpecValidator
+    SpecValidator --> SearchController
+    SearchController --> ServingAdapter
+    ServingAdapter -->|Configure & Read-back| TargetRuntime
+    SearchController --> LoadGen
+    LoadGen -->|Dispatch Traffic| TargetRuntime
+    LoadGen -->|Raw Measurements JSONL| MetricsEngine
+    MetricsEngine --> FeasibilityEval
+    FeasibilityEval --> SearchController
+    SearchController --> VerifRunner
+    VerifRunner --> ReportBuilder
+    ReportBuilder --> Dashboard
+```
+
+### Component Responsibilities
+
+| Subsystem | Component | Implementation Path | Architectural Responsibility |
+|---|---|---|---|
+| **Contracts** | `Pydantic Data Models` | `src/slokern/contracts/` | Canonical schemas for specs, configurations, metrics, and verdicts (`enums.py`, `metrics.py`). |
+| **Control Plane** | `FastAPI & SSE API` | `src/slokern/api/` | Accepts specifications, enforces experiment budgets, manages cancellation, streams progress. |
+| **Serving** | `Serving Adapter` | `src/slokern/engine/serving/` | Manages runtime lifecycle; captures `environment_fingerprint`; reads back effective settings. |
+| **Benchmarking** | `Subprocess Loadgen` | `src/slokern/engine/loadgen/` | Dispatches Poisson/constant arrival traffic; writes raw microsecond event timestamps to JSONL. |
+| **Metrics** | `Metrics Engine` | `src/slokern/core/metrics/` | Computes percentiles (p50/p95/p99), throughput, error rates; separates offered from achieved load. |
+| **Evaluator** | `Feasibility Evaluator` | `src/slokern/core/evaluator/` | Audits hard constraints; emits `FEASIBLE`, `INFEASIBLE`, or `INCONCLUSIVE` with reason codes. |
+| **Search** | `Search Controller` | `src/slokern/core/search/` | Explores bounded 2×2 parameter matrix within budget; ranks feasible candidates by declared objective. |
+| **Verification**| `Verification Runner` | `src/slokern/core/verification/`| Executes fresh independent rerun under new run ID; calculates drift deltas ($\Delta M$) and final verdict. |
+| **Reporting** | `Report Builder` | `src/slokern/engine/reporting/` | Compiles immutable, publishable `ReportArtifact` linking all evidence, fingerprints, and limitations. |
+| **Dashboard** | `Command Center` | `frontend/` | Cyberpunk-inspired technical UI displaying live monitor, candidate comparison, and audit reports. |
+
+---
+
+## 4. The 7-Step Execution Pipeline
+
+SLOKern executes every experiment through a deterministic 7-step pipeline:
+
+```text
+1. Workload & SLO Specification
+   Declare traffic arrival (Poisson/constant, rate, token limits) and hard constraints (TTFT p95 <= 250ms).
+                ↓
+2. Contract & Budget Validation
+   Validate schemas and enforce candidate budget (<= 6 benchmark runs) before allocating GPU resources.
+                ↓
+3. Empirical Baseline Measurement
+   Run default serving configuration to establish starting performance anchor and record raw JSONL traces.
+                ↓
+4. Bounded Candidate Search (4 runs)
+   Sequentially benchmark fixed 2x2 candidate space; verify effective parameters via runtime read-back.
+                ↓
+5. Deterministic Feasibility Evaluation
+   Calculate metrics from active measurement window; evaluate hard constraints; emit machine-readable reason codes.
+                ↓
+6. Objective Candidate Selection
+   Filter out infeasible/inconclusive candidates; rank feasible candidates by declared efficiency objective.
+                ↓
+7. Independent Verification & Reporting
+   Rerun winning candidate under fresh verification_run_id; compute drift; publish immutable ReportArtifact.
+```
+
+---
+
+## 5. Four-Domain Lifecycle & State Separation
+
+Naive benchmark harnesses collapse execution state, data quality, and SLO feasibility into a single status string. SLOKern maintains **four distinct state domains**:
+
+```text
+1. Execution Status:   PENDING → RUNNING → [ COMPLETED | FAILED | CANCELLED ]
+2. Evidence Validity:  VALID | INVALID | CONTAMINATED
+3. SLO Feasibility:    FEASIBLE | INFEASIBLE | INCONCLUSIVE
+4. Verification State: NOT_RUN → VERIFYING → [ VERIFIED | VERIFICATION_FAILED | VERIFICATION_INCONCLUSIVE ]
+```
+
+### State Rules & Semantics
+
+- **Execution Failed $\ne$ SLO Infeasible:** If a CUDA out-of-memory error, network abort, or bad credential causes an experiment run to crash, the run is marked `FAILED` in execution status. It is **never** recorded as an SLO breach (`INFEASIBLE`), because no valid inference distribution was observed.
+- **Client Saturation $\to$ Contaminated:** If client load generator dispatch delay exceeds 10 ms or offered rate deviates by > 10%, the run is marked `generator_saturated = True`, evidence validity becomes `CONTAMINATED`, and feasibility is marked `INCONCLUSIVE` (`GENERATOR_SATURATED` / `CONTAMINATED_LOAD`). A contaminated run can never win selection.
+- **Verification Independence:** Search evidence is never reused as verification. The winning candidate must independently reproduce feasibility under a new run ID.
+
+---
+
+## 6. Supported Models, Serving Path & Search Space
+
+### 5-Concept Model Taxonomy
+
+| Model Role | Model Identifier | Architecture & Specifications | Current Status |
+|---|---|---|---|
+| **1. Model-Agnostic Core** | Decoupled Engine | Contracts, evaluator, load generator, and search controllers are model-agnostic. | `VERIFIED` |
+| **2. Hackathon Compliance Target** | `Nemotron-3-Nano-30B-A3B` (FP8) | Official NVIDIA open-weights family: Mamba-2 hybrid layers + MoE (~30B total, ~3B active per token in design), 262K context, FP8 quantization. Listed in Nebius catalog. | `PENDING RUNTIME VERIFICATION` (Blocked on live smoke test) |
+| **3. Runtime-Verified Endpoint** | *Pending Smoke Test* | Exact API model string on Nebius (e.g. `nvidia/Nemotron-3-Nano-30B-A3B`). | `PENDING RUNTIME VERIFICATION` |
+| **4. Internal Pipeline Baseline** | `meta-llama/Meta-Llama-3-8B-Instruct` | Preserved from ADR 0001-A for pipeline validation, fake-adapter tests, and regression fixtures. | `COMPARATIVE ONLY` (Does not satisfy NVIDIA model mandate alone) |
+| **5. Secondary Comparison Model** | `nvidia/Llama-3.1-Nemotron-70B-Instruct` | Hypothetical secondary comparison model if quota and access permit. | `UNVERIFIED` |
+
+### Serving Infrastructure
+- **Platform:** Nebius AI Cloud GPU Compute (1× NVIDIA H100 80GB SXM5 or A100 80GB PCIe) / Nebius Token Factory inference runtime.
+- **Serving Engine:** Containerized `vLLM` or OpenAI-compatible managed streaming endpoint.
+
+### Bounded Configuration Space & Architectural Notice
+- **Fixed 2×2 Search Space:** The candidate search is bounded to a 2×2 parameter matrix (4 candidates total). Its two specific dimensions and values are pending confirmation from the serving interface during live inspection.
+- **Workload Controls vs. Serving-Engine Controls:**
+  - *Workload Parameters (`concurrency_limit`, `max_tokens`):* Regulate client load generation. Changing workload knobs does **not** prove GPU-serving optimization.
+  - *Serving-Engine Parameters (`max_num_seqs`, `gpu_memory_utilization`, `kv_cache_dtype`):* Reconfigure internal serving runtime and GPU memory layout.
+- **Architectural Blocker Notice:** If the live endpoint exposes only client request parameters and lacks observable/tunable serving-engine controls, this constitutes an architectural blocker. An explicit architecture decision (deploying containerized vLLM on dedicated Compute instance or refining search boundaries via ADR) will be logged.
+
+---
+
+## 7. Fake-Adapter-First vs. Live Infrastructure
+
+To protect GPU credit budgets and allow rapid offline iteration, SLOKern implements two implementations of `BaseServingAdapter`:
+
+```mermaid
+flowchart LR
+    ExpController[Experiment Runner] --> BaseAdapter[BaseServingAdapter]
+    BaseAdapter -->|Offline Dev & CI| FakeAdapter[FakeServingAdapter\nsrc/slokern/engine/serving/fake.py]
+    BaseAdapter -->|Live Benchmarks| NebiusAdapter[NebiusServingAdapter\nsrc/slokern/engine/serving/nebius.py]
+    
+    FakeAdapter -->|Deterministic Synthetic Data| DemoData[Labeled: DEMO DATA]
+    NebiusAdapter -->|Real NVIDIA H100 Timings| LiveData[Live Evidence Artifacts]
+```
+
+1. **Deterministic Fake Adapter (`fake.py`):**
+   - Implements realistic synthetic latency distributions, simulated CUDA OOM failures, timeouts, and client saturation.
+   - Powers automated unit tests, contract validation, and offline dashboard development.
+   - **Mandatory Guardrail:** All synthetic runs and fixture outputs are persistently labeled **`DEMO DATA`**. Never presented as live GPU measurements.
+2. **Real Nebius Adapter (`nebius.py`):**
+   - Connects to the live Nebius endpoint; captures `environment_fingerprint` (CUDA version, driver, hardware ID) and verifies effective parameter settings.
+   - Consumes GPU credits strictly for:
+     1. Preflight integration smoke test (1 request).
+     2. Empirical baseline measurement.
+     3. Bounded 4-candidate search.
+     4. Independent verification rerun.
+
+---
+
+## 8. Cost Accounting Policy & Systems Proxy
+
+SLOKern enforces strict cost accounting boundaries to prevent fabricated claims:
+
+### Mode A: Trustworthy Monetary Costing
+- **Precondition:** Verifiable hourly GPU instance pricing or token billing rates are officially provided (e.g., Nebius cloud rate card) and stored with explicit currency, billing increment, and time basis.
+- **Formula:**
+  $$\text{Cost per 1k requests} = \frac{\text{Hourly GPU Rate}}{\text{Achieved Requests per Hour}} \times 1000$$
+
+### Mode B: Non-Monetary Systems Proxy (Active Default)
+- **Precondition:** Cloud provider pricing is missing, variable, or unverified.
+- **Policy:** Monetary cost is explicitly declared **`unavailable`** (never guess or fabricate prices!).
+- **Objective Ranking Proxy:**
+  1. *Resource-Time:* GPU seconds consumed per successful request ($\Delta t \times N_{\text{GPUs}} / N_{\text{completed}}$). *(Note: If GPU instance count and dedicated residency cannot be verified, such as on managed serverless endpoints where physical GPU allocation is hidden, GPU-seconds per request is also reported as `unavailable`, and ranking falls back to Throughput Under SLO).*
+  2. *Throughput Under SLO:* Maximum achieved output tokens/second while satisfying all hard latency constraints.
+- **Rule:** A non-monetary proxy must **never** be described as monetary savings or dollar amounts. Disambiguate request throughput (completed requests/s) and achieved load from hardware GPU utilization (compute/memory occupancy %).
+
+---
+
+## 9. Current Implementation Status
+
+| Subsystem / Deliverable | Status | Verified Evidence & Repository Reality |
+|---|---|---|
+| **Data Contracts** | `IMPLEMENTED` | Pydantic v2 schemas in `src/slokern/contracts/` (`enums.py`, `metrics.py`). |
+| **Subsystem Modules** | `IMPLEMENTED (STUBS)` | `api/`, `cli/`, `core/`, `engine/` scaffolded with clear typed signatures. |
+| **Fake Serving Adapter** | `IMPLEMENTED` | `src/slokern/engine/serving/fake.py` generates deterministic synthetic runs. |
+| **Nebius Serving Adapter** | `IN PROGRESS` | `src/slokern/engine/serving/nebius.py` scaffolded; live HTTP streaming client in development. |
+| **Preflight Smoke Test** | `PENDING EXECUTION` | Preflight check defined in `docs/deployment.md`; blocked on live Nebius instance access. |
+| **Target Model Deployment** | `PENDING VERIFICATION` | `Nemotron-3-Nano-30B-A3B` (FP8) selected from catalog; endpoint reachability unverified. |
+| **Live Benchmark Evidence** | `NOT RUN` | No live GPU benchmarks have been executed; zero fabricated claims. |
+| **Demo Dashboard UI** | `IMPLEMENTED` | React + Vite command center in `frontend/`; offline fixtures labeled **`DEMO DATA`**. |
+| **Single-Owner Roadmap** | `DOCUMENTED` | Rebased to Phases A–F (Oct 18–30, 2026) in `ROADMAP.md`. |
+
+---
+
+## 10. Quick Start & Execution Instructions
+
+### Prerequisites
+- Python 3.11+ (virtual environment recommended).
+- Node.js 18+ (for frontend dashboard).
+- Nebius Cloud API token (for live serving benchmarks; optional for fake-adapter testing).
+
+### 10.1 Environment Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/slokern/slokern.git
+cd slokern
+
+# Create and activate Python virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\Activate.ps1
+
+# Install package in editable mode
+pip install -e .
+
+# Configure environment variables (copy example and add credentials)
+cp .env.example .env
+```
+
+### 10.2 Run Offline Pipeline Validation (Fake Adapter)
+
+```bash
+# Run contract and unit tests
+pytest tests/contracts tests/unit
+
+# Validate an experiment specification
+slokern validate experiments/configs/default.yaml
+
+# Execute an offline demonstration experiment (uses deterministic fake adapter)
+slokern optimize --config experiments/configs/default.yaml --adapter fake
+
+# Independently verify a candidate run
+slokern verify --run run-mock-001 --adapter fake
+```
+
+### 10.3 Launch Frontend Command Center
+
+```bash
+# Navigate to frontend directory and install dependencies
+cd frontend
+npm install
+
+# Start local Vite development server
+npm run dev
+# Dashboard opens at http://localhost:5173 (labeled DEMO DATA in offline mode)
+```
+
+### 10.4 Live Serving Execution (Once Preflight Smoke Test Passes)
+
+```bash
+# 1. Execute live endpoint preflight smoke test (1 request, health check, model string)
+slokern smoke-test --adapter nebius
+
+# 2. Run bounded 6-run optimization campaign
+slokern optimize --config experiments/configs/nebius_nemotron.yaml --adapter nebius
+
+# 3. Independently verify the winning candidate
+slokern verify --run <winning-run-id> --adapter nebius
+
+# 4. Generate self-contained report artifact
+slokern report --run <winning-run-id> --output artifacts/reports/
+```
+
+---
+
+## 11. Testing, Validation & Reproducibility
+
+SLOKern enforces scientific reproducibility through strict experimental controls:
+
+1. **Hardware & Environment Lock:** Device model, driver version, CUDA runtime, and container commit are hashed into an immutable `environment_fingerprint`.
+2. **Warm-Up Isolation:** Requests initiated during the warm-up window (`warmup_duration_s`) are tagged `is_warmup = true` and strictly excluded from percentile calculations.
+3. **Offered vs. Achieved Separation:** Intended arrival rate is verified against delivered completions; client thread starvation triggers `generator_saturated = True`.
+4. **Deterministic Percentiles:** Computed using linear interpolation (`percentile(..., method='linear')`); minimum sample thresholds enforced ($N \ge 10$ for p50, $N \ge 30$ for p95, $N \ge 100$ for p99).
+5. **Fresh Verification ID:** Rerunning the winning configuration generates a fresh `verification_run_id`; search evidence is never copied.
+
+---
+
+## 12. Known Limitations & Risk Management
+
+SLOKern explicitly discloses its boundaries:
+
+- **Bounded Search Space:** Explores a focused 2×2 configuration space. Does not claim global optimality across all possible parameters.
+- **Single Serving Environment:** Optimized for single-node containerized serving on Nebius Cloud; multi-node distributed serving is out of MVP scope.
+- **Non-Monetary Default:** If official cloud pricing is unavailable, monetary cost is declared `unavailable` and systems efficiency is evaluated via resource-time or throughput proxies.
+- **Contingency Runbook:** If live cloud endpoints encounter connectivity interruptions during demonstrations, the dashboard falls back to pre-recorded evidence bundles (`fixtures/demo/demo_experiment.json`) with persistent **`DEMO DATA`** labeling.
+
+---
+
+## 13. Single-Owner Roadmap (Phases A–F)
+
+Execution is structured into 6 sequential phases spanning **October 18 to October 30, 2026**, targeting the hard submission deadline on **October 30, 2026, at 10:00 AM PDT (10:30 PM IST)**:
+
+```mermaid
+flowchart LR
+    PhaseA[Phase A: Audit & Stabilize\nOct 18-19\nDONE] --> PhaseB[Phase B: Real Execution\nOct 20-22\nIN PROGRESS]
+    PhaseB --> PhaseC[Phase C: Validate Optimization\nOct 23-25\nPLANNED]
+    PhaseC --> PhaseD[Phase D: Evidence Review\nOct 26-27\nPLANNED]
+    PhaseD --> PhaseE[Phase E: Freeze & Rehearsal\nOct 28-29\nPLANNED]
+    PhaseE --> PhaseF[Phase F: Final Submission\nOct 30, 10:00 AM PDT\nPLANNED]
+```
+
+- **Phase A (Oct 18–19) — Audit and Stabilize:** Preflight audit completed; single-owner execution baseline established; core interfaces locked.
+- **Phase B (Oct 20–22) — Establish Real Execution:** Finalize Nebius adapter; execute preflight smoke test; confirm NVIDIA model identifier; record baseline benchmark.
+- **Phase C (Oct 23–25) — Validate Optimization:** Execute bounded 2×2 candidate search (4 runs); evaluate hard SLO feasibility; select winning candidate.
+- **Phase D (Oct 26–27) — Independent Evidence Review:** Execute independent verification rerun under fresh run ID; audit metric drift; test error/edge cases; compile report.
+- **Phase E (Oct 28–29) — Freeze and Prepare:** Feature freeze; automated test suite validation; clean clone installation check; record demo video ($\le 3$ minutes).
+- **Phase F (Oct 30) — Submit:** Final repository audit; Devpost submission completed before 10:00 AM PDT (10:30 PM IST) with 4-hour buffer.
+
+See **[ROADMAP.md](ROADMAP.md)** for complete task descriptions, deliverables, and acceptance gates.
+
+---
+
+## 14. Consolidated Engineering Ownership
+
+SLOKern was originally designed by a 5-person engineering team (Rajdeep, Aman, Daksh, Adriraj, Rohan). Effective **October 18, 2026**, all technical ownership and integration authority are consolidated under **Rajdeep** as sole owner:
+
+| Functional Responsibility | Accountable Owner | Historical Design Attribution |
+|---|---|---|
+| **Architecture & Technical Direction** | **Rajdeep** | Rajdeep |
+| **Optimizer & Candidate Selection** | **Rajdeep** | Rohan |
+| **Serving & Infrastructure** | **Rajdeep** | Aman |
+| **Benchmark Pipeline & Loadgen** | **Rajdeep** | Adriraj |
+| **Verification & Evaluator** | **Rajdeep** | Daksh |
+| **CI & Validation** | **Rajdeep** | Cross-team |
+| **Documentation, Demo & Submission** | **Rajdeep** | Rajdeep |
+
+For complete interaction boundaries and single-owner engineering rituals, see **[docs/ownership.md](docs/ownership.md)**.
+
+---
+
+## 15. Related Documentation & In-Depth Guides
+
+- [Architecture & Contract Specification](docs/architecture.md)
+- [Single-Owner Execution & Responsibility Matrix](docs/ownership.md)
+- [Architecture Decision Log](docs/decision-log.md)
+- [MVP Scope & Acceptance Checklist](docs/mvp-checklist.md)
+- [Daily Integration Checklist & Protocol](docs/integration-checklist.md)
+- [Decision Policy & Feasibility Semantics](docs/decision-policy.md)
+- [Metrics Definitions & Aggregation Rules](docs/metrics.md)
+- [Experiment & Measurement Methodology](docs/experiment-methodology.md)
+- [Serving Deployment & Operational Guide](docs/deployment.md)
+- [Demo Presentation Script & Runbook](docs/demo-script.md)
+- [Official Hackathon Compliance & Requirements Matrix](docs/hackathon-compliance.md)
+- [Project Flow & Mental Model Guide](docs/project-flow-and-mental-model.md)
+- [Nebius & NVIDIA Tool Feedback Register](docs/hackathon-feedback.md)
+
+---
+
+## Final Operating Principle
+
+Build the smallest complete system that can **measure, decide, verify, and explain**.
+
+SLOKern does not claim universal optimality. It proves that its recommendation follows from controlled measurements, deterministic rules, a declared objective, and an independent verification run.
 
 **Optimize inference. Verify performance.**
