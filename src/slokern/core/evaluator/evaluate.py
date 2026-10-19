@@ -3,7 +3,7 @@ Purpose: Deterministic evaluation of evidence against an SLO into a verdict.
 Owner: Daksh
 """
 
-from typing import List, Dict, Any
+from typing import List
 
 from slokern.contracts.metrics import MetricSet
 from slokern.contracts.spec import SLOSpec
@@ -79,9 +79,6 @@ def evaluate_slo(metric_set: MetricSet, slo_spec: SLOSpec) -> FeasibilityResult:
         overall_verdict = FeasibilityVerdict.FEASIBLE
         audit_notes = "All hard constraints satisfied."
 
-    inconclusive_reason = None
-    infeasible_reason = None
-
     for constraint in slo_spec.constraints:
         obs_val = get_observed_value(metric_set, constraint.metric_name, constraint.statistic)
 
@@ -104,7 +101,6 @@ def evaluate_slo(metric_set: MetricSet, slo_spec: SLOSpec) -> FeasibilityResult:
 
             if overall_verdict != FeasibilityVerdict.INCONCLUSIVE:
                 overall_verdict = FeasibilityVerdict.INCONCLUSIVE
-            inconclusive_reason = reason_code
 
         elif passed is False:
             reason_code = get_reason_code_for_failure(
@@ -113,7 +109,6 @@ def evaluate_slo(metric_set: MetricSet, slo_spec: SLOSpec) -> FeasibilityResult:
             if overall_verdict == FeasibilityVerdict.FEASIBLE:
                 overall_verdict = FeasibilityVerdict.INFEASIBLE
                 audit_notes = f"Constraint failed: {constraint.metric_name} {constraint.statistic} {constraint.operator} {constraint.threshold}"
-            infeasible_reason = reason_code
 
         evaluations.append(ConstraintEvaluation(
             metric_name=constraint.metric_name,

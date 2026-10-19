@@ -3,10 +3,9 @@ Purpose: Deterministic ranking of feasible candidates by the declared objective.
 Owner: Rohan
 """
 
-from typing import List, Dict, Optional
+from typing import List, Optional
 from dataclasses import dataclass
 
-from slokern.contracts.search import CandidateSummary, SearchResult
 from slokern.contracts.enums import FeasibilityVerdict, RankingObjective
 from slokern.contracts.metrics import MetricSet
 
@@ -42,9 +41,14 @@ def rank_candidates(
     ]
 
     # Sort
+    # Fix: if ranking_metric is None, treat it as inf if minimizing to push to end
+    # If maximizing (minimize is False), treat it as -inf. But we negate the metric for sorting!
+    # So if metric is None and we negate, it should sort AFTER valid numbers.
+    # We want max valid numbers first (lowest negated value), and None last (highest value).
+    # Therefore, if metric is None and maximize, key is +inf.
     feasible_candidates.sort(
         key=lambda c: (
-            c.ranking_metric if minimize else -c.ranking_metric if c.ranking_metric is not None else 0,
+            c.ranking_metric if minimize and c.ranking_metric is not None else float('inf') if minimize else -c.ranking_metric if c.ranking_metric is not None else float('inf'),
             c.candidate_id
         )
     )
