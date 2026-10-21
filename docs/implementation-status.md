@@ -71,21 +71,23 @@
 
 ## 2. Subsystem Summary Table
 
+> **Reconciled Status (2026-10-22):** Synchronized with verified test execution (204 passed, 1 deselected). `SUB-02` (Contracts), `SUB-03` (Evaluator), and `SUB-04` (Ranking/Candidate ID) are unblocked with passing tests. `SUB-05` offline fake serving adapter is fully implemented and verified (`INTEGRATION`); live Nebius probe (`BLK-04`) remains open.
+
 | ID | Subsystem | Implementation | Verification | Flags | Owner | Blocked-by |
 |---|---|---|---|---|---|---|
 | **SUB-01** | Architecture & Scope Governance | `IMPLEMENTED` | `STATIC` | `NONE` | Rajdeep (CONFIRMED) | None |
-| **SUB-02** | Shared Contracts & Schema Registry | `IMPLEMENTED` | `UNIT` | `BLOCKED(by=BLK-10)` | Rajdeep (CONFIRMED) | BLK-10, BLK-12 |
-| **SUB-03** | Feasibility Evaluator Core | `IMPLEMENTED` | `UNIT` | `BLOCKED(by=BLK-05)` | Rajdeep (CONFIRMED) | BLK-05, BLK-06 |
-| **SUB-04** | Candidate Identity & Deterministic Ranking | `IMPLEMENTED` | `UNIT` | `BLOCKED(by=BLK-11)` | Rajdeep (INTERIM) | BLK-11 |
-| **SUB-05** | Serving Adapter & Runtime Infrastructure | `ABSENT` | `NONE` | `BLOCKED(by=BLK-01)` · `PENDING RUNTIME VERIFICATION` | Rajdeep (INTERIM) | BLK-01, BLK-04 |
-| **SUB-06** | Subprocess Load Generator & Workload Fixtures | `ABSENT` | `NONE` | `BLOCKED(by=BLK-02)` | Rajdeep (CONFIRMED) | BLK-02 |
+| **SUB-02** | Shared Contracts & Schema Registry | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (CONFIRMED) | None |
+| **SUB-03** | Feasibility Evaluator Core | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (CONFIRMED) | None |
+| **SUB-04** | Candidate Identity & Deterministic Ranking | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (INTERIM) | None |
+| **SUB-05** | Serving Adapter & Runtime Infrastructure | `IMPLEMENTED (Fake) / PARTIAL (Live)` | `INTEGRATION` | `BLOCKED(by=BLK-04)` | Rajdeep (INTERIM) | BLK-04 |
+| **SUB-06** | Subprocess Load Generator & Workload Fixtures | `ABSENT` | `NONE` | `READY (unblocked by SUB-05)` | Rajdeep (CONFIRMED) | BLK-02 |
 | **SUB-07** | Metrics Engine Core | `ABSENT` | `NONE` | `BLOCKED(by=BLK-03)` | Rajdeep (CONFIRMED) | BLK-03 |
-| **SUB-08** | Experiment Orchestration & Run Lifecycle | `ABSENT` | `NONE` | `BLOCKED(by=BLK-01)` | Rajdeep (INTERIM) | BLK-01, BLK-02, BLK-03 |
+| **SUB-08** | Experiment Orchestration & Run Lifecycle | `ABSENT` | `NONE` | `BLOCKED(by=SUB-06, SUB-07)` | Rajdeep (INTERIM) | BLK-02, BLK-03 |
 | **SUB-09** | Independent Verification Engine | `ABSENT` | `NONE` | `BLOCKED(by=BLK-08)` | Rajdeep (CONFIRMED) | BLK-08 |
 | **SUB-10** | Report Artifact Generator | `ABSENT` | `NONE` | `BLOCKED(by=BLK-09)` | Rajdeep (INTERIM) | BLK-09 |
-| **SUB-11** | Control Plane API & CLI | `ABSENT` | `NONE` | `DEFERRED` | Rajdeep (INTERIM) | BLK-01, BLK-08 |
+| **SUB-11** | Control Plane API & CLI | `ABSENT` | `NONE` | `DEFERRED` | Rajdeep (INTERIM) | BLK-08 |
 | **SUB-12** | Frontend Command Center & Presentation | `ABSENT` | `NONE` | `DEFERRED` | Rajdeep (INTERIM) | None |
-| **SUB-13** | CI/CD, Packaging & Test Automation | `PARTIAL` | `UNIT` | `BLOCKED(by=BLK-13)` | Rajdeep (CONFIRMED) | BLK-13, BLK-14 |
+| **SUB-13** | CI/CD, Packaging & Test Automation | `PARTIAL` | `UNIT` | `BLOCKED(by=BLK-13)` | Rajdeep (CONFIRMED) | BLK-13 |
 
 ---
 

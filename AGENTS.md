@@ -300,3 +300,100 @@ When instructions conflict, use this order:
 7. Local conventions and reasonable engineering judgment.
 
 If a conflict changes correctness, measurement validity, cost, or scope, raise it and document the decision rather than silently choosing a convenient interpretation.
+
+## 18. Mandatory Progress Reconciliation After Every Agent Run
+
+Every coding-agent run that inspects, modifies, tests, or otherwise advances the repository must complete a formal progress reconciliation before handing control back to the user or requesting review.
+
+This rule is non-negotiable and applies across all run outcomes:
+- **Successful runs:** Full Definition of Done achieved, tests pass.
+- **Partial runs:** Incremental progress made, some acceptance criteria remain unmet.
+- **Blocked runs:** Progress halted by an explicit defect, missing prerequisite, environment limit, or contract ambiguity.
+- **Read-only / Audit runs:** No code was modified, but inspection, verification, or test discovery took place.
+
+### 18.1 Required End-of-Run Actions
+
+Before concluding an execution turn, the agent must perform the following ten reconciliation steps in sequence:
+
+1. **Inspect final Git state:** Run `git status --short --branch --untracked-files=all` and `git diff --check`. Inspect all modified and untracked files.
+2. **Identify affected task IDs:** Map changes to exact roadmap tasks (`TASK-xx`) and blockers (`BLK-xx`).
+3. **Record files and implementation reality:** Detail added, modified, deleted, or investigated files along with actual implementation state (`ABSENT`, `PARTIAL`, `IMPLEMENTED`).
+4. **Record actual test execution:** Capture exact commands executed and actual outcomes.
+5. **Distinguish status outcomes accurately:** Differentiate `PASS`, `FAIL`, `BLOCKED`, `NOT RUN`, and `PARTIAL`. Never assume unrun checks pass.
+6. **Update `ROADMAP.md`:** Update task progress records, executive summary tables, blocker states, and next actions backed by verified evidence.
+7. **Update `docs/implementation-status.md`:** Reconcile subsystem reality, resolve or register blockers, or update implementation ratings whenever changes warrant.
+8. **Justify status transitions:** Promote task status, validation levels, or exit criteria only when justified by current physical evidence.
+9. **Record unresolved risks and blockers:** Explicitly state known defects, environment blockers, contract ambiguities, and risks.
+10. **Emit standardized handoff summary:** Conclude the final response using the mandatory run handoff schema in Section 19.
+
+### 18.2 Evidence Policy & Standards of Proof
+
+- **Code existence is not completion:** A task is not complete merely because files or functions were written. It is complete only when its documented Definition of Done is fully satisfied.
+- **Tests must be executed:** A test is not passing unless it was actually executed and its output verified in the current environment during the run.
+- **Distinguish implementation from validation:** A component may be `IMPLEMENTED` while its validation level remains `NONE`, `STATIC`, `UNIT`, `INTEGRATION`, or `LIVE`.
+- **Validation hierarchy:**
+  - `STATIC`: compilation (`compileall`), linters (`ruff`), schema checks.
+  - `UNIT`: isolated unit tests (`pytest tests/unit`).
+  - `INTEGRATION`: multi-component tests (e.g., `FakeServingAdapter` pipeline).
+  - `LIVE`: verified against external live infrastructure (e.g., Nebius Cloud GPU).
+- **Task-specific acceptance required:** A general test suite pass does not substitute for task-specific acceptance tests and edge-case verification.
+- **Unrun tests are `NOT RUN`:** Never infer or report that a test passed if it was skipped or omitted.
+- **Persistent defect visibility:** Failing tests or broken invariants must remain visible as blockers (`BLK-xx`) until physically resolved or ratified as documented limitations.
+- **Never fabricate evidence:** Never fabricate commit IDs, test counts, benchmark measurements, hardware fingerprints, or environment credentials.
+- **Preserve evidence history:** Do not erase historical audit trails; update them with new verified timestamps and commits.
+- **Persistent `DEMO DATA` labeling:** All synthetic fixtures, simulated latencies, and offline fake adapters must remain conspicuously labeled **`DEMO DATA`** and never reported as live benchmark measurements.
+
+### 18.3 Scope & Git Safety Rules
+
+- **Preserve unrelated work:** Never alter, overwrite, or discard unrelated user modifications or untracked files.
+- **No destructive Git commands:** Do not run `git reset --hard`, `git clean -fd`, `git checkout -- .`, `git stash`, or similar destructive commands without explicit user instruction.
+- **No unauthorized commits/pushes:** Do not run `git commit` or `git push` unless explicitly instructed by the user or required by the approved task scope.
+- **Truth in working tree status:** Never claim a clean working tree unless `git status --short` returns zero modified or untracked files.
+- **Minimal, bounded edits:** Keep documentation and code edits strictly scoped to the assigned task.
+
+### 18.4 Failure & Interruption Protocol
+
+If an agent run is interrupted, encounters unexpected errors, or fails to complete all acceptance criteria, the agent must still execute a best-effort reconciliation:
+
+- Record exactly what was completed.
+- Record what was attempted and remains incomplete.
+- Document the exact failure, error traceback, or blocker preventing progress.
+- Explicitly state which validation checks were run and which were `NOT RUN`.
+- Disclose whether the repository was left in a partial, inconsistent, or broken state.
+- State the single most effective next action to resume or recover work.
+- Never conceal partial or failed work to present a false impression of success.
+
+---
+
+## 19. Mandatory Run Handoff Format
+
+Every agent response concluding an execution block must conclude with a structured handoff formatted under the following schema:
+
+```markdown
+### Run summary
+- **Objective & Tasks:** [Primary goal and roadmap task IDs addressed (e.g. TASK-06)]
+- **Run Outcome:** [COMPLETED | PARTIAL | BLOCKED | NO CHANGE]
+
+### Repository changes
+- **Files Modified:** [List of modified files, or 'None']
+- **Files Added:** [List of new files created, or 'None']
+- **Files Deleted:** [List of files removed, or 'None']
+- **Documentation Reconciled:** [Roadmap, implementation-status, or other docs updated]
+
+### Validation evidence
+- **Commands Executed:** [Exact commands run in virtualenv/shell]
+- **Results:** [Exact pass/fail/skip counts and execution duration]
+- **Checks Skipped / Not Run:** [Tests or validations omitted, with rationale]
+- **Git Diff & Working Tree:** [Output of git diff --check and git status]
+
+### Task status changes
+- **[TASK-xx]:** [Old Status] -> [New Status] ([Validation Level])
+- **Evidence:** [Exact test command, commit, or artifact validating the transition]
+
+### Outstanding issues
+- **Blockers & Defects:** [Active BLK-xx blockers or newly discovered issues]
+- **Contract / Architecture Risks:** [Any open decisions or contract concerns]
+
+### Next action
+- **Immediate Next Step:** [One specific, actionable next task with Task ID, target files, and primary deliverable]
+```

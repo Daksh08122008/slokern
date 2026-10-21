@@ -6,43 +6,77 @@
 > **Sole Technical Owner & Integration Authority:** Rajdeep  
 > **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21–30), Daksh (Decision Verification, active Oct 24–30)  
 > **Submission Deadline:** October 30, 2026, 10:00 AM PDT (10:30 PM IST / 17:00:00 UTC)  
-> **Last Verified:** 2026-10-21 12:20:00 UTC (Sprint Day 3 / Active Milestone: Phase B)  
+> **Last Verified:** 2026-10-22 03:00:00 UTC (Sprint Day 4 / Active Milestone: Phase B)
 
 ---
 
 ## 1. Executive Execution Dashboard
 
+### 1.0 Quick Status at a Glance (The 5 Core Questions)
+1. **What is actually done?**
+   - Architecture governance & scope freeze (`TASK-01`).
+   - Baseline working tree and build tooling cleanup (`TASK-02`).
+   - Strict contract boundaries (`extra='forbid'`) and 11 committed JSON schemas (`TASK-03`).
+   - Feasibility evaluator boundary safety against NaN and negative latencies (`TASK-04`).
+   - Deterministic Fake Serving Adapter (`FakeServingAdapter`) with simulated token streaming, latency scaling, and failure injection labeled **`DEMO DATA`** (`TASK-05`).
+   - Numeric type canonicalization in candidate hashing (`BLK-11`).
+2. **What was verified?**
+   - Full offline test suite independently executed in `.venv`: **204 passed, 1 deselected, 0 failed in 4.05s** (`.venv\Scripts\pytest -v -m "not live"`).
+   - 119 contract schema and roundtrip tests (`tests/contract/`).
+   - 29 evaluator boundary condition tests (`tests/unit/core/test_evaluator.py`).
+   - 43 serving adapter unit tests (`tests/unit/engine/serving/`).
+   - 13 candidate ranking and state transition tests (`tests/unit/core/`).
+   - Bytecode compilation and packaging hygiene: 0 errors across 90 source modules (`python -m compileall`), 0 broken dependencies (`pip check`).
+3. **What is incomplete?**
+   - Subprocess load generator (`TASK-06` / `src/slokern/engine/loadgen/runner.py` is currently a stub).
+   - Deterministic metrics engine (`TASK-07` / `src/slokern/core/metrics/percentiles.py` is currently a stub).
+   - Single-run orchestrator (`TASK-08`), live Nebius adapter probe (`TASK-09`), 2×2 bounded search controller (`TASK-10`), independent verification engine (`TASK-11`), report generator (`TASK-12`), CLI runner (`TASK-13`), collaborator audit suites (`TASK-14`, `TASK-15`), and submission package (`TASK-16`).
+   - Control plane API (`TASK-17`) and React frontend (`TASK-18`) are formally deferred to post-hackathon.
+4. **What is blocking the next task?**
+   - Nothing blocks `TASK-06` upstream: `FakeServingAdapter` (`TASK-05`) is fully operational and tested offline.
+   - `TASK-06` is **`READY`** to implement.
+5. **What should the next coding-agent run do?**
+   - **Execute `TASK-06`:** Implement the subprocess-isolated load generator in `src/slokern/engine/loadgen/runner.py` with microsecond request event dispatching, unaggregated JSONL logging conforming to `RawRequestMeasurement`, and client queue saturation detection (`generator_saturated = True`). Validate with new unit tests under `tests/unit/engine/loadgen/`.
+
 ### 1.1 Sprint Snapshot & Milestone Window
 - **Current Milestone:** **Phase B: Establish Single-Run Execution** (Window: October 21–23, 2026).
 - **Execution Model:** Single-owner core execution (Rajdeep) with bounded collaborators (Adriraj active Oct 21, Daksh active Oct 24).
 - **Current Critical-Path Tasks:**
-  - [`TASK-04`](#task-04--harden-evaluator-boundary-conditions-nan-and-negative-metric-safety): Harden Evaluator Boundary Conditions (NaN and negative metric safety).
-  - [`TASK-05`](#task-05--implement-deterministic-fake-serving-adapter): Implement Deterministic Fake Serving Adapter (`FakeServingAdapter`).
-  - [`TASK-03`](#task-03--export-committed-json-schemas-and-strict-contract-boundaries): Export Committed JSON Schemas and Strict Contract Boundaries (`ConfigDict(extra='forbid')`).
+  - [`TASK-06`](#task-06--implement-subprocess-load-generator): Implement Subprocess Load Generator (`src/slokern/engine/loadgen/runner.py`) [**`READY`**].
+  - [`TASK-07`](#task-07--implement-deterministic-metrics-engine): Implement Deterministic Metrics Engine (`src/slokern/core/metrics/`) [**`BLOCKED by TASK-06`**].
+  - [`TASK-08`](#task-08--single-run-pipeline-orchestrator): Single-Run Pipeline Orchestrator [**`BLOCKED by TASK-06, TASK-07`**].
 
 ### 1.2 Immediate Next 1–3 Actions
-1. **Action 1 (Rajdeep — TASK-04):** Patch `src/slokern/core/evaluator/evaluate.py` to assert non-negative latencies and evaluate `math.isnan(obs_val)` as `FeasibilityVerdict.INCONCLUSIVE` (closes [`BLK-05`](#61-active-blockers-register) & [`BLK-06`](#61-active-blockers-register)).
-2. **Action 2 (Rajdeep — TASK-05):** Implement `FakeServingAdapter` in `src/slokern/engine/serving/fake.py` generating deterministic synthetic request responses labeled **`DEMO DATA`** (closes [`BLK-01`](#61-active-blockers-register)).
-3. **Action 3 (Rajdeep — TASK-03):** Implement `scripts/gen_contracts.py` exporting canonical JSON schemas to `schemas/` and add `extra='forbid'` to all 11 contract classes in `src/slokern/contracts/` (closes [`BLK-10`](#61-active-blockers-register) & [`BLK-12`](#61-active-blockers-register)).
+1. **Action 1 (Rajdeep — TASK-06):** Implement subprocess load generator in `src/slokern/engine/loadgen/runner.py` writing unaggregated microsecond events to `.jsonl` and flagging client saturation (`generator_saturated = True`) (closes [`BLK-02`](#61-active-blockers-register)).
+2. **Action 2 (Adriraj — TASK-06 / TASK-14 Audit):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
+3. **Action 3 (Rajdeep — TASK-07):** Implement `src/slokern/core/metrics/percentiles.py` and `aggregate.py` calculating TTFT/ITL percentiles and throughput from raw traces (closes [`BLK-03`](#61-active-blockers-register)).
 
 ### 1.3 Active Blockers & Responsible Owners
-| Blocker ID | Priority | Summary | Accountable Owner | Direct Remediation Action | Closing Validation |
+| Blocker ID | Priority | Summary | Accountable Owner | Direct Remediation Action | Status / Closing Validation |
 |---|---|---|---|---|---|
-| **BLK-01** | **P0** | Serving adapter files are empty stubs; cannot execute inference requests. | Rajdeep | Implement `FakeServingAdapter` generating synthetic responses. | `pytest tests/unit/engine/serving/test_fake.py` |
-| **BLK-04** | **P0** | Nebius API model string for `Nemotron-3-Nano-30B-A3B` unverified; live test skips. | Rajdeep | Execute live single-request preflight probe against Nebius endpoint. | `pytest tests/live/test_smoke_live.py -v -m live` |
-| **BLK-05** | **P1** | Evaluator routes `float('nan')` to `INFEASIBLE` with `TTFT_P95_EXCEEDED` instead of `INCONCLUSIVE`. | Rajdeep | Add `math.isnan(obs_val)` check in `evaluate.py`. | `pytest tests/unit/core/test_evaluator.py` |
-| **BLK-06** | **P1** | Evaluator accepts negative latencies (e.g. `-10.0 ms`) as `FEASIBLE`. | Rajdeep | Add physical non-negative assertion (`obs_val >= 0`) in `evaluate.py`. | `pytest tests/unit/core/test_evaluator.py` |
-| **BLK-10** | **P1** | `schemas/` contains only `.gitkeep`; JSON schemas not emitted. | Rajdeep | Complete `scripts/gen_contracts.py` and commit 11 `.json` schemas. | `pytest tests/contract/test_generated_files_current.py` |
-| **BLK-12** | **P2** | Contracts accept unrecognized fields silently (`extra='ignore'`). | Rajdeep | Add `model_config = ConfigDict(extra='forbid')` to all 11 contracts. | `pytest tests/contract/test_schemas.py` |
-| **BLK-11** | **P2** | Float vs integer formatting (`1` vs `1.0`) produces differing candidate IDs. | Rajdeep | Canonicalize numeric types prior to hashing in `candidate_id.py`. | `pytest tests/unit/core/test_ranker.py` |
-| **BLK-08** | **P1** | `compare.py` is an empty docstring; cannot compute metric drift ($\Delta M$). | Rajdeep | Implement drift calculation comparing two `MetricSet` instances. | `pytest tests/unit/core/verification/test_compare.py` |
-| **BLK-09** | **P1** | `report_builder.py` is an empty docstring; cannot serialize `ReportArtifact`. | Rajdeep | Implement Markdown serializer for immutable report artifacts. | `pytest tests/unit/engine/reporting/test_report_builder.py` |
-| **BLK-13** | **P2** | CI workflow lacks linting, mypy type checks, and secret scanning. | Rajdeep | Add ruff, mypy, and secret checks to `.github/workflows/ci.yml`. | GitHub Actions CI run |
+| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring; cannot dispatch requests. | Rajdeep | Implement minimal dispatch loop writing unaggregated JSONL recordings. | **ACTIVE** (`pytest tests/unit/engine/loadgen/`) |
+| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring; cannot calculate percentiles. | Rajdeep | Implement standard library percentile and throughput calculators. | **ACTIVE** (`pytest tests/unit/core/metrics/`) |
+| **BLK-04** | **P0** | Nebius API model string for `Nemotron-3-Nano-30B-A3B` unverified; live test skips. | Rajdeep | Execute live single-request preflight probe against Nebius endpoint. | **ACTIVE** (`pytest tests/live/test_smoke_live.py -v -m live`) |
+| **BLK-08** | **P1** | `compare.py` is an empty docstring; cannot compute metric drift ($\Delta M$). | Rajdeep | Implement drift calculation comparing two `MetricSet` instances. | **ACTIVE** (`pytest tests/unit/core/verification/test_compare.py`) |
+| **BLK-09** | **P1** | `report_builder.py` is an empty docstring; cannot serialize `ReportArtifact`. | Rajdeep | Implement Markdown serializer for immutable report artifacts. | **ACTIVE** (`pytest tests/unit/engine/reporting/test_report_builder.py`) |
+| **BLK-13** | **P2** | CI workflow lacks linting, mypy type checks, and secret scanning. | Rajdeep | Add ruff, mypy, and secret checks to `.github/workflows/ci.yml`. | **ACTIVE** (GitHub Actions CI run) |
+| **BLK-01** | **P0** | Serving adapter files were empty stubs. | Rajdeep | Implemented `FakeServingAdapter` in `src/slokern/engine/serving/fake.py`. | **RESOLVED** (`afac3a6`, 43 serving tests pass) |
+| **BLK-05** | **P1** | Evaluator routed `float('nan')` to `INFEASIBLE`. | Rajdeep | Added `math.isnan(obs_val)` routing to `INCONCLUSIVE`. | **RESOLVED** (`2453f75`, 29 evaluator tests pass) |
+| **BLK-06** | **P1** | Evaluator accepted negative latencies as `FEASIBLE`. | Rajdeep | Added physical non-negative assertion (`obs_val >= 0`). | **RESOLVED** (`2453f75`, 29 evaluator tests pass) |
+| **BLK-10** | **P1** | `schemas/` contained only `.gitkeep`. | Rajdeep | Implemented `scripts/gen_contracts.py` and committed 11 `.json` schemas. | **RESOLVED** (16 schema tests pass) |
+| **BLK-11** | **P2** | Float vs integer formatting produced differing candidate hashes. | Rajdeep | Canonicalized numeric types prior to hashing in `candidate_id.py`. | **RESOLVED** (`afac3a6`, ranker tests pass) |
+| **BLK-12** | **P2** | Contracts accepted unrecognized fields silently. | Rajdeep | Added `ConfigDict(extra='forbid')` to all 11 contracts. | **RESOLVED** (103 roundtrip tests pass) |
 
 ### 1.4 Most Recent Validation Evidence
-- **Test Suite Status:** `.venv\Scripts\pytest -v -m "not live"` $\longrightarrow$ **24 passed, 1 deselected, 0 failed in 0.92s** (clean, non-flaky execution).
+- **Test Suite Status:** `.venv\Scripts\pytest -v -m "not live"` $\longrightarrow$ **204 passed, 1 deselected, 0 failed in 4.05s** (independently verified in current session).
+- **Test Breakdown:**
+  - `tests/contract/`: 119 passed (16 schema sync tests, 103 JSON model roundtrip tests).
+  - `tests/unit/core/test_evaluator.py`: 29 passed (NaN safety, negative latency safety, boundary operators).
+  - `tests/unit/engine/serving/`: 43 passed (9 base adapter tests, 9 capabilities tests, 25 fake adapter tests).
+  - `tests/unit/core/`: 13 passed (candidate ID hashing, ranking, state transitions).
+  - `tests/live/test_smoke_live.py`: 1 deselected (`live` marker).
 - **Dependency & Bytecode Hygiene:** `python -m pip check` $\longrightarrow$ **No broken requirements found.**; `python -m compileall -q src tests` $\longrightarrow$ **0 syntax errors across all 90 source modules and 67 test files**.
-- **Working Tree Hygiene:** Core application code clean; documentation baseline actively maintained on branch `repository-audit-and-mvp-scope-freeze`.
+- **Working Tree Hygiene:** Baseline actively maintained on branch `repository-audit-and-mvp-scope-freeze`.
 
 ### 1.5 Scope Classification: Submission-Critical vs. Deferred
 - **Submission-Critical MVP Scope (IN):**
@@ -125,10 +159,10 @@ The October 21 audit revealed four cross-document contradictions across earlier 
 |---|---|---|---|---|---|
 | **TASK-01** | Baseline Audit & Scope Freeze | `DONE` | `STATIC` | None | Rajdeep |
 | **TASK-02** | Clean Baseline & Hardened Build | `DONE` | `UNIT` | None | Rajdeep |
-| **TASK-03** | Schema Export & Contract Boundaries | `READY` | `UNIT` | TASK-02, BLK-10, BLK-12 | Rajdeep |
-| **TASK-04** | Evaluator NaN & Negative Latency Safety | `READY` | `UNIT` | TASK-02, BLK-05, BLK-06 | Rajdeep |
-| **TASK-05** | Deterministic Fake Serving Adapter | `READY` | `INTEGRATION` | TASK-02, BLK-01 | Rajdeep |
-| **TASK-06** | Subprocess Load Generator | `BLOCKED` | `NONE` | TASK-05, BLK-02 | Rajdeep (Adriraj audit Oct 21) |
+| **TASK-03** | Schema Export & Contract Boundaries | `DONE` | `UNIT` | Closed BLK-10, BLK-12 | Rajdeep |
+| **TASK-04** | Evaluator NaN & Negative Latency Safety | `DONE` | `UNIT` | Closed BLK-05, BLK-06 | Rajdeep |
+| **TASK-05** | Deterministic Fake Serving Adapter | `DONE` | `INTEGRATION` | Closed BLK-01 | Rajdeep |
+| **TASK-06** | Subprocess Load Generator | `READY` | `NONE` | TASK-05, BLK-02 | Rajdeep (Adriraj audit Oct 21) |
 | **TASK-07** | Deterministic Metrics Engine Core | `BLOCKED` | `NONE` | TASK-06, BLK-03 | Rajdeep (Adriraj audit Oct 21) |
 | **TASK-08** | Single-Run Pipeline Orchestrator | `BLOCKED` | `NONE` | TASK-04, TASK-05, TASK-06, TASK-07 | Rajdeep |
 | **TASK-09** | Nebius Live Serving Adapter & Smoke Probe | `BLOCKED` | `NONE` | TASK-08, DEC-01, DEC-02, BLK-04 | Rajdeep |
@@ -208,22 +242,22 @@ $$\text{TASK-01} \longrightarrow \text{TASK-02} \longrightarrow \text{TASK-05} \
 ### 6.1 Active Blockers Register
 Every blocker is bound to an accountable owner, an explicit impact, an unblocking action, and a fallback:
 
-| Blocker ID | Priority | Blocking Condition | Impact | Unblock Action | Owner | Fallback / Escalation Point |
+| Blocker ID | Priority | Blocking Condition | Impact | Unblock Action | Owner | Status / Closing Evidence |
 |---|---|---|---|---|---|---|
-| **BLK-01** | **P0** | `fake.py` and `nebius.py` are empty docstrings. | Cannot execute any inference requests locally or live. | Implement `FakeServingAdapter` generating deterministic synthetic responses. | Rajdeep | Fall back to synthetic mock fixtures with **`DEMO DATA`** watermark. |
-| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring. | Cannot dispatch requests or record raw `RawRequestMeasurement` event traces. | Implement minimal dispatch loop writing unaggregated JSONL recordings. | Rajdeep | Use single-threaded loop with microsecond timestamps; flag client saturation. |
-| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring. | Cannot calculate `MetricSet` from raw event traces. | Implement standard library percentile and throughput calculators. | Rajdeep | Use Python `math` module linear interpolation percentiles. |
-| **BLK-04** | **P0** | `test_smoke_live.py` skips; exact Nebius API model string unverified. | Cannot run live compliance benchmark on Nebius Cloud. | Execute live preflight probe using `curl` or single-request script with valid API key. | Rajdeep | Fall back to `FakeServingAdapter` for offline demo, documenting live credentials limitation. |
-| **BLK-05** | **P1** | `float('nan') <= 200.0` yields `INFEASIBLE` with `TTFT_P95_EXCEEDED`. | Corrupted or uncalculable floating-point evidence is misclassified as an SLO failure. | Add `math.isnan(obs_val)` check in `evaluate.py` to route NaN to `INCONCLUSIVE`. | Rajdeep | Mark invalid metric runs as `INCONCLUSIVE` (`MISSING_REQUIRED_METRIC`). |
-| **BLK-06** | **P1** | `-10.0 <= 200.0` yields `FEASIBLE` with `HARD_CONSTRAINTS_PASSED`. | Physically impossible negative latency passes feasibility checks without rejection. | Add physical non-negative constraint assertion (`obs_val >= 0`) in `evaluate.py`. | Rajdeep | Reject negative values with `ReasonCode.INVALID_MEASUREMENT`. |
-| **BLK-07** | **P1** | Rajdeep accountable for 9 of 13 subsystems (69% concentration). | Delivery bottleneck on critical path; risk of exhaustion before deadline. | Formally freeze API (`SUB-11`) and Frontend (`SUB-12`) as `DEFERRED`. | Rajdeep | Focus sprint exclusively on CLI + static Markdown report artifact. |
-| **BLK-08** | **P1** | `src/slokern/core/verification/compare.py` is an empty docstring. | Cannot independently verify selected winning candidates or compute drift ($\Delta M$). | Implement deterministic drift calculation and pass/fail evaluation comparing two `MetricSet`s. | Rajdeep | Escalate to Daksh for boundary test review on Oct 24. |
-| **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py` is an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. | Implement Markdown builder serializing `ReportArtifact` into an inspectable document. | Rajdeep | Generate plain GitHub-flavored Markdown document with embedded tables. |
-| **BLK-10** | **P1** | `schemas/` contains only `.gitkeep`; `scripts/gen_contracts.py` is a stub. | No emitted JSON Schemas exist in source control; cannot validate external tools. | Implement script exporting `model_json_schema()` for all 11 models into `schemas/`. | Rajdeep | Commit exported schemas to git; add drift check to CI. |
-| **BLK-11** | **P2** | Numeric types (`1` vs `1.0`) produce differing candidate hashes. | Inadvertent type coercion between float and integer changes candidate hash identity. | Enforce canonical integer/float normalization before hashing in `candidate_id.py`. | Rajdeep | Cast integral floats (`x.is_integer()`) to `int` prior to hashing. |
-| **BLK-12** | **P2** | All 11 models accept unrecognized fields silently (`extra='ignore'`). | Contracts do not strictly reject invalid or misspelled fields at system boundaries. | Add `model_config = ConfigDict(extra='forbid')` to all 11 contract classes. | Rajdeep | Enforce strict pydantic validation across all boundaries. |
-| **BLK-13** | **P2** | `ci.yml` lacks linting, type checks, schema drift, and secret scanning steps. | Code regressions, typing errors, or secret leaks can bypass CI unnoticed. | Add `ruff check`, `mypy --strict src/slokern`, and secret scanning checks to `ci.yml`. | Rajdeep | Run narrow local checks before push; update CI workflow. |
-| **BLK-14** | **P2** | Git preflight R-01: Working tree baseline had uncommitted edits. | Working tree baseline not clean, preventing clean clone verification. | Commit all pending modifications on integration branch. | Rajdeep | Verify `git status --porcelain` returns 0 changes outside documentation. |
+| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring. | Cannot dispatch requests or record raw `RawRequestMeasurement` event traces. | Implement minimal dispatch loop writing unaggregated JSONL recordings. | Rajdeep | **ACTIVE** (Direct target of TASK-06) |
+| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring. | Cannot calculate `MetricSet` from raw event traces. | Implement standard library percentile and throughput calculators. | Rajdeep | **ACTIVE** (Direct target of TASK-07) |
+| **BLK-04** | **P0** | `test_smoke_live.py` skips; exact Nebius API model string unverified. | Cannot run live compliance benchmark on Nebius Cloud. | Execute live preflight probe using `curl` or single-request script with valid API key. | Rajdeep | **ACTIVE** (Fallback: FakeServingAdapter with `DEMO DATA`) |
+| **BLK-08** | **P1** | `src/slokern/core/verification/compare.py` is an empty docstring. | Cannot independently verify selected winning candidates or compute drift ($\Delta M$). | Implement deterministic drift calculation and pass/fail evaluation comparing two `MetricSet`s. | Rajdeep | **ACTIVE** (Escalate to Daksh for boundary audit Oct 24) |
+| **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py` is an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. | Implement Markdown builder serializing `ReportArtifact` into an inspectable document. | Rajdeep | **ACTIVE** (Direct target of TASK-12) |
+| **BLK-13** | **P2** | `ci.yml` lacks linting, type checks, schema drift, and secret scanning steps. | Code regressions, typing errors, or secret leaks can bypass CI unnoticed. | Add `ruff check`, `mypy --strict src/slokern`, and secret scanning checks to `ci.yml`. | Rajdeep | **ACTIVE** (Target of CI hardening) |
+| **BLK-07** | **P1** | Rajdeep accountable for 9 of 13 subsystems (69% concentration). | Delivery bottleneck on critical path; risk of exhaustion before deadline. | Formally freeze API (`SUB-11`) and Frontend (`SUB-12`) as `DEFERRED`. | Rajdeep | **ACTIVE (CONTROLLED)** (Frozen to CLI + ReportArtifact) |
+| **BLK-01** | **P0** | Serving adapter files were empty stubs. | Cannot execute inference requests locally or live. | Implemented `FakeServingAdapter` in `src/slokern/engine/serving/fake.py`. | Rajdeep | **RESOLVED** (`afac3a6`, 43 serving tests pass) |
+| **BLK-05** | **P1** | Evaluator routed `float('nan')` to `INFEASIBLE`. | Corrupted evidence misclassified as SLO failure. | Added `math.isnan(obs_val)` check in `evaluate.py`. | Rajdeep | **RESOLVED** (`2453f75`, 29 evaluator tests pass) |
+| **BLK-06** | **P1** | Evaluator accepted negative latencies as `FEASIBLE`. | Impossible negative latency passed without rejection. | Added physical non-negative constraint (`obs_val >= 0`). | Rajdeep | **RESOLVED** (`2453f75`, 29 evaluator tests pass) |
+| **BLK-10** | **P1** | `schemas/` contained only `.gitkeep`. | No emitted JSON Schemas in source control. | Implemented `scripts/gen_contracts.py` exporting 11 `.json` schemas. | Rajdeep | **RESOLVED** (16 schema tests pass) |
+| **BLK-11** | **P2** | Numeric types (`1` vs `1.0`) produced differing hashes. | Inadvertent float/int conversion changed candidate hash identity. | Enforced canonical numeric normalization in `candidate_id.py`. | Rajdeep | **RESOLVED** (`afac3a6`, ranker tests pass) |
+| **BLK-12** | **P2** | Contracts accepted unrecognized fields silently. | Contracts did not reject invalid fields at system boundaries. | Added `model_config = ConfigDict(extra='forbid')` to all 11 contracts. | Rajdeep | **RESOLVED** (103 roundtrip tests pass) |
+| **BLK-14** | **P2** | Working tree baseline had uncommitted edits. | Working tree baseline not clean. | Committed baseline modifications on integration branch. | Rajdeep | **RESOLVED** (Clean tree verified on branch) |
 
 ### 6.2 Architectural Decisions Register (DEC-xx)
 | Decision ID | Question / Problem | Recommended Option | Accountable Owner | Impact if Unresolved |
@@ -243,12 +277,12 @@ This day-by-day plan governs all development leading up to the submission deadli
 ### Day 1: Wednesday, October 21, 2026 — Phase B: Serving Foundation & Contract Boundaries
 - **Intended Outcome:** Eliminate contract ambiguities, harden evaluator against NaN/negative values, implement `FakeServingAdapter`, and initiate Adriraj's benchmark integrity onboarding.
 - **Ordered Actions:**
-  - [ ] **Action 1.1 (Rajdeep):** Execute `TASK-04`: Patch `src/slokern/core/evaluator/evaluate.py` to route `math.isnan(obs_val)` to `INCONCLUSIVE` and assert non-negative latencies. Run `pytest tests/unit/core/test_evaluator.py`.
-  - [ ] **Action 1.2 (Rajdeep):** Execute `TASK-03`: Update `src/slokern/contracts/` with `extra='forbid'`, implement `scripts/gen_contracts.py`, and commit 11 `.json` schemas to `schemas/`. Run `pytest tests/contract/test_generated_files_current.py`.
-  - [ ] **Action 1.3 (Rajdeep):** Execute `TASK-05`: Implement `FakeServingAdapter` in `src/slokern/engine/serving/fake.py` returning synthetic token streams labeled **`DEMO DATA`**.
+  - [x] **Action 1.1 (Rajdeep):** Execute `TASK-04`: Patch `src/slokern/core/evaluator/evaluate.py` to route `math.isnan(obs_val)` to `INCONCLUSIVE` and assert non-negative latencies. Run `pytest tests/unit/core/test_evaluator.py`. *(COMPLETED: commit `2453f75`, 29 tests pass).*
+  - [x] **Action 1.2 (Rajdeep):** Execute `TASK-03`: Update `src/slokern/contracts/` with `extra='forbid'`, implement `scripts/gen_contracts.py`, and commit 11 `.json` schemas to `schemas/`. Run `pytest tests/contract/test_generated_files_current.py`. *(COMPLETED: 11 schemas committed, 119 contract tests pass).*
+  - [x] **Action 1.3 (Rajdeep):** Execute `TASK-05`: Implement `FakeServingAdapter` in `src/slokern/engine/serving/fake.py` returning synthetic token streams labeled **`DEMO DATA`**. *(COMPLETED: commit `afac3a6`, 43 serving tests pass).*
 - **Accountable Owner:** Rajdeep (Implementation); Adriraj (Benchmark Schema Review).
 - **Dependencies & Fallback:** If contract updates break existing tests, revert `extra='forbid'` on non-boundary internal models first.
-- **Completion Evidence:** `pytest tests/unit/core/test_evaluator.py tests/contract/test_schemas.py` passing 100%; `schemas/` populated with 11 JSON files.
+- **Completion Evidence:** `pytest tests/unit/core/test_evaluator.py tests/contract/test_schemas.py` passing 100%; `schemas/` populated with 11 JSON files; `FakeServingAdapter` offline test suite green.
 
 ### Day 2: Thursday, October 22, 2026 — Phase B: Subprocess Load Generator & Metrics Engine
 - **Intended Outcome:** Operational load generator capable of dispatching Poisson/constant traffic to the fake adapter and writing valid `.jsonl` traces; metrics engine computing percentiles.
@@ -387,7 +421,7 @@ This day-by-day plan governs all development leading up to the submission deadli
 ---
 
 ### TASK-03 — Export Committed JSON Schemas and Strict Contract Boundaries
-- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-02` · **Priority:** P1 (DEMO-CRITICAL) · **Status:** `READY` · **Validation Level:** `UNIT`
+- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-02` · **Priority:** P1 (DEMO-CRITICAL) · **Status:** `DONE` · **Validation Level:** `UNIT`
 - **Objective:** Generate committed JSON Schemas for all 11 models and configure `model_config = ConfigDict(extra='forbid')`.
 - **Needs:** `TASK-02`, `BLK-10`, `BLK-12`.
 - **Boundary & Isolation:** Confined to `scripts/gen_contracts.py`, `schemas/*.json`, and `src/slokern/contracts/`. Contract fields and units cannot be altered without Rajdeep's explicit approval.
@@ -399,11 +433,22 @@ This day-by-day plan governs all development leading up to the submission deadli
   4. `test_generated_files_current.py` passes cleanly on a fresh clone without manual regeneration.
 - **Verify:** `pytest tests/contract/test_generated_files_current.py tests/contract/test_schemas.py` exits code 0.
 - **Completion Evidence:** 11 `.json` files in `schemas/` and passing contract tests.
+- **Evidence-Backed Progress Record (Reconciled: 2026-10-22):**
+  - **Implementation Status:** `IMPLEMENTED`
+  - **Validation Status / Level:** `PASS` / `UNIT` (119 contract tests pass)
+  - **Last Reconciled Commit:** Current working tree (`HEAD` at `afac3a6`)
+  - **Latest Run Outcome:** `COMPLETED`
+  - **Files Changed:** `src/slokern/contracts/*.py`, `schemas/*.json`, `scripts/gen_contracts.py`
+  - **Validation Command:** `.venv\Scripts\pytest tests/contract/` $\longrightarrow$ **119 passed in 0.95s**
+  - **Remaining Acceptance Criteria:** None. Strict boundaries enforced across all 11 contract classes.
+  - **Blockers & Dependencies:** `BLK-10` and `BLK-12` resolved.
+  - **Next Action:** Downstream loadgen (`TASK-06`) uses strict `RawRequestMeasurement` serialization.
+  - **Completion Evidence:** 11 `.json` schema files committed in `schemas/`; 16 schema sync tests and 103 roundtrip tests passing 100%.
 
 ---
 
 ### TASK-04 — Harden Evaluator Boundary Conditions (NaN and Negative Metric Safety)
-- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-03` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `READY` · **Validation Level:** `UNIT`
+- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-03` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `DONE` · **Validation Level:** `UNIT`
 - **Objective:** Ensure floating-point NaN values evaluate to `INCONCLUSIVE` and negative latencies are rejected.
 - **Needs:** `TASK-02`, `BLK-05`, `BLK-06`.
 - **Boundary & Isolation:** Confined strictly to `src/slokern/core/evaluator/evaluate.py` and `tests/unit/core/test_evaluator.py`. Does NOT modify contracts or search controller.
@@ -414,11 +459,22 @@ This day-by-day plan governs all development leading up to the submission deadli
   3. All existing 7 evaluator tests pass; new unit tests for NaN and negative latencies pass.
 - **Verify:** `pytest tests/unit/core/test_evaluator.py` passes with 100% assertions green.
 - **Completion Evidence:** Unit tests asserting NaN yields `INCONCLUSIVE` and negative latency yields `INCONCLUSIVE`.
+- **Evidence-Backed Progress Record (Reconciled: 2026-10-22):**
+  - **Implementation Status:** `IMPLEMENTED`
+  - **Validation Status / Level:** `PASS` / `UNIT` (29 evaluator tests pass)
+  - **Last Reconciled Commit:** Commit `2453f75`
+  - **Latest Run Outcome:** `COMPLETED`
+  - **Files Changed:** `src/slokern/core/evaluator/evaluate.py`, `tests/unit/core/test_evaluator.py`
+  - **Validation Command:** `.venv\Scripts\pytest tests/unit/core/test_evaluator.py` $\longrightarrow$ **29 passed in 0.18s**
+  - **Remaining Acceptance Criteria:** None. NaN and negative latency guards active.
+  - **Blockers & Dependencies:** `BLK-05` and `BLK-06` resolved.
+  - **Next Action:** Evaluator is ready for single-run orchestrator integration (`TASK-08`).
+  - **Completion Evidence:** 29 passed unit tests verifying boundary thresholds, NaN handling, and non-negative physical assertions.
 
 ---
 
 ### TASK-05 — Implement Deterministic Fake Serving Adapter
-- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-05` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `READY` · **Validation Level:** `INTEGRATION`
+- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-05` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `DONE` · **Validation Level:** `INTEGRATION`
 - **Objective:** Implement an offline serving adapter generating reproducible synthetic request completions labeled **`DEMO DATA`**.
 - **Needs:** `TASK-02`, `BLK-01`.
 - **Boundary & Isolation:** Confined to `src/slokern/engine/serving/fake.py`, `base.py`, `capabilities.py`, and `tests/unit/engine/serving/`. Must NOT perform network I/O or call external APIs.
@@ -429,11 +485,22 @@ This day-by-day plan governs all development leading up to the submission deadli
   3. Unit tests in `tests/unit/engine/serving/test_fake.py` pass cleanly offline.
 - **Verify:** `pytest tests/unit/engine/serving/test_fake.py` passes.
 - **Completion Evidence:** `FakeServingAdapter` handles simulated requests offline without cloud access.
+- **Evidence-Backed Progress Record (Reconciled: 2026-10-22):**
+  - **Implementation Status:** `IMPLEMENTED`
+  - **Validation Status / Level:** `PASS` / `INTEGRATION` (43 serving tests pass)
+  - **Last Reconciled Commit:** Commit `afac3a6`
+  - **Latest Run Outcome:** `COMPLETED`
+  - **Files Changed:** `src/slokern/engine/serving/fake.py`, `base.py`, `capabilities.py`, `tests/unit/engine/serving/test_fake.py`, `test_base.py`, `test_capabilities.py`
+  - **Validation Command:** `.venv\Scripts\pytest tests/unit/engine/serving/` $\longrightarrow$ **43 passed in 0.42s**
+  - **Remaining Acceptance Criteria:** None for offline fake adapter. Live Nebius adapter tracked under `TASK-09`.
+  - **Blockers & Dependencies:** `BLK-01` resolved.
+  - **Next Action:** Subprocess load generator (`TASK-06`) dispatches synthetic requests against `FakeServingAdapter`.
+  - **Completion Evidence:** 43 passed tests covering token chunk streaming, deterministic prompt scaling, parameter read-back, and controlled failure injection (OOM, timeout, server error).
 
 ---
 
 ### TASK-06 — Implement Subprocess Load Generator
-- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-06` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by TASK-05) · **Validation Level:** `UNIT`
+- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-06` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `READY` · **Validation Level:** `NONE`
 - **Objective:** Implement subprocess-isolated load generator generating Poisson/constant arrival and writing unaggregated JSONL events.
 - **Needs:** `TASK-05`, `BLK-02`.
 - **Boundary & Isolation:** Confined to `src/slokern/engine/loadgen/` (`runner.py`, `arrival.py`, `recorder.py`) and `tests/unit/engine/loadgen/`. Must output valid `RawRequestMeasurement` records.
@@ -442,8 +509,24 @@ This day-by-day plan governs all development leading up to the submission deadli
   1. Request dispatch loop executes in a separate process to avoid Python GIL timing contamination.
   2. Poisson and constant arrival intervals generated with microsecond timestamps (`scheduled_at`, `sent_at`, `first_token_at`, `completed_at`).
   3. Output JSONL records validate 100% against `RawRequestMeasurement` schema.
+  4. Client queue lag detection sets `generator_saturated = True` when dispatched traffic falls behind schedule.
 - **Verify:** `pytest tests/unit/engine/loadgen/test_runner.py` passes.
 - **Completion Evidence:** Subprocess dispatches 100 simulated requests and outputs valid unaggregated `.jsonl` file.
+- **Evidence-Backed Progress Record (Reconciled: 2026-10-22):**
+  - **Implementation Status:** `ABSENT` (stub module with docstring)
+  - **Validation Status / Level:** `READY` (Prerequisites satisfied; unblocked by `TASK-05`)
+  - **Last Reconciled Commit:** Current working tree (`HEAD` at `afac3a6`)
+  - **Latest Run Outcome:** `UNBLOCKED`
+  - **Files to Modify:** `src/slokern/engine/loadgen/runner.py`, `arrival.py`, `recorder.py`, `tests/unit/engine/loadgen/`
+  - **Validation Command:** `.venv\Scripts\pytest tests/unit/engine/loadgen/` (pending implementation)
+  - **Remaining Acceptance Criteria:**
+    1. Implement subprocess dispatch process isolated from parent execution.
+    2. Implement Poisson and constant arrival schedule models.
+    3. Stream raw events to unaggregated `.jsonl` matching `RawRequestMeasurement`.
+    4. Detect and record client-side queue saturation when scheduling lag exceeds 10ms.
+  - **Blockers & Dependencies:** Upstream dependency `TASK-05` completed; blocked only on implementation (`BLK-02`).
+  - **Next Action:** Implement subprocess load generator runner in `src/slokern/engine/loadgen/runner.py`.
+  - **Completion Evidence:** Pending implementation: 100 simulated requests dispatched against `FakeServingAdapter` producing valid `.jsonl` trace.
 
 ---
 
