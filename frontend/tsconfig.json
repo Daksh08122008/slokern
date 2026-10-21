@@ -1,3 +1,7 @@
-// Purpose: TypeScript compiler configuration.
-// Owner: UNASSIGNED (frontend owner not yet named)
-{}
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
