@@ -1,9 +1,15 @@
+import math
 import pytest
 
 from slokern.contracts.metrics import MetricSet, PercentileDistribution
 from slokern.contracts.spec import SLOSpec, SLOConstraint
 from slokern.contracts.enums import FeasibilityVerdict, ReasonCode, EvidenceValidity
-from slokern.core.evaluator.evaluate import evaluate_slo
+from slokern.core.evaluator.evaluate import (
+    evaluate_slo,
+    evaluate_constraint,
+    get_observed_value,
+    get_reason_code_for_failure,
+)
 
 
 @pytest.fixture
@@ -113,3 +119,219 @@ def test_evaluator_boundary_exact_match(base_metrics: MetricSet, base_slo: SLOSp
     assert result.overall_verdict == FeasibilityVerdict.FEASIBLE
     ttft_eval = next(c for c in result.constraint_evaluations if c.metric_name == "ttft")
     assert ttft_eval.passed is True
+
+
+def test_evaluator_inconclusive_nan_latency(base_metrics: MetricSet, base_slo: SLOSpec):
+    base_metrics.ttft_ms.p95 = float("nan")
+    result = evaluate_slo(base_metrics, base_slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.INCONCLUSIVE
+    assert result.validity_status == EvidenceValidity.INVALID
+    ttft_eval = next(c for c in result.constraint_evaluations if c.metric_name == "ttft")
+    assert ttft_eval.passed is None
+    assert ttft_eval.reason_code == ReasonCode.MISSING_REQUIRED_METRIC
+    assert result.audit_notes is not None
+    assert "Invalid observation" in result.audit_notes
+
+
+def test_evaluator_inconclusive_negative_latency(base_metrics: MetricSet, base_slo: SLOSpec):
+    base_metrics.ttft_ms.p95 = -10.0
+    result = evaluate_slo(base_metrics, base_slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.INCONCLUSIVE
+    assert result.validity_status == EvidenceValidity.INVALID
+    ttft_eval = next(c for c in result.constraint_evaluations if c.metric_name == "ttft")
+    assert ttft_eval.passed is None
+    assert ttft_eval.reason_code == ReasonCode.MISSING_REQUIRED_METRIC
+    assert result.audit_notes is not None
+    assert "Invalid observation" in result.audit_notes
+
+
+def test_evaluator_inconclusive_nan_with_generator_saturated(base_metrics: MetricSet, base_slo: SLOSpec):
+    base_metrics.generator_saturated = True
+    base_metrics.ttft_ms.p95 = float("nan")
+    result = evaluate_slo(base_metrics, base_slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.INCONCLUSIVE
+    assert result.validity_status == EvidenceValidity.CONTAMINATED
+    for c in result.constraint_evaluations:
+        assert c.reason_code == ReasonCode.GENERATOR_SATURATED
+
+
+def test_evaluator_token_throughput_pass(base_metrics: MetricSet):
+    slo = SLOSpec(
+        slo_id="slo-tps-pass",
+        min_sample_count=10,
+        constraints=[
+            SLOConstraint(metric_name="token_throughput", statistic="mean", threshold=400.0, unit="requests/s", operator=">="),
+        ],
+    )
+    base_metrics.token_throughput_tps = 500.0
+    result = evaluate_slo(base_metrics, slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.FEASIBLE
+    assert result.validity_status == EvidenceValidity.VALID
+    tps_eval = result.constraint_evaluations[0]
+    assert tps_eval.observed_value == 500.0
+    assert tps_eval.passed is True
+    assert tps_eval.reason_code == ReasonCode.HARD_CONSTRAINTS_PASSED
+
+
+def test_evaluator_token_throughput_fail(base_metrics: MetricSet):
+    slo = SLOSpec(
+        slo_id="slo-tps-fail",
+        min_sample_count=10,
+        constraints=[
+            SLOConstraint(metric_name="token_throughput", statistic="mean", threshold=600.0, unit="requests/s", operator=">="),
+        ],
+    )
+    base_metrics.token_throughput_tps = 500.0
+    result = evaluate_slo(base_metrics, slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.INFEASIBLE
+    assert result.validity_status == EvidenceValidity.VALID
+    tps_eval = result.constraint_evaluations[0]
+    assert tps_eval.observed_value == 500.0
+    assert tps_eval.passed is False
+    assert tps_eval.reason_code == ReasonCode.THROUGHPUT_DEFICIT
+    assert "token_throughput mean >= 600.0" in result.audit_notes
+
+
+def test_evaluator_token_throughput_boundary_match(base_metrics: MetricSet):
+    slo_ge = SLOSpec(
+        slo_id="slo-tps-ge",
+        min_sample_count=10,
+        constraints=[
+            SLOConstraint(metric_name="token_throughput", statistic="mean", threshold=500.0, unit="requests/s", operator=">="),
+        ],
+    )
+    base_metrics.token_throughput_tps = 500.0
+    result_ge = evaluate_slo(base_metrics, slo_ge)
+    assert result_ge.overall_verdict == FeasibilityVerdict.FEASIBLE
+    assert result_ge.constraint_evaluations[0].passed is True
+
+    slo_gt = SLOSpec(
+        slo_id="slo-tps-gt",
+        min_sample_count=10,
+        constraints=[
+            SLOConstraint(metric_name="token_throughput", statistic="mean", threshold=500.0, unit="requests/s", operator=">"),
+        ],
+    )
+    result_gt = evaluate_slo(base_metrics, slo_gt)
+    assert result_gt.overall_verdict == FeasibilityVerdict.INFEASIBLE
+    assert result_gt.constraint_evaluations[0].passed is False
+    assert result_gt.constraint_evaluations[0].reason_code == ReasonCode.THROUGHPUT_DEFICIT
+
+
+def test_evaluator_itl_p50_failure_reason_code(base_metrics: MetricSet):
+    slo = SLOSpec(
+        slo_id="slo-itl-p50",
+        min_sample_count=10,
+        constraints=[
+            SLOConstraint(metric_name="itl", statistic="p50", threshold=15.0, unit="ms", operator="<="),
+        ],
+    )
+    base_metrics.itl_ms.p50 = 20.0
+    result = evaluate_slo(base_metrics, slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.INFEASIBLE
+    itl_eval = result.constraint_evaluations[0]
+    assert itl_eval.passed is False
+    assert itl_eval.reason_code == ReasonCode.ITL_P95_EXCEEDED
+    assert "itl p50 <= 15.0" in result.audit_notes
+
+
+def test_evaluator_itl_p50_pass(base_metrics: MetricSet):
+    slo = SLOSpec(
+        slo_id="slo-itl-p50-pass",
+        min_sample_count=10,
+        constraints=[
+            SLOConstraint(metric_name="itl", statistic="p50", threshold=25.0, unit="ms", operator="<="),
+        ],
+    )
+    base_metrics.itl_ms.p50 = 20.0
+    result = evaluate_slo(base_metrics, slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.FEASIBLE
+    itl_eval = result.constraint_evaluations[0]
+    assert itl_eval.passed is True
+    assert itl_eval.reason_code == ReasonCode.HARD_CONSTRAINTS_PASSED
+
+
+def test_evaluator_unconstrained_dropped_requests_audited(base_metrics: MetricSet, base_slo: SLOSpec):
+    base_metrics.failed_request_count = 5
+    base_metrics.error_rate = 0.05
+    result = evaluate_slo(base_metrics, base_slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.FEASIBLE
+    assert result.audit_notes is not None
+    assert result.audit_notes != "All hard constraints satisfied."
+    assert "5" in result.audit_notes
+    assert "unconstrained" in result.audit_notes.lower()
+    assert "dropped" in result.audit_notes.lower() or "failed" in result.audit_notes.lower()
+
+
+def test_evaluator_constrained_error_rate_failure(base_metrics: MetricSet):
+    slo = SLOSpec(
+        slo_id="slo-err-fail",
+        min_sample_count=10,
+        constraints=[
+            SLOConstraint(metric_name="error_rate", statistic="mean", threshold=0.01, unit="fraction", operator="<="),
+        ],
+    )
+    base_metrics.failed_request_count = 2
+    base_metrics.error_rate = 0.02
+    result = evaluate_slo(base_metrics, slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.INFEASIBLE
+    err_eval = result.constraint_evaluations[0]
+    assert err_eval.passed is False
+    assert err_eval.reason_code == ReasonCode.ERROR_RATE_EXCEEDED
+
+
+def test_evaluator_zero_dropped_requests_clean_audit(base_metrics: MetricSet, base_slo: SLOSpec):
+    base_metrics.failed_request_count = 0
+    base_metrics.error_rate = 0.0
+    result = evaluate_slo(base_metrics, base_slo)
+
+    assert result.overall_verdict == FeasibilityVerdict.FEASIBLE
+    assert result.audit_notes == "All hard constraints satisfied."
+
+
+def test_evaluate_constraint_operators_and_edges():
+    assert evaluate_constraint(None, 10.0, "<=") is None
+    assert evaluate_constraint(math.nan, 10.0, "<=") is None
+    assert evaluate_constraint(-0.01, 10.0, "<=") is None
+    assert evaluate_constraint(10.0, math.nan, "<=") is None
+    assert evaluate_constraint(0.0, 10.0, ">=") is False
+    assert evaluate_constraint(0.0, 10.0, "<=") is True
+    assert evaluate_constraint(10.0, 10.0, "<=") is True
+    assert evaluate_constraint(10.0, 10.0, "<") is False
+    assert evaluate_constraint(10.0, 10.0, ">=") is True
+    assert evaluate_constraint(10.0, 10.0, ">") is False
+    assert evaluate_constraint(5.0, 10.0, "==") is None
+
+
+def test_get_observed_value_mappings(base_metrics: MetricSet):
+    assert get_observed_value(base_metrics, "request_throughput", "mean") == 15.0
+    assert get_observed_value(base_metrics, "token_throughput", "mean") == 500.0
+    assert get_observed_value(base_metrics, "token_throughput_tps", "mean") == 500.0
+    assert get_observed_value(base_metrics, "error_rate", "mean") == 0.0
+    assert get_observed_value(base_metrics, "ttft", "p95") == 150.0
+    assert get_observed_value(base_metrics, "itl", "p50") == 20.0
+    assert get_observed_value(base_metrics, "e2e_latency", "p95") == 1000.0
+    assert get_observed_value(base_metrics, "nonexistent", "mean") is None
+
+
+def test_get_reason_code_for_failure_mappings():
+    assert get_reason_code_for_failure("ttft", "p95", "<=") == ReasonCode.TTFT_P95_EXCEEDED
+    assert get_reason_code_for_failure("ttft", "p50", "<=") == ReasonCode.TTFT_P50_EXCEEDED
+    assert get_reason_code_for_failure("itl", "p95", "<=") == ReasonCode.ITL_P95_EXCEEDED
+    assert get_reason_code_for_failure("itl", "p50", "<=") == ReasonCode.ITL_P95_EXCEEDED
+    assert get_reason_code_for_failure("e2e_latency", "p99", "<=") == ReasonCode.E2E_LATENCY_EXCEEDED
+    assert get_reason_code_for_failure("error_rate", "mean", "<=") == ReasonCode.ERROR_RATE_EXCEEDED
+    assert get_reason_code_for_failure("request_throughput", "mean", ">=") == ReasonCode.THROUGHPUT_DEFICIT
+    assert get_reason_code_for_failure("token_throughput", "mean", ">=") == ReasonCode.THROUGHPUT_DEFICIT
+    assert get_reason_code_for_failure("token_throughput_tps", "mean", ">=") == ReasonCode.THROUGHPUT_DEFICIT
+    assert get_reason_code_for_failure("ttft", "p95", "INVALID") == ReasonCode.UNSUPPORTED_OPERATOR
+    assert get_reason_code_for_failure("unknown", "mean", "<=") == ReasonCode.MISSING_REQUIRED_METRIC

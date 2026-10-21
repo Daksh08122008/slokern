@@ -246,7 +246,6 @@ This day-by-day plan governs all development leading up to the submission deadli
   - [ ] **Action 1.1 (Rajdeep):** Execute `TASK-04`: Patch `src/slokern/core/evaluator/evaluate.py` to route `math.isnan(obs_val)` to `INCONCLUSIVE` and assert non-negative latencies. Run `pytest tests/unit/core/test_evaluator.py`.
   - [ ] **Action 1.2 (Rajdeep):** Execute `TASK-03`: Update `src/slokern/contracts/` with `extra='forbid'`, implement `scripts/gen_contracts.py`, and commit 11 `.json` schemas to `schemas/`. Run `pytest tests/contract/test_generated_files_current.py`.
   - [ ] **Action 1.3 (Rajdeep):** Execute `TASK-05`: Implement `FakeServingAdapter` in `src/slokern/engine/serving/fake.py` returning synthetic token streams labeled **`DEMO DATA`**.
-  - [ ] **Action 1.4 (Adriraj — Active Window Starts):** Inspect `src/slokern/contracts/evidence.py` (`RawRequestMeasurement`) and construct benchmark validation fixtures for invalid/saturated traces (`tests/contract/test_fixtures_validate.py`).
 - **Accountable Owner:** Rajdeep (Implementation); Adriraj (Benchmark Schema Review).
 - **Dependencies & Fallback:** If contract updates break existing tests, revert `extra='forbid'` on non-boundary internal models first.
 - **Completion Evidence:** `pytest tests/unit/core/test_evaluator.py tests/contract/test_schemas.py` passing 100%; `schemas/` populated with 11 JSON files.
@@ -257,7 +256,8 @@ This day-by-day plan governs all development leading up to the submission deadli
   - [ ] **Action 2.1 (Rajdeep):** Execute `TASK-06`: Implement subprocess-isolated load generator in `src/slokern/engine/loadgen/runner.py` writing unaggregated microsecond events to `.jsonl`.
   - [ ] **Action 2.2 (Adriraj):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
   - [ ] **Action 2.3 (Rajdeep):** Execute `TASK-07`: Implement `src/slokern/core/metrics/percentiles.py` and `aggregate.py` calculating TTFT/ITL percentiles and throughput from raw traces.
-  - [ ] **Action 2.4 (Adriraj):** Populate golden metric fixtures (`fixtures/metrics_golden/percentiles_basic.json`) with hand-calculated percentiles for unit testing.
+  - [ ] **Action 2.4 (Adriraj — Active Window Starts):** Inspect `src/slokern/contracts/evidence.py` (`RawRequestMeasurement`) and construct benchmark validation fixtures for invalid/saturated traces (`tests/contract/test_fixtures_validate.py`).
+  - [ ] **Action 2.5 (Adriraj):** Populate golden metric fixtures (`fixtures/metrics_golden/percentiles_basic.json`) with hand-calculated percentiles for unit testing.
 - **Accountable Owner:** Rajdeep (Implementation); Adriraj (Trace Auditing & Fixtures).
 - **Dependencies & Fallback:** If subprocess IPC encounters platform issues on Windows, fall back to synchronous dispatch loop with explicit lag detection.
 - **Completion Evidence:** `pytest tests/unit/engine/loadgen/ tests/unit/core/metrics/` passes cleanly; sample `.jsonl` trace produced and validated.
