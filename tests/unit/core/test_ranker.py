@@ -32,6 +32,56 @@ def test_generate_candidate_id_differs():
     id2 = generate_candidate_id("model-a", "vllm", {"batch_size": 64})
     assert id1 != id2
 
+def test_generate_candidate_id_numeric_normalization():
+    # Int and float representation of integers must yield identical candidate IDs
+    id_int = generate_candidate_id("model-a", "vllm", {"tp": 1})
+    id_float = generate_candidate_id("model-a", "vllm", {"tp": 1.0})
+    assert id_int == id_float
+
+    # Nested structures with numeric floats
+    id_nested_float = generate_candidate_id("model-a", "vllm", {"params": {"tp": 2.0, "layers": [4.0, 8]}})
+    id_nested_int = generate_candidate_id("model-a", "vllm", {"params": {"tp": 2, "layers": [4, 8.0]}})
+    assert id_nested_float == id_nested_int
+
+    # Booleans are preserved and distinct from integer 1/0
+    id_bool = generate_candidate_id("model-a", "vllm", {"flag": True})
+    id_one = generate_candidate_id("model-a", "vllm", {"flag": 1})
+    assert id_bool != id_one
+
+    # Fractional floats are preserved
+    id_frac1 = generate_candidate_id("model-a", "vllm", {"ratio": 0.75})
+    id_frac2 = generate_candidate_id("model-a", "vllm", {"ratio": 0.75})
+    assert id_frac1 == id_frac2
+
+
+def test_candidate_id_float_int_equivalence():
+    """Explicit regression test for BLK-11 / Probe P-12: float vs int representation drift."""
+    # Probe P-12: {"tensor_parallel_size": 1} vs 1.0 must produce identical candidate IDs
+    id_int = generate_candidate_id("meta-llama/Llama-3-8B-Instruct", "vllm", {"tensor_parallel_size": 1})
+    id_float = generate_candidate_id("meta-llama/Llama-3-8B-Instruct", "vllm", {"tensor_parallel_size": 1.0})
+    assert id_int == id_float
+
+    # Numeric keys in dictionaries must be normalized identically
+    id_key_float = generate_candidate_id("model-a", "vllm", {1.0: "val"})
+    id_key_int = generate_candidate_id("model-a", "vllm", {1: "val"})
+    assert id_key_float == id_key_int
+
+    # Sets must be deterministically sorted and serialized
+    id_set1 = generate_candidate_id("model-a", "vllm", {"gpus": {0, 1}})
+    id_set2 = generate_candidate_id("model-a", "vllm", {"gpus": {1, 0}})
+    assert id_set1 == id_set2
+
+    # Negative zero must be normalized to zero
+    id_neg_zero = generate_candidate_id("model-a", "vllm", {"temp": -0.0})
+    id_pos_zero = generate_candidate_id("model-a", "vllm", {"temp": 0})
+    assert id_neg_zero == id_pos_zero
+
+    # Scientific notation representation of whole numbers
+    id_sci = generate_candidate_id("model-a", "vllm", {"max_tokens": 1e2})
+    id_exact = generate_candidate_id("model-a", "vllm", {"max_tokens": 100})
+    assert id_sci == id_exact
+
+
 def test_rank_candidates_filters_infeasible():
     candidates = [
         EvaluatedCandidate("c1", FeasibilityVerdict.FEASIBLE, 10.0, create_mock_metric_set("r1")),

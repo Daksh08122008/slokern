@@ -1,44 +1,9 @@
 {
   "$defs": {
     "PercentileDistribution": {
+      "additionalProperties": false,
       "description": "Summary statistics for latency observations in milliseconds.",
       "properties": {
-        "max": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Max"
-        },
-        "mean": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Mean"
-        },
-        "min": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Min"
-        },
         "p50": {
           "anyOf": [
             {
@@ -86,62 +51,55 @@
           ],
           "default": null,
           "title": "P99"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
         }
       },
       "title": "PercentileDistribution",
       "type": "object"
     }
   },
+  "additionalProperties": false,
   "description": "Derived performance indicators calculated deterministically from valid measurement windows.\nTraceable to raw request records (RawRequestMeasurement).",
   "properties": {
-    "achieved_load_rps": {
-      "description": "Actual completed request throughput over the measurement window",
-      "title": "Achieved Load Rps",
-      "type": "number"
-    },
-    "e2e_latency_ms": {
-      "$ref": "#/$defs/PercentileDistribution",
-      "description": "Percentiles and summary of total request durations"
-    },
-    "error_rate": {
-      "description": "Ratio of failed requests to total offered requests",
-      "title": "Error Rate",
-      "type": "number"
-    },
-    "failed_request_count": {
-      "description": "Count of failed or aborted requests",
-      "title": "Failed Request Count",
-      "type": "integer"
-    },
-    "generator_saturated": {
-      "description": "Boolean flag indicating whether client load generator saturated",
-      "title": "Generator Saturated",
-      "type": "boolean"
-    },
-    "itl_ms": {
-      "$ref": "#/$defs/PercentileDistribution",
-      "description": "Object containing p50, p90, p95, p99, mean (with documented aggregation)"
-    },
-    "metadata": {
-      "additionalProperties": true,
-      "description": "Optional metadata",
-      "title": "Metadata",
-      "type": "object"
-    },
     "metric_version": {
       "description": "Version of metric calculation policy",
       "title": "Metric Version",
       "type": "string"
-    },
-    "offered_load_rps": {
-      "description": "Actual rate at which client scheduled requests",
-      "title": "Offered Load Rps",
-      "type": "number"
-    },
-    "request_throughput_rps": {
-      "description": "Achieved completed requests per second",
-      "title": "Request Throughput Rps",
-      "type": "number"
     },
     "run_id": {
       "description": "Associated run identifier",
@@ -153,14 +111,58 @@
       "title": "Sample Count",
       "type": "integer"
     },
+    "failed_request_count": {
+      "description": "Count of failed or aborted requests",
+      "title": "Failed Request Count",
+      "type": "integer"
+    },
+    "offered_load_rps": {
+      "description": "Actual rate at which client scheduled requests",
+      "title": "Offered Load Rps",
+      "type": "number"
+    },
+    "achieved_load_rps": {
+      "description": "Actual completed request throughput over the measurement window",
+      "title": "Achieved Load Rps",
+      "type": "number"
+    },
+    "generator_saturated": {
+      "description": "Boolean flag indicating whether client load generator saturated",
+      "title": "Generator Saturated",
+      "type": "boolean"
+    },
+    "ttft_ms": {
+      "$ref": "#/$defs/PercentileDistribution",
+      "description": "Object containing p50, p90, p95, p99, mean, min, max"
+    },
+    "itl_ms": {
+      "$ref": "#/$defs/PercentileDistribution",
+      "description": "Object containing p50, p90, p95, p99, mean (with documented aggregation)"
+    },
+    "e2e_latency_ms": {
+      "$ref": "#/$defs/PercentileDistribution",
+      "description": "Percentiles and summary of total request durations"
+    },
+    "request_throughput_rps": {
+      "description": "Achieved completed requests per second",
+      "title": "Request Throughput Rps",
+      "type": "number"
+    },
     "token_throughput_tps": {
       "description": "Total output tokens generated per second",
       "title": "Token Throughput Tps",
       "type": "number"
     },
-    "ttft_ms": {
-      "$ref": "#/$defs/PercentileDistribution",
-      "description": "Object containing p50, p90, p95, p99, mean, min, max"
+    "error_rate": {
+      "description": "Ratio of failed requests to total offered requests",
+      "title": "Error Rate",
+      "type": "number"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "description": "Optional metadata",
+      "title": "Metadata",
+      "type": "object"
     }
   },
   "required": [

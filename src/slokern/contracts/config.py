@@ -4,13 +4,15 @@ Owner: Rajdeep
 """
 
 from typing import Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.enums import ParameterStatus
 
 
 class CandidateConfig(BaseModel):
     """Represents a concrete serving configuration. Distinguishes intent from verified runtime reality."""
+    model_config = ConfigDict(extra="forbid")
+
     candidate_id: str = Field(..., description="Stable deterministic hash of canonical parameter values")
     model_name: str = Field(..., description="Formal model identifier")
     runtime_name: str = Field(..., description="Serving engine")

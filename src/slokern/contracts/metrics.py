@@ -5,11 +5,13 @@ Authority: Aligned with docs/metrics.md and docs/architecture.md Section 4
 """
 
 from typing import Dict, Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PercentileDistribution(BaseModel):
     """Summary statistics for latency observations in milliseconds."""
+    model_config = ConfigDict(extra="forbid")
+
     p50: Optional[float] = None
     p90: Optional[float] = None
     p95: Optional[float] = None
@@ -24,6 +26,8 @@ class MetricSet(BaseModel):
     Derived performance indicators calculated deterministically from valid measurement windows.
     Traceable to raw request records (RawRequestMeasurement).
     """
+    model_config = ConfigDict(extra="forbid")
+
     metric_version: str = Field(..., description="Version of metric calculation policy")
     run_id: str = Field(..., description="Associated run identifier")
     sample_count: int = Field(..., description="Count of completed valid requests analyzed")

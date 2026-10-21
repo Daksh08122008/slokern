@@ -11,18 +11,19 @@
       "type": "string"
     },
     "BaselineSummary": {
+      "additionalProperties": false,
       "properties": {
         "baseline_candidate_id": {
           "title": "Baseline Candidate Id",
           "type": "string"
         },
+        "verdict": {
+          "$ref": "#/$defs/FeasibilityVerdict"
+        },
         "metrics": {
           "additionalProperties": true,
           "title": "Metrics",
           "type": "object"
-        },
-        "verdict": {
-          "$ref": "#/$defs/FeasibilityVerdict"
         }
       },
       "required": [
@@ -34,6 +35,7 @@
       "type": "object"
     },
     "CandidateConfig": {
+      "additionalProperties": false,
       "description": "Represents a concrete serving configuration. Distinguishes intent from verified runtime reality.",
       "properties": {
         "candidate_id": {
@@ -41,22 +43,27 @@
           "title": "Candidate Id",
           "type": "string"
         },
+        "model_name": {
+          "description": "Formal model identifier",
+          "title": "Model Name",
+          "type": "string"
+        },
+        "runtime_name": {
+          "description": "Serving engine",
+          "title": "Runtime Name",
+          "type": "string"
+        },
+        "requested_settings": {
+          "additionalProperties": true,
+          "description": "Key-value pairs requested by the search controller",
+          "title": "Requested Settings",
+          "type": "object"
+        },
         "effective_settings": {
           "additionalProperties": true,
           "description": "Key-value pairs confirmed by the adapter via runtime read-back",
           "title": "Effective Settings",
           "type": "object"
-        },
-        "environment_fingerprint": {
-          "additionalProperties": true,
-          "description": "Hash/dictionary of GPU hardware, driver, CUDA version, and runtime software commit",
-          "title": "Environment Fingerprint",
-          "type": "object"
-        },
-        "model_name": {
-          "description": "Formal model identifier",
-          "title": "Model Name",
-          "type": "string"
         },
         "parameter_status": {
           "additionalProperties": {
@@ -66,16 +73,11 @@
           "title": "Parameter Status",
           "type": "object"
         },
-        "requested_settings": {
+        "environment_fingerprint": {
           "additionalProperties": true,
-          "description": "Key-value pairs requested by the search controller",
-          "title": "Requested Settings",
+          "description": "Hash/dictionary of GPU hardware, driver, CUDA version, and runtime software commit",
+          "title": "Environment Fingerprint",
           "type": "object"
-        },
-        "runtime_name": {
-          "description": "Serving engine",
-          "title": "Runtime Name",
-          "type": "string"
         }
       },
       "required": [
@@ -91,6 +93,7 @@
       "type": "object"
     },
     "DriftAnalysis": {
+      "additionalProperties": false,
       "properties": {
         "metric_deltas": {
           "additionalProperties": {
@@ -114,10 +117,16 @@
       "type": "object"
     },
     "ExperimentBudget": {
+      "additionalProperties": false,
       "properties": {
         "max_candidates": {
           "description": "Hard upper limit on candidate configurations tested",
           "title": "Max Candidates",
+          "type": "integer"
+        },
+        "max_wallclock_seconds": {
+          "description": "Maximum total experiment duration",
+          "title": "Max Wallclock Seconds",
           "type": "integer"
         },
         "max_cost_limit": {
@@ -132,11 +141,6 @@
           "default": null,
           "description": "Optional expenditure ceiling",
           "title": "Max Cost Limit"
-        },
-        "max_wallclock_seconds": {
-          "description": "Maximum total experiment duration",
-          "title": "Max Wallclock Seconds",
-          "type": "integer"
         }
       },
       "required": [
@@ -147,16 +151,21 @@
       "type": "object"
     },
     "ExperimentSpec": {
+      "additionalProperties": false,
       "description": "The root document defining an entire optimization experiment.",
       "properties": {
-        "budget": {
-          "$ref": "#/$defs/ExperimentBudget",
-          "description": "Experiment budget"
-        },
         "experiment_id": {
           "description": "Unique identifier for the experiment session",
           "title": "Experiment Id",
           "type": "string"
+        },
+        "workload": {
+          "$ref": "#/$defs/WorkloadSpec",
+          "description": "Embedded WorkloadSpec"
+        },
+        "slo": {
+          "$ref": "#/$defs/SLOSpec",
+          "description": "Embedded SLOSpec"
         },
         "search_space": {
           "additionalProperties": true,
@@ -164,17 +173,13 @@
           "title": "Search Space",
           "type": "object"
         },
-        "slo": {
-          "$ref": "#/$defs/SLOSpec",
-          "description": "Embedded SLOSpec"
+        "budget": {
+          "$ref": "#/$defs/ExperimentBudget",
+          "description": "Experiment budget"
         },
         "verification_policy": {
           "$ref": "#/$defs/ExperimentVerificationPolicy",
           "description": "Rules governing the independent verification rerun"
-        },
-        "workload": {
-          "$ref": "#/$defs/WorkloadSpec",
-          "description": "Embedded WorkloadSpec"
         }
       },
       "required": [
@@ -188,18 +193,19 @@
       "type": "object"
     },
     "ExperimentVerificationPolicy": {
+      "additionalProperties": false,
       "properties": {
-        "duration_multiplier": {
-          "default": 1.0,
-          "description": "Multiplier for measurement duration during verification",
-          "title": "Duration Multiplier",
-          "type": "number"
-        },
         "repetitions": {
           "default": 1,
           "description": "Number of verification repetitions",
           "title": "Repetitions",
           "type": "integer"
+        },
+        "duration_multiplier": {
+          "default": 1.0,
+          "description": "Multiplier for measurement duration during verification",
+          "title": "Duration Multiplier",
+          "type": "number"
         }
       },
       "title": "ExperimentVerificationPolicy",
@@ -227,21 +233,11 @@
       "type": "string"
     },
     "SLOConstraint": {
+      "additionalProperties": false,
       "properties": {
         "metric_name": {
           "description": "Target metric",
           "title": "Metric Name",
-          "type": "string"
-        },
-        "operator": {
-          "description": "Comparison operator",
-          "enum": [
-            "<=",
-            "<",
-            ">=",
-            ">"
-          ],
-          "title": "Operator",
           "type": "string"
         },
         "statistic": {
@@ -272,6 +268,17 @@
           ],
           "title": "Unit",
           "type": "string"
+        },
+        "operator": {
+          "description": "Comparison operator",
+          "enum": [
+            "<=",
+            "<",
+            ">=",
+            ">"
+          ],
+          "title": "Operator",
+          "type": "string"
         }
       },
       "required": [
@@ -285,8 +292,14 @@
       "type": "object"
     },
     "SLOSpec": {
+      "additionalProperties": false,
       "description": "Specifies the non-negotiable service-level objectives against which candidates are evaluated.",
       "properties": {
+        "slo_id": {
+          "description": "Unique identifier for the SLO declaration",
+          "title": "Slo Id",
+          "type": "string"
+        },
         "constraints": {
           "description": "List of hard constraint rules",
           "items": {
@@ -299,11 +312,6 @@
           "description": "Minimum required valid requests to allow an authoritative verdict",
           "title": "Min Sample Count",
           "type": "integer"
-        },
-        "slo_id": {
-          "description": "Unique identifier for the SLO declaration",
-          "title": "Slo Id",
-          "type": "string"
         }
       },
       "required": [
@@ -315,12 +323,13 @@
       "type": "object"
     },
     "SearchSummary": {
+      "additionalProperties": false,
       "properties": {
-        "rankings": {
+        "tested_candidates": {
           "items": {
             "type": "string"
           },
-          "title": "Rankings",
+          "title": "Tested Candidates",
           "type": "array"
         },
         "rejected_options": {
@@ -330,11 +339,11 @@
           "title": "Rejected Options",
           "type": "array"
         },
-        "tested_candidates": {
+        "rankings": {
           "items": {
             "type": "string"
           },
-          "title": "Tested Candidates",
+          "title": "Rankings",
           "type": "array"
         }
       },
@@ -347,12 +356,37 @@
       "type": "object"
     },
     "VerificationRecord": {
+      "additionalProperties": false,
       "description": "Independent verification audit record for the winning candidate.",
       "properties": {
+        "verification_id": {
+          "description": "Unique identifier for the verification session",
+          "title": "Verification Id",
+          "type": "string"
+        },
+        "experiment_id": {
+          "description": "Associated experiment identifier",
+          "title": "Experiment Id",
+          "type": "string"
+        },
         "candidate_id": {
           "description": "Frozen candidate configuration tested",
           "title": "Candidate Id",
           "type": "string"
+        },
+        "original_run_id": {
+          "description": "Search run ID where candidate was selected",
+          "title": "Original Run Id",
+          "type": "string"
+        },
+        "verification_run_id": {
+          "description": "Fresh run ID under which rerun was conducted",
+          "title": "Verification Run Id",
+          "type": "string"
+        },
+        "verification_verdict": {
+          "$ref": "#/$defs/VerificationState",
+          "description": "Enum: VERIFIED, VERIFICATION_FAILED, VERIFICATION_INCONCLUSIVE"
         },
         "drift_analysis": {
           "anyOf": [
@@ -366,11 +400,6 @@
           "default": null,
           "description": "Drift analysis"
         },
-        "experiment_id": {
-          "description": "Associated experiment identifier",
-          "title": "Experiment Id",
-          "type": "string"
-        },
         "final_decision_notes": {
           "anyOf": [
             {
@@ -383,25 +412,6 @@
           "default": null,
           "description": "Explanation of confirmation or failure",
           "title": "Final Decision Notes"
-        },
-        "original_run_id": {
-          "description": "Search run ID where candidate was selected",
-          "title": "Original Run Id",
-          "type": "string"
-        },
-        "verification_id": {
-          "description": "Unique identifier for the verification session",
-          "title": "Verification Id",
-          "type": "string"
-        },
-        "verification_run_id": {
-          "description": "Fresh run ID under which rerun was conducted",
-          "title": "Verification Run Id",
-          "type": "string"
-        },
-        "verification_verdict": {
-          "$ref": "#/$defs/VerificationState",
-          "description": "Enum: VERIFIED, VERIFICATION_FAILED, VERIFICATION_INCONCLUSIVE"
         }
       },
       "required": [
@@ -428,21 +438,47 @@
       "type": "string"
     },
     "WorkloadSpec": {
+      "additionalProperties": false,
       "description": "Defines the offered traffic profile to ensure benchmark repeatability.",
       "properties": {
+        "schema_version": {
+          "description": "String version identifier (e.g., '1.0.0')",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "workload_name": {
+          "description": "Identifier for the workload profile",
+          "title": "Workload Name",
+          "type": "string"
+        },
+        "fixture_id": {
+          "description": "Hash or path of the versioned prompt dataset",
+          "title": "Fixture Id",
+          "type": "string"
+        },
         "arrival_mode": {
           "$ref": "#/$defs/ArrivalMode",
           "description": "Arrival process"
+        },
+        "target_offered_rate": {
+          "description": "Intended requests per second (float, requests/s)",
+          "title": "Target Offered Rate",
+          "type": "number"
         },
         "concurrency_limit": {
           "description": "Maximum concurrent requests in flight",
           "title": "Concurrency Limit",
           "type": "integer"
         },
-        "fixture_id": {
-          "description": "Hash or path of the versioned prompt dataset",
-          "title": "Fixture Id",
-          "type": "string"
+        "warmup_duration_s": {
+          "description": "Warm-up window duration in seconds",
+          "title": "Warmup Duration S",
+          "type": "integer"
+        },
+        "measurement_duration_s": {
+          "description": "Active measurement window in seconds",
+          "title": "Measurement Duration S",
+          "type": "integer"
         },
         "max_input_tokens": {
           "description": "Upper bound on input prompt length",
@@ -453,31 +489,6 @@
           "description": "Maximum generated token limit",
           "title": "Max Output Tokens",
           "type": "integer"
-        },
-        "measurement_duration_s": {
-          "description": "Active measurement window in seconds",
-          "title": "Measurement Duration S",
-          "type": "integer"
-        },
-        "schema_version": {
-          "description": "String version identifier (e.g., '1.0.0')",
-          "title": "Schema Version",
-          "type": "string"
-        },
-        "target_offered_rate": {
-          "description": "Intended requests per second (float, requests/s)",
-          "title": "Target Offered Rate",
-          "type": "number"
-        },
-        "warmup_duration_s": {
-          "description": "Warm-up window duration in seconds",
-          "title": "Warmup Duration S",
-          "type": "integer"
-        },
-        "workload_name": {
-          "description": "Identifier for the workload profile",
-          "title": "Workload Name",
-          "type": "string"
         }
       },
       "required": [
@@ -496,23 +507,12 @@
       "type": "object"
     }
   },
+  "additionalProperties": false,
   "description": "Self-contained, inspectable artifact published for users and hackathon judges.",
   "properties": {
-    "artifact_paths": {
-      "additionalProperties": {
-        "type": "string"
-      },
-      "description": "References to raw measurement files and logs",
-      "title": "Artifact Paths",
-      "type": "object"
-    },
-    "baseline_summary": {
-      "$ref": "#/$defs/BaselineSummary",
-      "description": "Baseline metrics and verdict"
-    },
-    "cost_accounting_basis": {
-      "description": "Explicit source of pricing data or declaration of unavailable",
-      "title": "Cost Accounting Basis",
+    "report_id": {
+      "description": "Unique report identifier",
+      "title": "Report Id",
       "type": "string"
     },
     "created_at": {
@@ -520,26 +520,19 @@
       "title": "Created At",
       "type": "string"
     },
+    "experiment_spec": {
+      "$ref": "#/$defs/ExperimentSpec",
+      "description": "Complete immutable specification"
+    },
     "environment_fingerprint": {
       "additionalProperties": true,
       "description": "Full hardware/runtime environment documentation",
       "title": "Environment Fingerprint",
       "type": "object"
     },
-    "experiment_spec": {
-      "$ref": "#/$defs/ExperimentSpec",
-      "description": "Complete immutable specification"
-    },
-    "limitations_disclosed": {
-      "additionalProperties": true,
-      "description": "Tested search space bounds and known environment constraints",
-      "title": "Limitations Disclosed",
-      "type": "object"
-    },
-    "report_id": {
-      "description": "Unique report identifier",
-      "title": "Report Id",
-      "type": "string"
+    "baseline_summary": {
+      "$ref": "#/$defs/BaselineSummary",
+      "description": "Baseline metrics and verdict"
     },
     "search_summary": {
       "$ref": "#/$defs/SearchSummary",
@@ -568,6 +561,25 @@
       ],
       "default": null,
       "description": "Complete verification audit"
+    },
+    "limitations_disclosed": {
+      "additionalProperties": true,
+      "description": "Tested search space bounds and known environment constraints",
+      "title": "Limitations Disclosed",
+      "type": "object"
+    },
+    "cost_accounting_basis": {
+      "description": "Explicit source of pricing data or declaration of unavailable",
+      "title": "Cost Accounting Basis",
+      "type": "string"
+    },
+    "artifact_paths": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "References to raw measurement files and logs",
+      "title": "Artifact Paths",
+      "type": "object"
     }
   },
   "required": [

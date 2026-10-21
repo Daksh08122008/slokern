@@ -11,21 +11,47 @@
       "type": "string"
     }
   },
+  "additionalProperties": false,
   "description": "Defines the offered traffic profile to ensure benchmark repeatability.",
   "properties": {
+    "schema_version": {
+      "description": "String version identifier (e.g., '1.0.0')",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "workload_name": {
+      "description": "Identifier for the workload profile",
+      "title": "Workload Name",
+      "type": "string"
+    },
+    "fixture_id": {
+      "description": "Hash or path of the versioned prompt dataset",
+      "title": "Fixture Id",
+      "type": "string"
+    },
     "arrival_mode": {
       "$ref": "#/$defs/ArrivalMode",
       "description": "Arrival process"
+    },
+    "target_offered_rate": {
+      "description": "Intended requests per second (float, requests/s)",
+      "title": "Target Offered Rate",
+      "type": "number"
     },
     "concurrency_limit": {
       "description": "Maximum concurrent requests in flight",
       "title": "Concurrency Limit",
       "type": "integer"
     },
-    "fixture_id": {
-      "description": "Hash or path of the versioned prompt dataset",
-      "title": "Fixture Id",
-      "type": "string"
+    "warmup_duration_s": {
+      "description": "Warm-up window duration in seconds",
+      "title": "Warmup Duration S",
+      "type": "integer"
+    },
+    "measurement_duration_s": {
+      "description": "Active measurement window in seconds",
+      "title": "Measurement Duration S",
+      "type": "integer"
     },
     "max_input_tokens": {
       "description": "Upper bound on input prompt length",
@@ -36,31 +62,6 @@
       "description": "Maximum generated token limit",
       "title": "Max Output Tokens",
       "type": "integer"
-    },
-    "measurement_duration_s": {
-      "description": "Active measurement window in seconds",
-      "title": "Measurement Duration S",
-      "type": "integer"
-    },
-    "schema_version": {
-      "description": "String version identifier (e.g., '1.0.0')",
-      "title": "Schema Version",
-      "type": "string"
-    },
-    "target_offered_rate": {
-      "description": "Intended requests per second (float, requests/s)",
-      "title": "Target Offered Rate",
-      "type": "number"
-    },
-    "warmup_duration_s": {
-      "description": "Warm-up window duration in seconds",
-      "title": "Warmup Duration S",
-      "type": "integer"
-    },
-    "workload_name": {
-      "description": "Identifier for the workload profile",
-      "title": "Workload Name",
-      "type": "string"
     }
   },
   "required": [
