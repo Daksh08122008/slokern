@@ -1,111 +1,188 @@
 # SLOKern Engineering Ownership & Execution Model
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
-> **Status:** Active Reference / Governance (Transitioned to Single-Owner Execution: October 18, 2026)  
+> **Status:** Active Reference / Single Authoritative Source of Ownership & Governance  
+> **Execution Model:** Single-Owner Core Execution with Bounded Collaborators (Updated: October 19, 2026)  
 > **Sole Technical Owner & Integration Authority:** Rajdeep  
+> **Collaborators:** Adriraj (Benchmark Integrity, active Oct 21), Daksh (Independent Decision Verification, active Oct 24)  
 > **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
 
 ---
 
-## 1. Ownership & Execution Philosophy
+## 1. Operating Model & Execution Philosophy
 
-Starting October 18, 2026, SLOKern transitions from a distributed 5-person team sprint to **single-owner technical execution led by Rajdeep**. Rajdeep serves as the sole accountable technical owner and integration authority for all remaining architecture, engineering, validation, and hackathon submission deliverables.
+SLOKern operates under a **single technical owner with bounded contributions from two collaborators** (a hybrid solo-core model).
 
-### Guiding Principles for Single-Owner Execution
+The ownership model is:
 
-- **Consolidated Accountability:** A single engineer owns end-to-end coherence, eliminating coordination friction, handoff overhead, and multi-party synchronization delays.
-- **Preserved Architectural Boundaries:** Consolidating execution does *not* mean collapsing architecture. The system remains a contract-driven modular monolith with explicit boundaries (`src/slokern/contracts/`).
-- **Deterministic Governance:** Deterministic Python modules continue to own all metric calculations, constraint evaluations, experiment budget limits, and verification verdicts. No LLM or heuristic overrides deterministic logic.
-- **Empirical Evidence First:** Every recommendation must be backed by unaggregated raw measurements (`RawRequestMeasurement`) and physical environment metadata. Offline fixtures and prototype dashboards remain strictly labeled **DEMO DATA**.
-- **Historical Attribution Preserved:** The original functional workstreams and early design contributions from team members (Aman on serving, Daksh on evaluation, Adriraj on benchmarking, and Rohan on search) remain acknowledged in project records and historical ADRs.
+- **Rajdeep:** Sole technical owner, architecture authority, critical-path implementer, integrator, and final submission owner.
+- **Adriraj:** Benchmark integrity and measurement credibility, with active execution beginning **October 21, 2026**.
+- **Daksh:** Independent correctness verification, with active execution beginning **October 24, 2026**.
+
+### Core Invariants of the Operating Model
+
+1. **Consolidated Accountability:** Rajdeep is the sole technical owner, architecture authority, and final release owner. He owns and implements all critical-path subsystems end-to-end.
+2. **Autonomous Minimum Viable Product:** Rajdeep remains capable of executing the complete minimum viable product without waiting for either collaborator. No critical-path milestone is blocked by collaborator availability.
+3. **Bounded Collaborator Start Dates:**
+   - Adriraj is not available for substantive execution before **October 21, 2026**.
+   - Daksh is not available for substantive execution before **October 24, 2026**.
+   - Neither collaborator is assigned tasks before their respective start dates.
+4. **No Assignment to Former Contributors:** Former team members (Aman, Rohan) are no longer participating. No work is assigned to former contributors. Their early design contributions remain acknowledged in historical project records and ADRs.
+5. **Preserved Architecture & Scope Boundaries:** This transition is a restructuring of execution accountability and daily delivery. It is **not** a transfer of architecture authority, a rewrite of the engineering organization, or permission to expand product scope. The modular monolith architecture, Pydantic v2 contracts, deterministic evaluator, 6-run budget invariant, and dual-mode cost policy remain non-negotiable.
 
 ---
 
-## 2. Consolidated Ownership Responsibility Matrix
+## 2. Authoritative Subsystem Ownership Matrix
 
-All core technical responsibilities are consolidated under Rajdeep:
+Every subsystem has exactly one directly accountable owner mapped to actual repository modules:
 
-| Area | Accountable Owner | Core Responsibilities | Key System Artifacts |
-|---|---|---|---|
-| **Architecture & Technical Direction** | **Rajdeep** | Scope boundaries, modular monolith design, Pydantic v2 contracts (`src/slokern/contracts/`), lifecycle state machines, and adherence to non-negotiable principles. | `docs/architecture.md`, `src/slokern/contracts/` |
-| **Optimizer & Candidate Selection** | **Rajdeep** | Bounded search space definition (fixed 2×2 matrix), canonical candidate hashing, search controller (`src/slokern/core/search/`), deterministic ranking logic, and selection rationale. | `src/slokern/core/search/`, `SearchResult` |
-| **Serving Integration & Infrastructure** | **Rajdeep** | Serving runtime deployment (vLLM / Nebius Cloud), serving adapter (`src/slokern/engine/serving/`), parameter read-back, preflight smoke testing, and environment fingerprinting. | `src/slokern/engine/serving/`, `docs/deployment.md` |
-| **Benchmark Pipeline & Load Generation** | **Rajdeep** | Workload fixtures, arrival models (Poisson/constant), subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture (`RawRequestMeasurement`), and metrics engine (`src/slokern/core/metrics/`). | `src/slokern/engine/loadgen/`, `docs/metrics.md` |
-| **Verification & Evaluator Policy** | **Rajdeep** | Deterministic feasibility evaluator (`src/slokern/core/evaluator/`), reason code taxonomy, independent verification runner (`src/slokern/core/verification/`), and evidence audits. | `src/slokern/core/evaluator/`, `docs/decision-policy.md` |
-| **CI, API & End-to-End Validation** | **Rajdeep** | FastAPI control plane (`src/slokern/api/`), CLI commands (`slokern verify / optimize`), contract testing, integration tests, and secret redaction. | `src/slokern/api/`, `src/slokern/cli/`, `tests/` |
-| **Documentation, Demo & Submission** | **Rajdeep** | Living documentation, report generator (`src/slokern/engine/reporting/`), demo script, presentation rehearsal, tool feedback, and official hackathon submission package. | `README.md`, `ROADMAP.md`, `docs/demo-script.md` |
+| Subsystem / Area | Accountable Owner | Active From | Repository Modules & Contracts | Scope & Architectural Responsibilities |
+|---|---|---|---|---|
+| **Architecture & Contracts** | **Rajdeep** | Immediate (Oct 18) | `src/slokern/contracts/`, `docs/architecture.md` | Scope boundaries, modular monolith design, Pydantic v2 schemas (`WorkloadSpec`, `SLOSpec`, `CandidateConfig`, `RunRecord`, `MetricSet`, `FeasibilityResult`, `SearchResult`, `VerificationRecord`, `ReportArtifact`), enums, lifecycle state machine, and interface stability. |
+| **Serving Integration & Infrastructure** | **Rajdeep** *(Hist: Aman)* | Immediate (Oct 18) | `src/slokern/engine/serving/`, `docs/deployment.md` | Base serving adapter interface, deterministic fake adapter (`fake.py`), Nebius cloud adapter (`nebius.py`), preflight smoke testing, environment fingerprinting (`environment_fingerprint`), and parameter read-back. |
+| **Loadgen Subprocess & Workload** | **Rajdeep** *(Hist: Adriraj)* | Immediate (Oct 18) | `src/slokern/engine/loadgen/`, `src/slokern/engine/workload/` | Subprocess load generator execution, arrival schedules (Poisson/constant), client dispatch, unaggregated microsecond event capture to JSONL (`RawRequestMeasurement`), and generator saturation detection. |
+| **Metrics Engine Core** | **Rajdeep** *(Hist: Adriraj)* | Immediate (Oct 18) | `src/slokern/core/metrics/`, `docs/metrics.md` | Deterministic percentiles (p50/p95/p99) calculation, throughput, error rates, sample count thresholds, and separation of offered load from achieved load. |
+| **Feasibility Evaluator Core** | **Rajdeep** *(Hist: Daksh)* | Immediate (Oct 18) | `src/slokern/core/evaluator/`, `docs/decision-policy.md` | Deterministic hard constraint audit engine, machine-readable reason code taxonomy (`enums.py`), pass/fail/inconclusive evaluation, and audit notes. |
+| **Optimizer & Search Controller** | **Rajdeep** *(Hist: Rohan)* | Immediate (Oct 18) | `src/slokern/core/search/`, `src/slokern/core/cost/` | Bounded 2×2 parameter matrix definition, stable candidate hashing, candidate ranking under declared objective (Mode A cost or Mode B proxy), 6-run budget enforcement, and stopping rationale. |
+| **Verification Runner Core** | **Rajdeep** *(Hist: Daksh)* | Immediate (Oct 18) | `src/slokern/core/verification/` | Independent rerun orchestration under a fresh, distinct `verification_run_id`, metric drift computation ($\Delta M$), and final verdict determination. |
+| **Control Plane API & CLI** | **Rajdeep** | Immediate (Oct 18) | `src/slokern/api/`, `src/slokern/cli/`, `src/slokern/engine/store/` | FastAPI routes, SSE streaming progress, CLI commands (`slokern verify / optimize / smoke-test`), artifact store layout, and token/secret redaction. |
+| **Reporting & Presentation** | **Rajdeep** | Immediate (Oct 18) | `src/slokern/engine/reporting/`, `frontend/` | Immutable `ReportArtifact` generator, demo dashboard (offline fixtures strictly labeled **`DEMO DATA`**), demo video production, and Devpost submission. |
+| **Benchmark Integrity & Credibility** | **Adriraj** | **October 21** | `src/slokern/engine/loadgen/`, `src/slokern/core/metrics/`, `fixtures/workloads/` | Measurement schema validation, metadata completeness verification, missing/inconsistent record detection, offered-vs-achieved load audits, reproducible comparison summaries, failed-run test fixtures, and measurement limitations documentation. |
+| **Independent Decision Verification** | **Daksh** | **October 24** | `src/slokern/core/evaluator/`, `src/slokern/core/verification/`, `tests/unit/core/evaluator/` | Independent correctness verification test suite, hard SLO violation tests, feasibility boundary tests, missing/invalid measurement handling, failed/incomplete experiment tests, candidate selection verification under documented objective semantics, observed evidence vs reported recommendations consistency checks, and reproducible defect reports. |
 
 ### Historical Workstream Context
 
-During the initial hackathon phase (October 13–17, 2026), work was conceptualized across five functional roles:
-- **Rajdeep:** Architecture, shared contracts, control plane, integration.
-- **Aman:** Serving infrastructure, runtime deployment, and parameter mutability.
-- **Daksh:** Feasibility evaluator, reason code taxonomy, and independent verification logic.
-- **Adriraj:** Workload generation, raw timestamp capture, and metric definitions.
-- **Rohan:** Search space definition, baseline search, and candidate ranking.
+During the initial hackathon sprint (October 13–17, 2026), architectural concepts were explored across 5 roles:
+- Rajdeep (Architecture, contracts, API), Aman (Serving runtime), Daksh (Evaluator and verification), Adriraj (Benchmarking and metrics), Rohan (Search and ranking).
 
-This historical attribution is preserved in project design records, ADRs, and commit history. Effective October 18, 2026, all active implementation and delivery duties are unified under Rajdeep.
+Effective October 18, 2026, critical-path execution was consolidated under Rajdeep. Effective October 19, 2026, bounded collaborator workstreams are established for Adriraj (starting Oct 21) and Daksh (starting Oct 24), while Aman and Rohan are acknowledged as historical design contributors with no ongoing tasks.
 
 ---
 
-## 3. Subsystem Boundaries & Invariant Guardrails
+## 3. Bounded Collaborator Workstreams
 
-Even under a single engineer, the structural boundaries between subsystems must be strictly preserved in code. This ensures modular testability and prevents architectural decay:
+### 3.1 Adriraj: Benchmark Integrity and Measurement Credibility
+**Execution Window:** October 21–30, 2026.
 
-### 3.1 Serving Reality vs. Optimizer Intent
-- **Physical reality dictates parameters:** The serving adapter reports only what the serving runtime can actually apply, observe, and read back. The optimizer must never invent speculative knobs that cannot be actively enforced on the serving host.
-- **Client vs. Engine Knobs:** Client workload settings (e.g. concurrency limits) must never be substituted for GPU serving-engine settings (e.g. batch size, KV-cache precision).
+Adriraj owns a bounded workstream covering the benchmark-result pipeline and data integrity:
 
-### 3.2 Benchmarking Fidelity vs. Feasibility Evaluation
-- **Raw measurement capture:** The load generator records unaggregated microsecond timestamps, detects generator saturation, and calculates percentiles. It does *not* render SLO pass/fail verdicts.
-- **Deterministic evaluation:** The feasibility evaluator consumes the derived `MetricSet` and applies explicit mathematical rules. It does *not* modify raw timestamps or re-aggregate percentiles.
+- **Specific Responsibilities:**
+  1. Validate recorded benchmark measurements against existing Pydantic schemas (`RawRequestMeasurement`, `MetricSet`).
+  2. Verify completeness of required metrics, units, timestamps, and hardware metadata in experiment artifacts.
+  3. Detect and flag missing, corrupt, or inconsistent result records in JSONL traces.
+  4. Verify that offered arrival rate is rigorously distinguished from achieved throughput, validating client saturation flags (`generator_saturated = True`).
+  5. Produce reproducible candidate-comparison summaries and tables from preserved run evidence.
+  6. Construct test fixtures and automated checks for failed runs, invalid measurements, and aborted requests.
+  7. Document experimental measurement limitations, client overhead, and reproducibility requirements.
+- **Contract Boundary:** Adriraj operates on existing schemas and interfaces. If a required measurement or metadata field is absent, he documents the gap and proposes an update to Rajdeep rather than modifying contracts unilaterally.
+- **Non-Duplication:** Adriraj's work does not duplicate Daksh's decision-correctness test suite or modify search/optimizer logic.
 
-### 3.3 Feasibility Certification vs. Candidate Ranking
-- **Primacy of hard constraints:** The search controller ranks *only* candidates certified as `FEASIBLE` by the evaluator. Infeasible or inconclusive candidates are never ranked or presented as winners.
-- **Deterministic objective:** Ranking follows the declared objective (Mode A verified cost or Mode B systems proxy) without ad-hoc scoring or heuristic overrides.
+### 3.2 Daksh: Independent Decision Verification
+**Execution Window:** October 24–30, 2026.
 
-### 3.4 Presentation Layer vs. Backend Core
-- **Contract consumption:** The frontend dashboard and CLI consume canonical schemas exported from `src/slokern/contracts/`. The UI never re-implements metric aggregation or feasibility rules.
-- **Explicit labeling:** Any offline mock data or synthetic fixtures must be persistently labeled **DEMO DATA**.
+Daksh owns a bounded workstream covering independent correctness verification and evaluator auditing:
 
----
+- **Specific Responsibilities:**
+  1. Construct deterministic verification test suites auditing hard SLO constraint evaluation across boundary thresholds (`<`, `<=`, `>`, `>=`).
+  2. Test candidate feasibility and rejection behavior to ensure infeasible or inconclusive candidates can never win candidate selection.
+  3. Verify system handling of edge cases: missing metrics, invalid measurements, divide-by-zero, empty traces, and client saturation.
+  4. Validate system behavior on failed or incomplete experiments, ensuring `FAILED` execution state is never conflated with `INFEASIBLE` SLO verdict.
+  5. Validate that candidate selection deterministically follows declared objective semantics (Mode A cost ranking or Mode B systems proxy ranking) and tie-breaking rules.
+  6. Audit consistency between observed physical evidence (JSONL traces) and reported recommendations.
+  7. Produce deterministic test suites and reproducible defect reports.
+- **Contract Boundary:** Daksh must not independently redefine SLO semantics, alter optimizer logic, or change shared interfaces. If documented behavior is ambiguous, he records the ambiguity for Rajdeep to resolve.
 
-## 4. Shared Contract Interfaces
+### 3.3 Shared Ownership Rules
 
-Consolidating ownership does not change the 11 canonical Pydantic v2 data models that decouple the pipeline:
-
-1. **`WorkloadSpec`:** Traffic profile, arrival mode, offered rate, duration, and token limits.
-2. **`SLOSpec`:** Non-negotiable latency, throughput, and error rate thresholds.
-3. **`CandidateConfig`:** Requested settings vs. effective read-back settings and environment fingerprint.
-4. **`ExperimentSpec`:** Root document bundling workload, SLO, search space, and budget.
-5. **`RunRecord`:** Single execution run metadata, execution status, and artifact paths.
-6. **`RawRequestMeasurement`:** Granular, unaggregated event capture for every request.
-7. **`MetricSet`:** Aggregated performance indicators with offered/achieved load and saturation flags.
-8. **`FeasibilityResult`:** Constraint-by-constraint audit, reason codes, and overall verdict.
-9. **`SearchResult`:** Bounded exploration history, candidate rankings, and stopping rationale.
-10. **`VerificationRecord`:** Independent verification run audit, metric comparison, drift, and final verdict.
-11. **`ReportArtifact`:** Self-contained, immutable bundle linking recommendation, evidence, and limitations.
-
----
-
-## 5. Single-Owner Development & Validation Workflow
-
-Without the overhead of 5-person stand-ups and branch synchronization, single-owner execution follows a disciplined, evidence-based loop:
-
-1. **Inspect & Bound:** Before implementing any feature, inspect existing interfaces and define explicit acceptance criteria.
-2. **Contract-First Changes:** When data models must evolve, update `src/slokern/contracts/` first, followed by consumers, fixtures, and contract tests.
-3. **Targeted Testing:** Execute contract and unit tests (`pytest tests/contract`, `pytest tests/unit`) after each change to guarantee regression-free execution.
-4. **Branch & Commit Discipline:** Maintain a clean `main` branch. Implement major milestones on task branches (e.g., `feat/fake-adapter`, `feat/nebius-smoke`) and merge only when tests pass.
-5. **Zero Secrets Policy:** Enforce pre-commit scanning to prevent API tokens, credentials, or private IPs from entering source control.
-6. **Traceable Artifacts:** Every benchmark run must produce self-contained JSONL and JSON artifacts on disk. Never rely on in-memory state for verification claims.
+- Every subsystem has exactly one directly accountable owner.
+- Rajdeep is the sole final integration, architecture, and submission authority.
+- Adriraj owns measurement credibility; Daksh owns decision correctness.
+- Neither collaborator owns system architecture or the final release package.
+- Shared contracts (`src/slokern/contracts/`) are altered only with Rajdeep's explicit approval.
+- Contributors submit small, reviewable changes backed by automated tests and evidence.
+- Critical-path functionality must remain executable without pending collaborator contributions.
 
 ---
 
-## 6. Related Documentation
+## 4. Dependency and Integration Policy
+
+The conceptual dependency sequence reflects the real system data flow:
+
+$$\text{Workload \& Configuration} \longrightarrow \text{Candidate Generation} \longrightarrow \text{Serving Execution} \longrightarrow \text{Measurement Capture} \longrightarrow \text{Result Validation} \longrightarrow \text{Feasibility \& Optimization} \longrightarrow \text{Recommendation \& Report}$$
+
+### Integration Rules
+1. **Interface Pre-Confirmation:** Rajdeep defines and confirms the schemas and interfaces collaborators consume before their respective tasks begin.
+2. **Early Work Without Live Infrastructure:**
+   - Adriraj begins work on October 21 using existing schemas (`src/slokern/contracts/metrics.py`) and supplied sample records / fake-adapter JSONL traces before live GPU inference is available.
+   - Daksh begins work on October 24 constructing deterministic verification test cases from documented contracts and controlled test data fixtures (`fixtures/metrics_golden/`).
+3. **No Unilateral Interface Changes:** Neither collaborator needs to modify core implementations or shared contracts simply to start or execute their work.
+4. **Collision Avoidance:** Work on isolated branches or focused pull requests. Do not edit shared contracts or critical engine files concurrently.
+
+---
+
+## 5. Daily Reporting & Acceptance Protocol
+
+To minimize overhead while maintaining absolute clarity across the hybrid team, active contributors report daily using a standardized 6-point update:
+
+### Contributor Daily Report Format
+```text
+Date: YYYY-MM-DD
+Contributor: [ Rajdeep | Adriraj | Daksh ]
+1. What was completed today:
+2. Which files changed:
+3. Which tests or validation commands were executed:
+4. Actual outcomes (passed / failed / skipped):
+5. Outstanding blockers or ambiguities:
+6. Next concrete deliverable:
+```
+
+### Review & Acceptance Rules
+- Rajdeep reviews progress daily and makes explicit decisions to continue, reassign, reduce, or cut work.
+- An unfinished task is **never** marked complete merely because its scheduled calendar date has passed.
+- If a collaborator misses an acceptance criterion:
+  1. Assess whether the task was adequately specified and whether an external blocker exists.
+  2. Narrow, reassign, or complete the critical-path portion directly to protect the delivery timeline.
+
+---
+
+## 6. Prioritization and Contingency
+
+When engineering tradeoffs arise, prioritize tasks in this strict order:
+
+1. **Submission Eligibility & Required Artifacts:** Public repository, Apache 2.0 license, clean clone setup, 3-minute demo video, Devpost filing with tool feedback.
+2. **Real Serving Integration & Trustworthy Measurements:** Live Nebius preflight smoke test, parameter read-back, unaggregated JSONL traces.
+3. **Correct SLO Enforcement & Candidate Feasibility:** Deterministic evaluator, unambiguous reason codes, hard constraint enforcement.
+4. **Reproducible Experiment Records & Recommendations:** Bounded 6-run budget, traceable fingerprints, deterministic ranking.
+5. **Verification, Regression Protection & End-to-End Reliability:** Independent rerun under fresh `verification_run_id`, drift audit, automated test matrix.
+6. **Documentation & Demonstration Readiness:** Rehearsed demo script, verified fallback runbook, truthful evidence presentation.
+7. **Optional Polish & Nonessential Features:** Dashboard visual styling, extra chart animations, advisory AI explainers.
+
+### Contingency Runbook
+- **Infrastructure Delay:** If live GPU access is unavailable, develop and validate against the deterministic fake adapter (`fake.py`). Persistently label all fixture output **`DEMO DATA`**. Never simulate live benchmark success.
+- **Missing Serving Knobs:** If a managed endpoint exposes only client request parameters, record an architectural blocker and deploy containerized vLLM on a dedicated GPU instance or refine search boundaries via ADR.
+- **Client Saturation:** If dispatch skew exceeds 10 ms or offered rate drops > 10%, mark run `CONTAMINATED` (`INCONCLUSIVE`), tune worker concurrency, and rerun.
+- **Verification Failure:** If the independent rerun breaches an SLO, render `VERIFICATION_FAILED` honestly. Never award the verified status.
+- **Time Constraints:** Reduce feature breadth before compromising evidence integrity or correctness.
+
+---
+
+## 7. Subsystem Boundaries & Invariant Guardrails
+
+1. **Serving Reality vs. Optimizer Intent:** The serving adapter reports only what the runtime can apply and read back. The optimizer never invents hypothetical knobs.
+2. **Benchmarking Fidelity vs. Feasibility Evaluation:** Loadgen records raw microsecond timestamps and flags saturation. It does not render verdicts. Evaluator applies mathematical rules to derived metrics; it does not alter raw traces.
+3. **Feasibility Certification vs. Candidate Ranking:** Only candidates certified `FEASIBLE` are ranked. Infeasible or contaminated candidates can never win.
+4. **Presentation Layer vs. Backend Core:** UI and CLI consume canonical schemas from `contracts/`. They never duplicate evaluator logic.
+5. **Demo Data Labeling:** All offline mock data and synthetic fixtures must be persistently and unmistakably labeled **`DEMO DATA`**.
+
+---
+
+## 8. Related Documentation
 
 - [System Architecture](architecture.md)
+- [Execution Roadmap (October 19–30, 2026)](../ROADMAP.md)
 - [MVP Scope & Acceptance Checklist](mvp-checklist.md)
-- [Execution Roadmap (October 18–30, 2026)](../ROADMAP.md)
 - [Daily Integration & Verification Checklist](integration-checklist.md)
 - [Architecture Decision Log](decision-log.md)
-- [ADR 0001: MVP Scope & Evidence Policy](adr/0001-mvp-scope-and-evidence.md)
+- [Decision Policy & Verdict Semantics](decision-policy.md)
+- [Metrics Definitions & Aggregation Rules](metrics.md)
+- [Demo Presentation Script & Runbook](demo-script.md)

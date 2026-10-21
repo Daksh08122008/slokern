@@ -219,13 +219,29 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 
 ---
 
+### DEC-0012: Hybrid Solo-Core Execution Restructure & Daily Delivery Roadmap
+- **Date:** 2026-10-19
+- **Question:** How should subsystem ownership, collaborator contributions, and the daily execution schedule from October 19 through October 30 be structured to guarantee a defensible, evidence-backed delivery by October 30, 2026?
+- **Options Considered:**
+  1. Continue purely solo execution by Rajdeep without external audits or collaboration.
+  2. Establish a hybrid solo-core execution model: Rajdeep owns the critical path and final integration; Adriraj executes a bounded benchmark-integrity audit starting October 21; Daksh executes an independent decision-verification audit starting October 24. Former members Aman and Rohan are acknowledged historically with no ongoing tasks.
+- **Decision:** Option 2. Adopt the hybrid solo-core execution model with an explicit daily roadmap (Oct 19–30).
+- **Reason:** Enhances measurement credibility and decision correctness through independent audits while keeping critical-path momentum unimpeded. Rajdeep remains capable of delivering the complete MVP independently without waiting for either collaborator. Explicit start dates (Oct 21 for Adriraj, Oct 24 for Daksh) align with collaborator availability without creating false dependencies.
+- **Owner:** Rajdeep (Sole Technical Owner & Integration Authority)
+- **Affected Contracts/Components:** `ROADMAP.md`, `README.md`, `AGENTS.md`, `docs/ownership.md`, `docs/mvp-checklist.md`, `docs/integration-checklist.md`, `docs/architecture.md`
+- **Evidence:** Documented daily deliverables and acceptance criteria in `ROADMAP.md` covering every date from October 19 through October 30.
+- **Trade-offs:** Requires Rajdeep to package sample schemas and records for Adriraj by Oct 21, and stable contracts/fixtures for Daksh by Oct 23.
+- **Revisit Condition:** None; locked through final submission on October 30, 2026.
+
+---
+
 ## 3. Pending Decisions to Finalize
 
-The following technical decisions remain open and are assigned to Rajdeep for resolution during Phases A and B (October 18–22):
+The following technical decisions remain open and are assigned to Rajdeep for resolution during Phases A and B (October 19–22):
 
-1. **Exact Nebius GPU Instance & Runtime Revision (Rajdeep / Target: Oct 20):** Finalize exact GPU model (e.g., 1× H100 80GB SXM) and confirm exact Nebius API model identifier string and endpoint access for `Nemotron-3-Nano-30B-A3B` (FP8) via preflight smoke test.
+1. **Exact Nebius GPU Instance & Runtime Revision (Rajdeep / Target: Oct 21):** Finalize exact GPU model (e.g., 1× H100 80GB SXM) and confirm exact Nebius API model identifier string and endpoint access for `Nemotron-3-Nano-30B-A3B` (FP8) via preflight smoke test.
 2. **Confirmed Search Space Dimensions & Blocker Resolution (Rajdeep / Target: Oct 21):** Confirm whether the serving endpoint exposes serving-engine controls (vLLM batch concurrency + memory utilization) or only client request parameters. If controls are insufficient, execute the containerized vLLM deployment fallback on Nebius Compute.
-3. **Official Deadline & Submission Verification (Rajdeep / Confirmed: Oct 18):** Target deadline confirmed: **October 30, 2026, 10:00 AM PDT / 10:30 PM IST**.
+3. **Official Deadline & Submission Verification (Rajdeep / Confirmed: Oct 19):** Target deadline confirmed: **October 30, 2026, 10:00 AM PDT / 10:30 PM IST**.
 
 ---
 

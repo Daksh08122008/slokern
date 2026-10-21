@@ -256,7 +256,7 @@ SLOKern enforces strict cost accounting boundaries to prevent fabricated claims:
 | **Target Model Deployment** | `PENDING VERIFICATION` | `Nemotron-3-Nano-30B-A3B` (FP8) selected from catalog; endpoint reachability unverified. |
 | **Live Benchmark Evidence** | `NOT RUN` | No live GPU benchmarks have been executed; zero fabricated claims. |
 | **Demo Dashboard UI** | `IMPLEMENTED` | React + Vite command center in `frontend/`; offline fixtures labeled **`DEMO DATA`**. |
-| **Single-Owner Roadmap** | `DOCUMENTED` | Rebased to Phases A–F (Oct 18–30, 2026) in `ROADMAP.md`. |
+| **Daily Delivery Roadmap** | `DOCUMENTED` | Daily execution plan (Oct 19–30, 2026) established in `ROADMAP.md`. |
 
 ---
 
@@ -354,45 +354,53 @@ SLOKern explicitly discloses its boundaries:
 
 ---
 
-## 13. Single-Owner Roadmap (Phases A–F)
+## 13. Daily Delivery Roadmap (Phases A–F)
 
-Execution is structured into 6 sequential phases spanning **October 18 to October 30, 2026**, targeting the hard submission deadline on **October 30, 2026, at 10:00 AM PDT (10:30 PM IST)**:
+Execution is structured into 6 sequential phases spanning **October 19 to October 30, 2026**, targeting the hard submission deadline on **October 30, 2026, at 10:00 AM PDT (10:30 PM IST)**:
 
 ```mermaid
 flowchart LR
-    PhaseA[Phase A: Audit & Stabilize\nOct 18-19\nDONE] --> PhaseB[Phase B: Real Execution\nOct 20-22\nIN PROGRESS]
+    PhaseA[Phase A: Audit & Freeze\nOct 19\nDONE] --> PhaseB[Phase B: Real Execution\nOct 20-22\nREADY]
     PhaseB --> PhaseC[Phase C: Validate Optimization\nOct 23-25\nPLANNED]
-    PhaseC --> PhaseD[Phase D: Evidence Review\nOct 26-27\nPLANNED]
-    PhaseD --> PhaseE[Phase E: Freeze & Rehearsal\nOct 28-29\nPLANNED]
+    PhaseC --> PhaseD[Phase D: Review & Reproducibility\nOct 26-27\nPLANNED]
+    PhaseD --> PhaseE[Phase E: Defect Closure & Freeze\nOct 28-29\nPLANNED]
     PhaseE --> PhaseF[Phase F: Final Submission\nOct 30, 10:00 AM PDT\nPLANNED]
 ```
 
-- **Phase A (Oct 18–19) — Audit and Stabilize:** Preflight audit completed; single-owner execution baseline established; core interfaces locked.
-- **Phase B (Oct 20–22) — Establish Real Execution:** Finalize Nebius adapter; execute preflight smoke test; confirm NVIDIA model identifier; record baseline benchmark.
-- **Phase C (Oct 23–25) — Validate Optimization:** Execute bounded 2×2 candidate search (4 runs); evaluate hard SLO feasibility; select winning candidate.
-- **Phase D (Oct 26–27) — Independent Evidence Review:** Execute independent verification rerun under fresh run ID; audit metric drift; test error/edge cases; compile report.
-- **Phase E (Oct 28–29) — Freeze and Prepare:** Feature freeze; automated test suite validation; clean clone installation check; record demo video ($\le 3$ minutes).
+- **Phase A (Oct 19) — Audit and Scope Freeze:** Repository audit completed; working baseline established; core interfaces locked.
+- **Phase B (Oct 20–22) — Establish Real Execution:** Finalize Nebius adapter; execute preflight smoke test; confirm NVIDIA model identifier; record baseline benchmark; Adriraj begins benchmark integrity audit on Oct 21.
+- **Phase C (Oct 23–25) — Validate Optimization:** Execute bounded 2×2 candidate search (4 runs); evaluate hard SLO feasibility; select winning candidate; Daksh begins independent decision verification on Oct 24.
+- **Phase D (Oct 26–27) — Independent Review & Reproducibility:** Execute independent verification rerun under fresh run ID; audit metric drift; complete test suites; compile report artifact.
+- **Phase E (Oct 28–29) — Defect Closure & Freeze:** Feature freeze; close critical defects; automated test suite validation; clean clone installation check; record demo video ($\le 3$ minutes).
 - **Phase F (Oct 30) — Submit:** Final repository audit; Devpost submission completed before 10:00 AM PDT (10:30 PM IST) with 4-hour buffer.
 
-See **[ROADMAP.md](ROADMAP.md)** for complete task descriptions, deliverables, and acceptance gates.
+See **[ROADMAP.md](ROADMAP.md)** for complete daily task descriptions, deliverables, and acceptance gates.
 
 ---
 
-## 14. Consolidated Engineering Ownership
+## 14. Subsystem Ownership & Execution Model
 
-SLOKern was originally designed by a 5-person engineering team (Rajdeep, Aman, Daksh, Adriraj, Rohan). Effective **October 18, 2026**, all technical ownership and integration authority are consolidated under **Rajdeep** as sole owner:
+SLOKern operates under a **single technical owner with bounded contributions from two collaborators** (a hybrid solo-core model):
 
-| Functional Responsibility | Accountable Owner | Historical Design Attribution |
-|---|---|---|
-| **Architecture & Technical Direction** | **Rajdeep** | Rajdeep |
-| **Optimizer & Candidate Selection** | **Rajdeep** | Rohan |
-| **Serving & Infrastructure** | **Rajdeep** | Aman |
-| **Benchmark Pipeline & Loadgen** | **Rajdeep** | Adriraj |
-| **Verification & Evaluator** | **Rajdeep** | Daksh |
-| **CI & Validation** | **Rajdeep** | Cross-team |
-| **Documentation, Demo & Submission** | **Rajdeep** | Rajdeep |
+- **Rajdeep:** Sole technical owner, architecture authority, critical-path implementer, integrator, and final submission owner.
+- **Adriraj:** Benchmark integrity and measurement credibility (active execution begins **October 21, 2026**).
+- **Daksh:** Independent correctness verification (active execution begins **October 24, 2026**).
 
-For complete interaction boundaries and single-owner engineering rituals, see **[docs/ownership.md](docs/ownership.md)**.
+Former team members (Aman on serving, Rohan on search) contributed early design work in Phase 1 (Oct 13–17, 2026). They are not participating in current execution, and no ongoing tasks are assigned to them.
+
+| Area / Subsystem | Accountable Owner | Active Window | Historical Attribution |
+|---|---|---|---|
+| **Architecture & Technical Direction** | **Rajdeep** | Full sprint | Rajdeep |
+| **Serving & Infrastructure** | **Rajdeep** | Full sprint | Aman |
+| **Loadgen Subprocess & Workload** | **Rajdeep** | Full sprint | Adriraj |
+| **Evaluator Core & Verification Runner** | **Rajdeep** | Full sprint | Daksh |
+| **Optimizer & Search Controller** | **Rajdeep** | Full sprint | Rohan |
+| **CI, API & End-to-End Integration** | **Rajdeep** | Full sprint | Cross-team |
+| **Documentation, Demo & Submission** | **Rajdeep** | Full sprint | Rajdeep |
+| **Benchmark Integrity & Credibility** | **Adriraj** | **Oct 21–30** | Adriraj |
+| **Independent Decision Verification** | **Daksh** | **Oct 24–30** | Daksh |
+
+For the complete responsibility matrix, collaborator workstream boundaries, and daily rituals, see **[docs/ownership.md](docs/ownership.md)**.
 
 ---
 

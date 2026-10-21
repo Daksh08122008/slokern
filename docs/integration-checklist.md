@@ -2,8 +2,9 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Status:** Active Operational Guide  
-> **Owner:** Rajdeep (Single Technical Owner & Integration Authority)  
-> **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
+> **Sole Technical Owner & Integration Authority:** Rajdeep  
+> **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21), Daksh (Decision Verification, active Oct 24)  
+> **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 ---
 
@@ -29,7 +30,7 @@ Log progress, test output, and remaining risks in the project records:
 #### Daily Progress Log Template
 ```text
 Date: YYYY-MM-DD
-Owner: Rajdeep
+Contributor: [ Rajdeep | Adriraj | Daksh ]
 Phase: [ Phase A | Phase B | Phase C | Phase D | Phase E | Phase F ]
 Status: [ TODO | IN PROGRESS | BLOCKED | DONE ]
 
@@ -66,23 +67,23 @@ Every change that affects data models or API routes must pass the contract test 
 Work progresses in strict dependency order. Never proceed to downstream stages if upstream gates have not been verified.
 
 ```text
-[1. Serving Smoke Test]
+[1. Serving Smoke Test (Rajdeep)]
          ↓
-[2. Valid Single-Run Measurements]
+[2. Valid Single-Run Measurements (Rajdeep) & Integrity Audit (Adriraj, Oct 21)]
          ↓
-[3. Deterministic Evaluator]
+[3. Deterministic Evaluator (Rajdeep)]
          ↓
-[4. Baseline Establishment]
+[4. Baseline Establishment (Rajdeep)]
          ↓
-[5. Bounded Candidate Search]
+[5. Bounded Candidate Search (Rajdeep)]
          ↓
-[6. Feasible Candidate Selection]
+[6. Feasible Candidate Selection (Rajdeep)]
          ↓
-[7. Independent Verification]
+[7. Independent Verification (Rajdeep) & Decision Audit (Daksh, Oct 24)]
          ↓
-[8. Dashboard & Report Integration]
+[8. Dashboard & Report Integration (Rajdeep)]
          ↓
-[9. Demo Hardening & Rehearsal]
+[9. Demo Hardening & Rehearsal (Rajdeep)]
 ```
 
 ### Stage Checkpoints
@@ -91,10 +92,11 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
   - Run `slokern smoke-test` against live endpoint.
   - Verify model name, runtime version, and GPU fingerprint are returned.
   - Assert HTTP 200 response and valid non-empty token stream.
-- [ ] **Step 2: Single-Run Measurement (Rajdeep):**
+- [ ] **Step 2: Single-Run Measurement (Rajdeep) & Benchmark Integrity Audit (Adriraj, from Oct 21):**
   - Dispatch small workload (e.g., 20 requests at 2 req/s).
   - Verify `RawRequestMeasurement` records are written to JSONL with non-zero timestamps.
   - Verify `MetricSet` calculates TTFT, ITL, throughput, and error rate.
+  - Adriraj validates metadata schema conformance, client dispatch skew, and detects generator saturation (`generator_saturated = True`).
 - [ ] **Step 3: Deterministic Evaluator (Rajdeep):**
   - Feed single-run `MetricSet` into `FeasibilityEvaluator`.
   - Assert that an exact threshold violation produces `INFEASIBLE` with the correct reason code.
@@ -103,23 +105,24 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
   - Execute the default/reference serving configuration.
   - Archive baseline raw measurements, metric summary, and verdict.
 - [ ] **Step 5: Bounded Search (Rajdeep):**
-  - Execute `slokern optimize` across 3–5 legal candidates within budget (fixed 2×2 matrix).
+  - Execute `slokern optimize` across legal candidates within budget (fixed 2×2 matrix, 4 candidates).
   - Verify each candidate settings change is applied and verified by the adapter.
   - Verify search stops when budget is exhausted.
 - [ ] **Step 6: Candidate Selection (Rajdeep):**
   - Verify that only `FEASIBLE` candidates are ranked.
   - Verify candidate with best declared objective is selected with documented rationale.
-- [ ] **Step 7: Independent Verification (Rajdeep):**
+- [ ] **Step 7: Independent Verification (Rajdeep) & Decision Verification Audit (Daksh, from Oct 24):**
   - Automatically dispatch `slokern verify` for the winning candidate.
   - Confirm a NEW unique `run_id` is assigned.
   - Verify raw measurements are collected afresh.
   - Confirm final verdict is emitted (`VERIFIED` or `VERIFICATION_FAILED`).
+  - Daksh verifies hard SLO constraint evaluation boundaries, rejection of infeasible candidates, and edge-case handling.
 - [ ] **Step 8: Dashboard & Report Integration (Rajdeep):**
   - Verify web UI renders the experiment run state, candidate comparison, and verification verdict.
   - Confirm exportable Markdown/JSON report compiles and saves to disk.
 - [ ] **Step 9: Demo Hardening (Rajdeep):**
   - Run clean environment setup test.
-  - Validate demo script timing (3–5 minutes).
+  - Validate demo script timing (3 minutes).
 
 ---
 
