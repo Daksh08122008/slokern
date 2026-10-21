@@ -23,3 +23,4 @@ coverage/
 # Generated and local artifacts
 artifacts/
 *.log
+src/slokern.egg-info/
