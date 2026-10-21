@@ -5,7 +5,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Hackathon: Nebius × NVIDIA 2026](https://img.shields.io/badge/Hackathon-Nebius_%C3%97_NVIDIA_2026-76B900.svg)](https://nebiusglobalaihackathon.devpost.com/)
-[![Track: Best Agents and Apps Tracks](https://img.shields.io/badge/Track-Coding_%26_Agentic_Engineering-purple.svg)](https://nebiusglobalaihackathon.devpost.com/)
+[![Track: Best Agents and Apps Tracks](https://img.shields.io/badge/Track-Best_Agents_and_Apps_Tracks-purple.svg)](https://nebiusglobalaihackathon.devpost.com/)
 [![Status: Single--Owner Execution](https://img.shields.io/badge/Status-Single--Owner_Execution-cyan.svg)](docs/ownership.md)
 
 **Product Principle:** *Do not guess the optimal configuration. Find it experimentally, then verify it.*
