@@ -5,15 +5,9 @@ name: SLOKern CI
 
 on:
   push:
-    branches:
-      - main
-      - "feat/**"
-      - ci-workflows
   pull_request:
     branches:
       - main
-      - "feat/**"
-      - ci-workflows
   workflow_dispatch:
 
 concurrency:
