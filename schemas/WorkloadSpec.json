@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "ArrivalMode": {
+      "description": "Workload arrival scheduling distribution.",
+      "enum": [
+        "poisson",
+        "constant",
+        "closed"
+      ],
+      "title": "ArrivalMode",
+      "type": "string"
+    }
+  },
+  "description": "Defines the offered traffic profile to ensure benchmark repeatability.",
+  "properties": {
+    "arrival_mode": {
+      "$ref": "#/$defs/ArrivalMode",
+      "description": "Arrival process"
+    },
+    "concurrency_limit": {
+      "description": "Maximum concurrent requests in flight",
+      "title": "Concurrency Limit",
+      "type": "integer"
+    },
+    "fixture_id": {
+      "description": "Hash or path of the versioned prompt dataset",
+      "title": "Fixture Id",
+      "type": "string"
+    },
+    "max_input_tokens": {
+      "description": "Upper bound on input prompt length",
+      "title": "Max Input Tokens",
+      "type": "integer"
+    },
+    "max_output_tokens": {
+      "description": "Maximum generated token limit",
+      "title": "Max Output Tokens",
+      "type": "integer"
+    },
+    "measurement_duration_s": {
+      "description": "Active measurement window in seconds",
+      "title": "Measurement Duration S",
+      "type": "integer"
+    },
+    "schema_version": {
+      "description": "String version identifier (e.g., '1.0.0')",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_offered_rate": {
+      "description": "Intended requests per second (float, requests/s)",
+      "title": "Target Offered Rate",
+      "type": "number"
+    },
+    "warmup_duration_s": {
+      "description": "Warm-up window duration in seconds",
+      "title": "Warmup Duration S",
+      "type": "integer"
+    },
+    "workload_name": {
+      "description": "Identifier for the workload profile",
+      "title": "Workload Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "workload_name",
+    "fixture_id",
+    "arrival_mode",
+    "target_offered_rate",
+    "concurrency_limit",
+    "warmup_duration_s",
+    "measurement_duration_s",
+    "max_input_tokens",
+    "max_output_tokens"
+  ],
+  "title": "WorkloadSpec",
+  "type": "object"
+}

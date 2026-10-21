@@ -202,26 +202,37 @@ The intended CLI concept includes `slokern verify`; this is not evidence that th
 
 ## 13. Engineering ownership and execution model
 
-Starting October 18, 2026, SLOKern transitions from distributed team workstreams to a **single-owner technical execution model led by Rajdeep**. Rajdeep is the sole accountable technical owner and integration authority for the remaining project execution and submission readiness.
+Starting October 19, 2026, SLOKern operates under a **single technical owner with bounded contributions from two collaborators** (a hybrid solo-core model):
 
-### Consolidated Ownership Matrix
+- **Rajdeep:** Sole technical owner, architecture authority, critical-path implementer, integrator, and final submission owner.
+- **Adriraj:** Benchmark integrity and measurement credibility, with active execution beginning **October 21, 2026**.
+- **Daksh:** Independent correctness verification, with active execution beginning **October 24, 2026**.
 
-| Area | Accountable Owner | Scope and Responsibilities |
-|---|---|---|
-| **Architecture & Technical Direction** | **Rajdeep** | Scope boundaries, modular monolith design, system contracts (`src/slokern/contracts/`), and adherence to non-negotiable principles. |
-| **Optimizer & Candidate Selection** | **Rajdeep** | Bounded search space definition, canonical candidate hashing, search controller (`src/slokern/core/search/`), deterministic ranking logic, and selection rationale. |
-| **Serving Integration & Runtime** | **Rajdeep** | Serving runtime setup (vLLM / Nebius Cloud), serving adapter (`src/slokern/engine/serving/`), parameter read-back, and environment fingerprinting. |
-| **Benchmark Pipeline & Loadgen** | **Rajdeep** | Workload fixtures, arrival models, subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture (`RawRequestMeasurement`), and metric engine (`src/slokern/core/metrics/`). |
-| **Verification & Evaluator Policy** | **Rajdeep** | Deterministic feasibility evaluator (`src/slokern/core/evaluator/`), reason code taxonomy, independent verification runner (`src/slokern/core/verification/`), and evidence audits. |
-| **CI, API & End-to-End Validation** | **Rajdeep** | FastAPI control plane, CLI (`slokern verify / optimize`), contract testing, integration tests, and secret redaction. |
-| **Documentation, Demo & Submission** | **Rajdeep** | Living documentation, report generator, demo script, presentation rehearsal, and official hackathon submission package. |
+Former contributors (Aman on serving, Rohan on search) contributed early design work in Phase 1 (Oct 13–17, 2026). They are not participating in current execution, and no ongoing tasks are assigned to them. Neither Daksh nor Adriraj is available for substantive execution before their respective start dates. Rajdeep remains capable of executing the complete minimum viable product without waiting for either collaborator.
 
-*Historical context:* The original architectural decomposition established 5 distinct functional workstreams (initially designed with contributions from Aman on serving, Daksh on evaluation, Adriraj on benchmarking, and Rohan on search). Those module boundaries and interface contracts remain intact, but all active implementation, integration, and delivery responsibilities are consolidated under Rajdeep.
+### Subsystem Ownership Matrix
 
-Single-owner execution eliminates coordination overhead while preserving contract-first modularity:
-- Changes to shared schemas (`src/slokern/contracts/`) must update consumers, fixtures, tests, and documentation synchronously.
-- All technical claims must be grounded in physical artifacts; no mock success or simulated benchmarks may be presented as live evidence.
-- Follow `ROADMAP.md` for daily phase gates and milestone deliverables leading to the October 30, 2026 submission deadline.
+| Area | Accountable Owner | Active Window | Scope and Responsibilities |
+|---|---|---|---|
+| **Architecture & Technical Direction** | **Rajdeep** | Full sprint | Scope boundaries, modular monolith design, system contracts (`src/slokern/contracts/`), and adherence to non-negotiable principles. |
+| **Optimizer & Candidate Selection** | **Rajdeep** | Full sprint | Bounded search space definition (2×2 matrix), canonical candidate hashing, search controller (`src/slokern/core/search/`), deterministic ranking logic, and selection rationale. |
+| **Serving Integration & Runtime** | **Rajdeep** | Full sprint | Serving runtime setup (vLLM / Nebius Cloud), serving adapter (`src/slokern/engine/serving/`), parameter read-back, preflight smoke testing, and environment fingerprinting. |
+| **Benchmark Pipeline & Loadgen** | **Rajdeep** | Full sprint | Workload fixtures, arrival models, subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture (`RawRequestMeasurement`), and metric engine (`src/slokern/core/metrics/`). |
+| **Verification & Evaluator Policy** | **Rajdeep** | Full sprint | Deterministic feasibility evaluator (`src/slokern/core/evaluator/`), reason code taxonomy, independent verification runner (`src/slokern/core/verification/`), and evidence audits. |
+| **CI, API & End-to-End Validation** | **Rajdeep** | Full sprint | FastAPI control plane (`src/slokern/api/`), CLI (`src/slokern/cli/`), contract testing, integration tests, and secret redaction. |
+| **Documentation, Demo & Submission** | **Rajdeep** | Full sprint | Living documentation, report generator (`src/slokern/engine/reporting/`), demo script, presentation rehearsal, and official hackathon submission package. |
+| **Benchmark Integrity & Credibility** | **Adriraj** | **Oct 21–30** | Benchmark schema validation, required metadata checks, missing/inconsistent record detection, offered-vs-achieved load audits, comparison summaries, failed-run test fixtures, measurement limitations documentation. |
+| **Independent Decision Verification** | **Daksh** | **Oct 24–30** | Independent verification test suite, hard SLO violation tests, feasibility boundary tests, missing/invalid measurement handling, failed experiment tests, candidate selection verification under documented objective semantics, reproducible defect reports. |
+
+### Shared Ownership & Integration Rules
+
+1. **Single Accountable Owner:** Every subsystem has exactly one directly accountable owner.
+2. **Architecture Authority:** Rajdeep is the final integration, architecture, and submission authority.
+3. **Credibility & Correctness:** Adriraj owns measurement credibility; Daksh owns decision correctness. Neither collaborator owns architecture or final release.
+4. **Contract Discipline:** Shared interfaces (`src/slokern/contracts/`) are altered only with Rajdeep's explicit approval. Collaborators document schema gaps or ambiguities rather than unilaterally changing shared data models.
+5. **Autonomous Critical Path:** Critical-path functionality must remain executable without pending collaborator contributions.
+6. **Physical Evidence Standard:** All technical claims must be grounded in physical artifacts (unaggregated JSONL traces, environment fingerprints); no mock success or simulated benchmarks may be presented as live evidence.
+7. **Daily Delivery Alignment:** Follow `ROADMAP.md` for daily engineering objectives, deliverables, acceptance criteria, and fallbacks leading to the October 30, 2026, 10:00 AM PDT (10:30 PM IST) submission deadline. For the complete operational model, see `docs/ownership.md`.
 
 ## 14. Documentation and experiment artifacts
 

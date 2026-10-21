@@ -1,0 +1,118 @@
+{
+  "description": "Granular, unaggregated event capture for every request. Must be preserved for reproducibility.",
+  "properties": {
+    "completed_at": {
+      "description": "Response completion or abort timestamp",
+      "title": "Completed At",
+      "type": "number"
+    },
+    "error_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Error classification if failed",
+      "title": "Error Type"
+    },
+    "first_token_at": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "First token receipt timestamp (nullable for non-streaming or failed requests)",
+      "title": "First Token At"
+    },
+    "http_status": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Response code",
+      "title": "Http Status"
+    },
+    "input_tokens": {
+      "description": "Measured prompt token count",
+      "title": "Input Tokens",
+      "type": "integer"
+    },
+    "is_valid": {
+      "description": "Boolean indicating whether sample is free of client-side measurement anomalies",
+      "title": "Is Valid",
+      "type": "boolean"
+    },
+    "is_warmup": {
+      "description": "Boolean indicating if sample occurred during warm-up (excluded from metrics)",
+      "title": "Is Warmup",
+      "type": "boolean"
+    },
+    "itl_observations_ms": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional list of inter-token intervals in milliseconds",
+      "title": "Itl Observations Ms"
+    },
+    "output_tokens": {
+      "description": "Measured generated token count",
+      "title": "Output Tokens",
+      "type": "integer"
+    },
+    "request_id": {
+      "description": "Unique request identifier",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "run_id": {
+      "description": "Associated run identifier",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "scheduled_at": {
+      "description": "Intended dispatch timestamp (epoch seconds / ISO)",
+      "title": "Scheduled At",
+      "type": "number"
+    },
+    "sent_at": {
+      "description": "Socket write start timestamp",
+      "title": "Sent At",
+      "type": "number"
+    }
+  },
+  "required": [
+    "request_id",
+    "run_id",
+    "scheduled_at",
+    "sent_at",
+    "completed_at",
+    "input_tokens",
+    "output_tokens",
+    "is_warmup",
+    "is_valid"
+  ],
+  "title": "RawRequestMeasurement",
+  "type": "object"
+}

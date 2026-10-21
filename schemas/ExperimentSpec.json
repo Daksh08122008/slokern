@@ -1,0 +1,260 @@
+{
+  "$defs": {
+    "ArrivalMode": {
+      "description": "Workload arrival scheduling distribution.",
+      "enum": [
+        "poisson",
+        "constant",
+        "closed"
+      ],
+      "title": "ArrivalMode",
+      "type": "string"
+    },
+    "ExperimentBudget": {
+      "properties": {
+        "max_candidates": {
+          "description": "Hard upper limit on candidate configurations tested",
+          "title": "Max Candidates",
+          "type": "integer"
+        },
+        "max_cost_limit": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional expenditure ceiling",
+          "title": "Max Cost Limit"
+        },
+        "max_wallclock_seconds": {
+          "description": "Maximum total experiment duration",
+          "title": "Max Wallclock Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_candidates",
+        "max_wallclock_seconds"
+      ],
+      "title": "ExperimentBudget",
+      "type": "object"
+    },
+    "ExperimentVerificationPolicy": {
+      "properties": {
+        "duration_multiplier": {
+          "default": 1.0,
+          "description": "Multiplier for measurement duration during verification",
+          "title": "Duration Multiplier",
+          "type": "number"
+        },
+        "repetitions": {
+          "default": 1,
+          "description": "Number of verification repetitions",
+          "title": "Repetitions",
+          "type": "integer"
+        }
+      },
+      "title": "ExperimentVerificationPolicy",
+      "type": "object"
+    },
+    "SLOConstraint": {
+      "properties": {
+        "metric_name": {
+          "description": "Target metric",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "operator": {
+          "description": "Comparison operator",
+          "enum": [
+            "<=",
+            "<",
+            ">=",
+            ">"
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "statistic": {
+          "description": "Declared statistic",
+          "enum": [
+            "p50",
+            "p90",
+            "p95",
+            "p99",
+            "mean",
+            "max"
+          ],
+          "title": "Statistic",
+          "type": "string"
+        },
+        "threshold": {
+          "description": "Numeric threshold value",
+          "title": "Threshold",
+          "type": "number"
+        },
+        "unit": {
+          "description": "Explicit unit",
+          "enum": [
+            "ms",
+            "s",
+            "requests/s",
+            "fraction"
+          ],
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_name",
+        "statistic",
+        "threshold",
+        "unit",
+        "operator"
+      ],
+      "title": "SLOConstraint",
+      "type": "object"
+    },
+    "SLOSpec": {
+      "description": "Specifies the non-negotiable service-level objectives against which candidates are evaluated.",
+      "properties": {
+        "constraints": {
+          "description": "List of hard constraint rules",
+          "items": {
+            "$ref": "#/$defs/SLOConstraint"
+          },
+          "title": "Constraints",
+          "type": "array"
+        },
+        "min_sample_count": {
+          "description": "Minimum required valid requests to allow an authoritative verdict",
+          "title": "Min Sample Count",
+          "type": "integer"
+        },
+        "slo_id": {
+          "description": "Unique identifier for the SLO declaration",
+          "title": "Slo Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slo_id",
+        "constraints",
+        "min_sample_count"
+      ],
+      "title": "SLOSpec",
+      "type": "object"
+    },
+    "WorkloadSpec": {
+      "description": "Defines the offered traffic profile to ensure benchmark repeatability.",
+      "properties": {
+        "arrival_mode": {
+          "$ref": "#/$defs/ArrivalMode",
+          "description": "Arrival process"
+        },
+        "concurrency_limit": {
+          "description": "Maximum concurrent requests in flight",
+          "title": "Concurrency Limit",
+          "type": "integer"
+        },
+        "fixture_id": {
+          "description": "Hash or path of the versioned prompt dataset",
+          "title": "Fixture Id",
+          "type": "string"
+        },
+        "max_input_tokens": {
+          "description": "Upper bound on input prompt length",
+          "title": "Max Input Tokens",
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "description": "Maximum generated token limit",
+          "title": "Max Output Tokens",
+          "type": "integer"
+        },
+        "measurement_duration_s": {
+          "description": "Active measurement window in seconds",
+          "title": "Measurement Duration S",
+          "type": "integer"
+        },
+        "schema_version": {
+          "description": "String version identifier (e.g., '1.0.0')",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "target_offered_rate": {
+          "description": "Intended requests per second (float, requests/s)",
+          "title": "Target Offered Rate",
+          "type": "number"
+        },
+        "warmup_duration_s": {
+          "description": "Warm-up window duration in seconds",
+          "title": "Warmup Duration S",
+          "type": "integer"
+        },
+        "workload_name": {
+          "description": "Identifier for the workload profile",
+          "title": "Workload Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "workload_name",
+        "fixture_id",
+        "arrival_mode",
+        "target_offered_rate",
+        "concurrency_limit",
+        "warmup_duration_s",
+        "measurement_duration_s",
+        "max_input_tokens",
+        "max_output_tokens"
+      ],
+      "title": "WorkloadSpec",
+      "type": "object"
+    }
+  },
+  "description": "The root document defining an entire optimization experiment.",
+  "properties": {
+    "budget": {
+      "$ref": "#/$defs/ExperimentBudget",
+      "description": "Experiment budget"
+    },
+    "experiment_id": {
+      "description": "Unique identifier for the experiment session",
+      "title": "Experiment Id",
+      "type": "string"
+    },
+    "search_space": {
+      "additionalProperties": true,
+      "description": "Declared legal parameter ranges and candidate generation rules",
+      "title": "Search Space",
+      "type": "object"
+    },
+    "slo": {
+      "$ref": "#/$defs/SLOSpec",
+      "description": "Embedded SLOSpec"
+    },
+    "verification_policy": {
+      "$ref": "#/$defs/ExperimentVerificationPolicy",
+      "description": "Rules governing the independent verification rerun"
+    },
+    "workload": {
+      "$ref": "#/$defs/WorkloadSpec",
+      "description": "Embedded WorkloadSpec"
+    }
+  },
+  "required": [
+    "experiment_id",
+    "workload",
+    "slo",
+    "search_space",
+    "budget"
+  ],
+  "title": "ExperimentSpec",
+  "type": "object"
+}

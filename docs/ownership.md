@@ -1,111 +1,110 @@
 # SLOKern Engineering Ownership & Execution Model
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
-> **Status:** Active Reference / Governance (Transitioned to Single-Owner Execution: October 18, 2026)  
+> **Status:** Canonical Single Source of Truth for Subsystem Ownership & Governance  
+> **Execution Model:** Single-Owner Core Execution with Bounded Collaborators  
 > **Sole Technical Owner & Integration Authority:** Rajdeep  
-> **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
+> **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21), Daksh (Decision Verification, active Oct 24)  
+> **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/implementation-status.md](implementation-status.md)
 
 ---
 
-## 1. Ownership & Execution Philosophy
+## 1. Operating Model & Accountability Governance
 
-Starting October 18, 2026, SLOKern transitions from a distributed 5-person team sprint to **single-owner technical execution led by Rajdeep**. Rajdeep serves as the sole accountable technical owner and integration authority for all remaining architecture, engineering, validation, and hackathon submission deliverables.
+SLOKern operates under a **hybrid solo-core model**: a single technical owner (Rajdeep) accountable for architecture and critical-path implementation, augmented by bounded collaborator workstreams for data integrity (Adriraj) and independent decision verification (Daksh).
 
-### Guiding Principles for Single-Owner Execution
-
-- **Consolidated Accountability:** A single engineer owns end-to-end coherence, eliminating coordination friction, handoff overhead, and multi-party synchronization delays.
-- **Preserved Architectural Boundaries:** Consolidating execution does *not* mean collapsing architecture. The system remains a contract-driven modular monolith with explicit boundaries (`src/slokern/contracts/`).
-- **Deterministic Governance:** Deterministic Python modules continue to own all metric calculations, constraint evaluations, experiment budget limits, and verification verdicts. No LLM or heuristic overrides deterministic logic.
-- **Empirical Evidence First:** Every recommendation must be backed by unaggregated raw measurements (`RawRequestMeasurement`) and physical environment metadata. Offline fixtures and prototype dashboards remain strictly labeled **DEMO DATA**.
-- **Historical Attribution Preserved:** The original functional workstreams and early design contributions from team members (Aman on serving, Daksh on evaluation, Adriraj on benchmarking, and Rohan on search) remain acknowledged in project records and historical ADRs.
-
----
-
-## 2. Consolidated Ownership Responsibility Matrix
-
-All core technical responsibilities are consolidated under Rajdeep:
-
-| Area | Accountable Owner | Core Responsibilities | Key System Artifacts |
-|---|---|---|---|
-| **Architecture & Technical Direction** | **Rajdeep** | Scope boundaries, modular monolith design, Pydantic v2 contracts (`src/slokern/contracts/`), lifecycle state machines, and adherence to non-negotiable principles. | `docs/architecture.md`, `src/slokern/contracts/` |
-| **Optimizer & Candidate Selection** | **Rajdeep** | Bounded search space definition (fixed 2×2 matrix), canonical candidate hashing, search controller (`src/slokern/core/search/`), deterministic ranking logic, and selection rationale. | `src/slokern/core/search/`, `SearchResult` |
-| **Serving Integration & Infrastructure** | **Rajdeep** | Serving runtime deployment (vLLM / Nebius Cloud), serving adapter (`src/slokern/engine/serving/`), parameter read-back, preflight smoke testing, and environment fingerprinting. | `src/slokern/engine/serving/`, `docs/deployment.md` |
-| **Benchmark Pipeline & Load Generation** | **Rajdeep** | Workload fixtures, arrival models (Poisson/constant), subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture (`RawRequestMeasurement`), and metrics engine (`src/slokern/core/metrics/`). | `src/slokern/engine/loadgen/`, `docs/metrics.md` |
-| **Verification & Evaluator Policy** | **Rajdeep** | Deterministic feasibility evaluator (`src/slokern/core/evaluator/`), reason code taxonomy, independent verification runner (`src/slokern/core/verification/`), and evidence audits. | `src/slokern/core/evaluator/`, `docs/decision-policy.md` |
-| **CI, API & End-to-End Validation** | **Rajdeep** | FastAPI control plane (`src/slokern/api/`), CLI commands (`slokern verify / optimize`), contract testing, integration tests, and secret redaction. | `src/slokern/api/`, `src/slokern/cli/`, `tests/` |
-| **Documentation, Demo & Submission** | **Rajdeep** | Living documentation, report generator (`src/slokern/engine/reporting/`), demo script, presentation rehearsal, tool feedback, and official hackathon submission package. | `README.md`, `ROADMAP.md`, `docs/demo-script.md` |
-
-### Historical Workstream Context
-
-During the initial hackathon phase (October 13–17, 2026), work was conceptualized across five functional roles:
-- **Rajdeep:** Architecture, shared contracts, control plane, integration.
-- **Aman:** Serving infrastructure, runtime deployment, and parameter mutability.
-- **Daksh:** Feasibility evaluator, reason code taxonomy, and independent verification logic.
-- **Adriraj:** Workload generation, raw timestamp capture, and metric definitions.
-- **Rohan:** Search space definition, baseline search, and candidate ranking.
-
-This historical attribution is preserved in project design records, ADRs, and commit history. Effective October 18, 2026, all active implementation and delivery duties are unified under Rajdeep.
+### Core Invariants:
+1. **Single Accountable Owner:** Every subsystem has exactly one directly accountable owner. No shared, diffuse, or team-level ownership.
+2. **Autonomous Critical Path:** Rajdeep remains capable of delivering the complete minimum viable product without waiting for either collaborator. No critical-path milestone is blocked by collaborator availability.
+3. **Bounded Collaborator Start Dates:**
+   - **Adriraj:** Active execution window: **October 21–30, 2026**. Focus: measurement credibility, benchmark schema validation, load-generation integrity audits.
+   - **Daksh:** Active execution window: **October 24–30, 2026**. Focus: decision correctness verification, hard SLO boundary auditing, optimizer validation.
+4. **Historical Contributors:** Former team members (Aman on serving, Rohan on search) contributed early design work in Phase 1 (Oct 13–17, 2026). They are not participating in current execution, and no ongoing tasks are assigned to them.
+5. **Concentration Risk Policy (BLK-07):** Because Rajdeep is currently accountable for more than half of all subsystems (69%), non-essential subsystems (FastAPI control plane, React frontend) are formally deferred to post-hackathon execution to protect delivery of the core inference verification pipeline.
 
 ---
 
-## 3. Subsystem Boundaries & Invariant Guardrails
+## 2. Authoritative Subsystem Ownership Matrix
 
-Even under a single engineer, the structural boundaries between subsystems must be strictly preserved in code. This ensures modular testability and prevents architectural decay:
-
-### 3.1 Serving Reality vs. Optimizer Intent
-- **Physical reality dictates parameters:** The serving adapter reports only what the serving runtime can actually apply, observe, and read back. The optimizer must never invent speculative knobs that cannot be actively enforced on the serving host.
-- **Client vs. Engine Knobs:** Client workload settings (e.g. concurrency limits) must never be substituted for GPU serving-engine settings (e.g. batch size, KV-cache precision).
-
-### 3.2 Benchmarking Fidelity vs. Feasibility Evaluation
-- **Raw measurement capture:** The load generator records unaggregated microsecond timestamps, detects generator saturation, and calculates percentiles. It does *not* render SLO pass/fail verdicts.
-- **Deterministic evaluation:** The feasibility evaluator consumes the derived `MetricSet` and applies explicit mathematical rules. It does *not* modify raw timestamps or re-aggregate percentiles.
-
-### 3.3 Feasibility Certification vs. Candidate Ranking
-- **Primacy of hard constraints:** The search controller ranks *only* candidates certified as `FEASIBLE` by the evaluator. Infeasible or inconclusive candidates are never ranked or presented as winners.
-- **Deterministic objective:** Ranking follows the declared objective (Mode A verified cost or Mode B systems proxy) without ad-hoc scoring or heuristic overrides.
-
-### 3.4 Presentation Layer vs. Backend Core
-- **Contract consumption:** The frontend dashboard and CLI consume canonical schemas exported from `src/slokern/contracts/`. The UI never re-implements metric aggregation or feasibility rules.
-- **Explicit labeling:** Any offline mock data or synthetic fixtures must be persistently labeled **DEMO DATA**.
+| SUB-ID | Subsystem | Accountable owner (+status) | Responsibility | Current status | Dependencies | Next deliverable | Acceptance criterion | Proposed delegate (optional) |
+|---|---|---|---|---|---|---|---|---|
+| **SUB-01** | Architecture & Scope Governance | Rajdeep (CONFIRMED) | Architectural integrity, scope freeze enforcement, decision policies, and hackathon compliance. | IMPLEMENTED / STATIC | None | Ratified MVP Scope Freeze & DEC resolutions | Acceptance of `docs/implementation-status.md` as canonical scope. | None |
+| **SUB-02** | Shared Contracts & Schema Registry | Rajdeep (CONFIRMED) | Pydantic v2 schemas (`src/slokern/contracts/`), strict model validation, and committed JSON schema emission. | IMPLEMENTED / UNIT | None | JSON schema export script (`scripts/gen_contracts.py`) | Schemas exported to `schemas/` matching all 11 models. | None |
+| **SUB-03** | Feasibility Evaluator Core | Rajdeep (CONFIRMED) | Deterministic evaluation of `MetricSet` against hard `SLOSpec`, reason code assignment, and boundary safety. | IMPLEMENTED / UNIT | SUB-02 | Evaluator boundary patch for NaN and negative values | NaN evaluates to INCONCLUSIVE; tests pass. | Daksh (Audit active Oct 24) |
+| **SUB-04** | Candidate Identity & Deterministic Ranking | Rajdeep (INTERIM) | Deterministic candidate ID generation, 2×2 parameter matrix definition, and ranking by declared objective. | IMPLEMENTED / UNIT | SUB-02, SUB-03 | Float/integer canonicalization in candidate hashing | `generate_candidate_id` produces identical hash for int and float. | None |
+| **SUB-05** | Serving Adapter & Runtime Infrastructure | Rajdeep (INTERIM) | Serving runtime adapter interface, deterministic `FakeServingAdapter`, and Nebius Cloud adapter. | ABSENT / NONE | DEC-01 | Working `FakeServingAdapter` generating synthetic responses | `tests/integration/test_pipeline_fake_adapter.py` passes offline. | None |
+| **SUB-06** | Subprocess Load Generator & Workload Fixtures | Rajdeep (CONFIRMED) | Subprocess request dispatch, Poisson/constant scheduling, saturation detection, and raw JSONL logging. | ABSENT / NONE | SUB-02, SUB-05 | Minimal request dispatcher writing `.jsonl` recordings | Output JSONL passes validation against `RawRequestMeasurement`. | Adriraj (Audit active Oct 21) |
+| **SUB-07** | Metrics Engine Core | Rajdeep (CONFIRMED) | Deterministic derivation of `MetricSet` from raw request traces, percentiles, throughput, and error rates. | ABSENT / NONE | SUB-02, SUB-06 | Percentile and throughput aggregation functions | `tests/unit/core/metrics/test_percentiles.py` passes on JSONL fixture. | Adriraj (Audit active Oct 21) |
+| **SUB-08** | Experiment Orchestration & Run Lifecycle | Rajdeep (INTERIM) | Single-run executor, multi-candidate search controller, 6-run budget enforcement, and run persistence. | ABSENT / NONE | SUB-04, SUB-05, SUB-06, SUB-07 | Single-run execution pipeline script | Complete single run executes end-to-end and saves `RunRecord`. | None |
+| **SUB-09** | Independent Verification Engine | Rajdeep (CONFIRMED) | Independent rerun orchestration under fresh run ID, metric drift computation ($\Delta M$), and verification verdict. | ABSENT / NONE | SUB-03, SUB-08 | Drift comparison and verification verdict evaluator | Drift calculation emits VERIFIED or VERIFICATION_FAILED. | Daksh (Audit active Oct 24) |
+| **SUB-10** | Report Artifact Generator | Rajdeep (INTERIM) | Compilation of self-contained Markdown and JSON `ReportArtifact` linking headline metrics to physical traces. | ABSENT / NONE | SUB-02, SUB-08, SUB-09 | Markdown report serializer script | Markdown report generated with physical trace paths and fingerprints. | None |
+| **SUB-11** | Control Plane API & CLI | Rajdeep (INTERIM) | Minimal CLI runner (`slokern verify`, `slokern optimize`, `slokern smoke-test`); FastAPI REST app (deferred). | ABSENT / NONE | SUB-08, SUB-09, SUB-10 | CLI entry point implementing `slokern verify` | `slokern --help` executes and returns exit code 0. | None |
+| **SUB-12** | Frontend Command Center & Presentation | Rajdeep (INTERIM) | React + Vite UI dashboard (deferred to post-MVP). | ABSENT / NONE | SUB-11 | Scope deferral notice | Formal freeze documenting UI as out of MVP critical path. | None |
+| **SUB-13** | CI/CD, Packaging & Test Automation | Rajdeep (CONFIRMED) | GitHub Actions CI workflow, packaging metadata (`pyproject.toml`), test harness, and baseline hygiene. | PARTIAL / UNIT | None | Working tree baseline cleanup & build tool hardening | Clean `git status --porcelain` and reproducible editable install. | None |
 
 ---
 
-## 4. Shared Contract Interfaces
+## 3. Supporting Collaborator Workstreams
 
-Consolidating ownership does not change the 11 canonical Pydantic v2 data models that decouple the pipeline:
+### 3.1 Adriraj: Benchmark Integrity & Measurement Credibility
+- **Status:** CONFIRMED
+- **Active Window:** October 21–30, 2026.
+- **Accountable Area:** Data integrity auditing for `SUB-06` (Loadgen) and `SUB-07` (Metrics).
+- **Core Responsibilities:**
+  1. Validate recorded benchmark measurements against existing Pydantic schemas (`RawRequestMeasurement`, `MetricSet`).
+  2. Verify completeness of required metrics, units, timestamps, and hardware metadata in experiment artifacts.
+  3. Detect and flag missing, corrupt, or inconsistent record entries in JSONL traces.
+  4. Audit offered arrival rates against achieved throughput to validate client saturation flags (`generator_saturated = True`).
+  5. Construct automated test fixtures for failed runs, invalid measurements, and aborted requests.
+  6. Document experimental measurement limitations, client overhead, and reproducibility requirements.
+- **Boundary Rule:** Adriraj does not modify shared contracts or optimizer logic. Gaps are reported to Rajdeep via documented defect reports.
 
-1. **`WorkloadSpec`:** Traffic profile, arrival mode, offered rate, duration, and token limits.
-2. **`SLOSpec`:** Non-negotiable latency, throughput, and error rate thresholds.
-3. **`CandidateConfig`:** Requested settings vs. effective read-back settings and environment fingerprint.
-4. **`ExperimentSpec`:** Root document bundling workload, SLO, search space, and budget.
-5. **`RunRecord`:** Single execution run metadata, execution status, and artifact paths.
-6. **`RawRequestMeasurement`:** Granular, unaggregated event capture for every request.
-7. **`MetricSet`:** Aggregated performance indicators with offered/achieved load and saturation flags.
-8. **`FeasibilityResult`:** Constraint-by-constraint audit, reason codes, and overall verdict.
-9. **`SearchResult`:** Bounded exploration history, candidate rankings, and stopping rationale.
-10. **`VerificationRecord`:** Independent verification run audit, metric comparison, drift, and final verdict.
-11. **`ReportArtifact`:** Self-contained, immutable bundle linking recommendation, evidence, and limitations.
+### 3.2 Daksh: Independent Decision Verification
+- **Status:** CONFIRMED
+- **Active Window:** October 24–30, 2026.
+- **Accountable Area:** Correctness verification auditing for `SUB-03` (Evaluator) and `SUB-09` (Verification).
+- **Core Responsibilities:**
+  1. Construct deterministic test suites auditing hard SLO constraint evaluation across boundary thresholds (`<`, `<=`, `>`, `>=`).
+  2. Test candidate feasibility and rejection behavior to ensure non-feasible candidates never win selection.
+  3. Verify system handling of edge cases: missing metrics, invalid measurements, divide-by-zero, empty traces, and client saturation.
+  4. Validate system behavior on failed or incomplete experiments, ensuring `FAILED` execution state is never conflated with `INFEASIBLE` SLO verdict.
+  5. Validate that candidate selection deterministically follows declared objective semantics and tie-breaking rules.
+  6. Audit consistency between observed physical evidence (JSONL traces) and reported recommendations.
+- **Boundary Rule:** Daksh does not alter contracts or optimizer implementation. Ambiguities are escalated to Rajdeep.
 
 ---
 
-## 5. Single-Owner Development & Validation Workflow
+## 4. Historical Contributors
+The following individuals contributed early architectural explorations during Phase 1 (October 13–17, 2026):
+- **Aman:** Historical serving runtime designs.
+- **Rohan:** Historical search and ranking designs.
 
-Without the overhead of 5-person stand-ups and branch synchronization, single-owner execution follows a disciplined, evidence-based loop:
-
-1. **Inspect & Bound:** Before implementing any feature, inspect existing interfaces and define explicit acceptance criteria.
-2. **Contract-First Changes:** When data models must evolve, update `src/slokern/contracts/` first, followed by consumers, fixtures, and contract tests.
-3. **Targeted Testing:** Execute contract and unit tests (`pytest tests/contract`, `pytest tests/unit`) after each change to guarantee regression-free execution.
-4. **Branch & Commit Discipline:** Maintain a clean `main` branch. Implement major milestones on task branches (e.g., `feat/fake-adapter`, `feat/nebius-smoke`) and merge only when tests pass.
-5. **Zero Secrets Policy:** Enforce pre-commit scanning to prevent API tokens, credentials, or private IPs from entering source control.
-6. **Traceable Artifacts:** Every benchmark run must produce self-contained JSONL and JSON artifacts on disk. Never rely on in-memory state for verification claims.
+Both contributors are no longer participating in execution. No tasks or ongoing responsibilities are assigned to them.
 
 ---
 
-## 6. Related Documentation
+## 5. Governance Protocols
 
-- [System Architecture](architecture.md)
-- [MVP Scope & Acceptance Checklist](mvp-checklist.md)
-- [Execution Roadmap (October 18–30, 2026)](../ROADMAP.md)
-- [Daily Integration & Verification Checklist](integration-checklist.md)
-- [Architecture Decision Log](decision-log.md)
-- [ADR 0001: MVP Scope & Evidence Policy](adr/0001-mvp-scope-and-evidence.md)
+### 5.1 Recording Ownership Changes
+To reassign a subsystem or update an owner's status:
+1. Update the accountable owner in the Authoritative Subsystem Ownership Matrix table in Section 2.
+2. Append a dated entry to the Ownership Changelog (Section 6) citing the reason, decision reference, and Rajdeep's approval.
+3. Commit the change to the active integration branch.
+
+### 5.2 Reporting Blocked Work
+When work on a subsystem is impeded:
+1. File a structured blocker entry in `docs/implementation-status.md` using the format:
+   `BLK-xx | Priority (P0/P1/P2) | Evidence | Actual Consequence | Affected Subsystems | Owner | Smallest Remediation | Closing Test`
+2. Update the `Blocked-by` column in the Subsystem Summary Table of `docs/implementation-status.md`.
+3. If the blocker requires an architectural or scope decision, escalate to Rajdeep with a numbered decision (`DEC-xx`) containing concrete options and recommendations.
+
+---
+
+## 6. Ownership Changelog
+
+| Date | Subsystem ID | Previous Owner | New Owner | Status | Authority / Rationale |
+|---|---|---|---|---|---|
+| **2026-10-18** | SUB-01 to SUB-13 | Distributed team (Aman, Rohan, Daksh, Adriraj) | Rajdeep | CONSOLIDATED | Consolidation of critical-path execution under sole technical owner. |
+| **2026-10-19** | SUB-06, SUB-07 | Rajdeep | Rajdeep (Adriraj audit) | BOUNDED COLLABORATOR | Established bounded collaborator workstream for Adriraj (Benchmark Integrity, active Oct 21). |
+| **2026-10-19** | SUB-03, SUB-09 | Rajdeep | Rajdeep (Daksh audit) | BOUNDED COLLABORATOR | Established bounded collaborator workstream for Daksh (Decision Verification, active Oct 24). |
+| **2026-10-21** | SUB-11, SUB-12 | Rajdeep | Rajdeep | DEFERRED | Formally deferred FastAPI control plane and React UI to post-MVP to mitigate concentration risk (BLK-07). |

@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "ExecutionStatus": {
+      "description": "Execution health of a benchmark or verification run.",
+      "enum": [
+        "PENDING",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED"
+      ],
+      "title": "ExecutionStatus",
+      "type": "string"
+    }
+  },
+  "description": "Metadata tracking an individual benchmark execution.",
+  "properties": {
+    "candidate_id": {
+      "description": "Evaluated candidate identifier",
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "completed_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Microsecond UTC ISO timestamp",
+      "title": "Completed At"
+    },
+    "execution_error": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Structured error details if execution failed before measurement completion",
+      "title": "Execution Error"
+    },
+    "execution_status": {
+      "$ref": "#/$defs/ExecutionStatus",
+      "description": "Run status"
+    },
+    "experiment_id": {
+      "description": "Parent experiment identifier",
+      "title": "Experiment Id",
+      "type": "string"
+    },
+    "is_verification_run": {
+      "description": "Boolean distinguishing search runs from verification runs",
+      "title": "Is Verification Run",
+      "type": "boolean"
+    },
+    "raw_artifact_uri": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Relative path to raw request recordings (.jsonl)",
+      "title": "Raw Artifact Uri"
+    },
+    "run_id": {
+      "description": "Unique identifier for this specific execution attempt",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Microsecond UTC ISO timestamp",
+      "title": "Started At"
+    }
+  },
+  "required": [
+    "run_id",
+    "experiment_id",
+    "candidate_id",
+    "is_verification_run",
+    "execution_status"
+  ],
+  "title": "RunRecord",
+  "type": "object"
+}

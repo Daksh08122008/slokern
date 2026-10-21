@@ -2,3 +2,38 @@
 Purpose: Report and summary models.
 Owner: Rajdeep
 """
+
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel, Field
+
+from slokern.contracts.spec import ExperimentSpec
+from slokern.contracts.config import CandidateConfig
+from slokern.contracts.verification import VerificationRecord
+from slokern.contracts.enums import FeasibilityVerdict
+
+
+class BaselineSummary(BaseModel):
+    baseline_candidate_id: str
+    verdict: FeasibilityVerdict
+    metrics: Dict[str, Any]
+
+
+class SearchSummary(BaseModel):
+    tested_candidates: List[str]
+    rejected_options: List[str]
+    rankings: List[str]
+
+
+class ReportArtifact(BaseModel):
+    """Self-contained, inspectable artifact published for users and hackathon judges."""
+    report_id: str = Field(..., description="Unique report identifier")
+    created_at: str = Field(..., description="UTC ISO timestamp")
+    experiment_spec: ExperimentSpec = Field(..., description="Complete immutable specification")
+    environment_fingerprint: Dict[str, Any] = Field(..., description="Full hardware/runtime environment documentation")
+    baseline_summary: BaselineSummary = Field(..., description="Baseline metrics and verdict")
+    search_summary: SearchSummary = Field(..., description="Candidate table, rankings, and rejected options")
+    selected_candidate: Optional[CandidateConfig] = Field(None, description="Detailed configuration of the winning candidate")
+    verification_record: Optional[VerificationRecord] = Field(None, description="Complete verification audit")
+    limitations_disclosed: Dict[str, Any] = Field(..., description="Tested search space bounds and known environment constraints")
+    cost_accounting_basis: str = Field(..., description="Explicit source of pricing data or declaration of unavailable")
+    artifact_paths: Dict[str, str] = Field(..., description="References to raw measurement files and logs")

@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "SLOConstraint": {
+      "properties": {
+        "metric_name": {
+          "description": "Target metric",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "operator": {
+          "description": "Comparison operator",
+          "enum": [
+            "<=",
+            "<",
+            ">=",
+            ">"
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "statistic": {
+          "description": "Declared statistic",
+          "enum": [
+            "p50",
+            "p90",
+            "p95",
+            "p99",
+            "mean",
+            "max"
+          ],
+          "title": "Statistic",
+          "type": "string"
+        },
+        "threshold": {
+          "description": "Numeric threshold value",
+          "title": "Threshold",
+          "type": "number"
+        },
+        "unit": {
+          "description": "Explicit unit",
+          "enum": [
+            "ms",
+            "s",
+            "requests/s",
+            "fraction"
+          ],
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_name",
+        "statistic",
+        "threshold",
+        "unit",
+        "operator"
+      ],
+      "title": "SLOConstraint",
+      "type": "object"
+    }
+  },
+  "description": "Specifies the non-negotiable service-level objectives against which candidates are evaluated.",
+  "properties": {
+    "constraints": {
+      "description": "List of hard constraint rules",
+      "items": {
+        "$ref": "#/$defs/SLOConstraint"
+      },
+      "title": "Constraints",
+      "type": "array"
+    },
+    "min_sample_count": {
+      "description": "Minimum required valid requests to allow an authoritative verdict",
+      "title": "Min Sample Count",
+      "type": "integer"
+    },
+    "slo_id": {
+      "description": "Unique identifier for the SLO declaration",
+      "title": "Slo Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "slo_id",
+    "constraints",
+    "min_sample_count"
+  ],
+  "title": "SLOSpec",
+  "type": "object"
+}

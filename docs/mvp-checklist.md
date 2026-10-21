@@ -1,9 +1,10 @@
 # SLOKern MVP Scope & Acceptance Checklist
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
-> **Status:** Active Reference / Scope Boundary (Single-Owner Execution)  
+> **Status:** Active Reference / Scope Boundary (Single-Owner Core Execution with Bounded Collaborators)  
 > **Sole Technical Owner & Integration Authority:** Rajdeep  
-> **Authority:** Aligned with [README.md](../README.md) and [ROADMAP.md](../ROADMAP.md)
+> **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21), Daksh (Decision Verification, active Oct 24)  
+> **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 ---
 
@@ -23,15 +24,15 @@ Every task in the project is evaluated against whether it advances this core end
 
 ### In-Scope for the Hackathon MVP
 
-1. **One Permitted Model:** A single NVIDIA open-source model supported by the hackathon environment (e.g., Llama-3-8B-Instruct or Mistral-7B).
-2. **One Serving Runtime:** A single dedicated serving backend (e.g., vLLM or TensorRT-LLM on Nebius Cloud GPU infrastructure).
+1. **One Permitted Model:** A single NVIDIA open-source model supported by the hackathon environment (target: `Nemotron-3-Nano-30B-A3B` FP8 on Nebius; baseline: `meta-llama/Meta-Llama-3-8B-Instruct`).
+2. **One Serving Runtime:** A single dedicated serving backend (vLLM or OpenAI-compatible endpoint on Nebius Cloud GPU infrastructure).
 3. **One Reproducible Workload Protocol:** A fixed prompt fixture with explicit arrival distributions (Poisson or constant rate) and separate warm-up and measurement windows.
-4. **Small Legal Search Space:** A bounded set of 2–4 tunable parameters that the serving adapter can actively apply, observe, and read back.
+4. **Small Legal Search Space:** A bounded set of 2–4 tunable parameters that the serving adapter can actively apply, observe, and read back (fixed 2×2 parameter matrix, 4 candidates).
 5. **Offered vs. Achieved Load Separation:** Clear architectural distinction and measurement of intended traffic rate versus actual delivered rate.
 6. **Key Inference Metrics:** Deterministic calculation of TTFT, ITL (with defined aggregation), end-to-end latency, request throughput, output-token throughput, error rate, and percentiles (p50, p90, p95, p99).
 7. **Deterministic Feasibility Evaluator:** Auditable constraint-by-constraint rule engine returning `FEASIBLE`, `INFEASIBLE`, or `INCONCLUSIVE` with structured reason codes.
-8. **Baseline + Bounded Search:** Reference run compared against a transparent, budget-capped search controller (grid or random search).
-9. **Independent Verification Run:** Mandatory rerun of the selected candidate under a fresh `run_id` to confirm reproducibility.
+8. **Baseline + Bounded Search:** Reference run compared against a transparent, budget-capped search controller (6 benchmark runs total).
+9. **Independent Verification Run:** Mandatory rerun of the selected candidate under a fresh `verification_run_id` to confirm reproducibility.
 10. **Evidence Artifacts & Dashboard:** Structured JSON/JSONL raw measurement records, an inspectable Markdown/JSON report, and a command center dashboard reflecting actual backend state (with prototype fixtures clearly labelled **DEMO DATA**).
 
 ### Explicit Non-Goals (Out of Scope for MVP)
@@ -49,56 +50,48 @@ Every task in the project is evaluated against whether it advances this core end
 
 Project advancement is governed by evidence, not elapsed calendar days. A gate is passed only when its required evidence is committed and verified.
 
-### Gate A — Scope Locked (Completed: Oct 18 Baseline)
+### Gate A — Scope Locked & Baseline Established (Completed: Oct 19 Baseline)
 - [x] One model/runtime path selected as compliance target (`Nemotron-3-Nano-30B-A3B` FP8 on Nebius; pending smoke test).
 - [x] MVP scope, non-goals, and operating principles written and acknowledged.
 - [x] Shared schemas (`WorkloadSpec`, `SLOSpec`, `CandidateConfig`, `RunRecord`, `MetricSet`, `FeasibilityResult`, `SearchResult`, `VerificationRecord`, `ReportArtifact`) defined in `src/slokern/contracts/`.
 - [x] Experiment budget (strict 6 benchmark runs) and stopping limits defined.
-- [x] Consolidated single-owner technical execution led by Rajdeep established.
+- [x] Consolidated single-owner technical execution with bounded collaborator workstreams established in `docs/ownership.md`.
 
-### Gate B — Serving Path Works (Target: End of Oct 15)
-- [ ] Dedicated model endpoint responds reliably to a smoke inference request.
+### Gate B — Serving Path & Baseline Measured (Target: End of Oct 22)
+- [ ] Dedicated model endpoint responds reliably to live preflight smoke inference request (`scripts/smoke.py`).
 - [ ] Effective runtime, model revision, and hardware environment fingerprint captured.
-- [ ] Table of mutable serving parameters documented and confirmed by read-back tests.
-- [ ] Configuration apply, read-back, timeout, and failure behaviors verified.
+- [ ] Mutable serving parameters documented and confirmed by runtime read-back tests.
+- [ ] Empirical baseline run executed; raw JSONL stream and metrics captured.
+- [ ] Adriraj's benchmark integrity validation suite operational on result records.
 - [ ] Zero API keys, tokens, or private endpoint credentials committed to source control or logs.
 
-### Gate C — Measurement & Evaluator Complete (Target: End of Oct 17)
+### Gate C — Bounded Optimization Validated (Target: End of Oct 25)
+- [ ] Bounded 2×2 search space executed (4 candidate runs) within 6-run budget ceiling.
 - [ ] Subprocess load generator logs granular `RawRequestMeasurement` records (JSONL) with client timestamps.
 - [ ] Metrics engine derives documented metrics with explicit units and sample counts.
 - [ ] Offered load and achieved load are reported separately; generator saturation is detected.
 - [ ] Deterministic feasibility evaluator produces `FEASIBLE`, `INFEASIBLE`, and `INCONCLUSIVE` verdicts with structured reason codes.
-- [ ] Unit tests pass for exact-boundary, below-threshold, above-threshold, missing-metric, and contaminated-run cases.
+- [ ] Lowest-cost feasible candidate selected under declared objective (Mode A cost or Mode B proxy).
+- [ ] Daksh's independent decision-verification test suite operational on hard SLO boundaries.
 
-### Gate D — Bounded Search Works (Target: End of Oct 20)
-- [ ] Baseline configuration executed under the standard workload protocol and recorded.
-- [ ] Automated search controller runs multiple legal candidates within declared budgets.
-- [ ] Candidate configurations are legal, canonicalized, and reconstructable from stable IDs.
-- [ ] Infeasible, invalid, and failed candidates remain visible in search history.
-- [ ] Selection policy ranks feasible candidates by the declared objective; handles the "no feasible candidate" scenario honestly.
-- [ ] Search stops cleanly upon budget exhaustion or candidate completion.
+### Gate D — Independent Evidence Reviewed (Target: End of Oct 27)
+- [ ] Selected winning candidate configuration rerun independently under a fresh, distinct `verification_run_id`.
+- [ ] Identical workload protocol and environment conditions applied; metrics computed afresh without caching.
+- [ ] Drift analysis computed ($\Delta M$); final verification verdict emitted (`VERIFIED` or failed).
+- [ ] Critical correctness defects closed with automated regression tests.
+- [ ] Complete `ReportArtifact` compiled with raw evidence links.
 
-### Gate E — Winner Verified Independently (Target: End of Oct 21)
-- [ ] Selected winning candidate configuration is frozen.
-- [ ] Verification runner dispatches a fresh run with a new, distinct `run_id`.
-- [ ] Identical workload protocol and environment conditions are applied.
-- [ ] Metrics are recomputed independently from fresh raw measurements (no search-run caching).
-- [ ] Final verdict is emitted: `VERIFIED`, `VERIFICATION_FAILED`, or `VERIFICATION_INCONCLUSIVE`.
-
-### Gate F — Dashboard Integrated (Target: End of Oct 24)
-- [ ] Workload & SLO builder validates inputs against canonical backend schemas.
-- [ ] Overview command center displays real lifecycle states or explicitly labelled **DEMO DATA**.
-- [ ] Candidate comparison table uses actual result fields and explains selection rationale.
-- [ ] Verification view clearly separates search run ID from verification run ID.
-- [ ] Loading, empty, error, and no-feasible-candidate states render cleanly.
-- [ ] All charts display explicit units, sample sizes, and data-window boundaries.
-
-### Gate G — Release Candidate & Rehearsal (Target: End of Oct 29)
-- [ ] Clean setup from repository documentation succeeds on an independent machine.
-- [ ] Critical test suite passes across contracts, evaluator, search, and load generator.
+### Gate E — Release Candidate & Demo Frozen (Target: End of Oct 29)
+- [ ] Clean setup from repository documentation succeeds on an independent machine (`pip install -e .`).
+- [ ] Full automated test suite passes across contracts, evaluator, search, and load generator.
 - [ ] All headline performance and cost figures reconcile with raw source artifacts.
-- [ ] Full 3–5 minute presentation and demo rehearsed with a documented fallback plan.
-- [ ] Final submission package verified against official hackathon criteria.
+- [ ] Full $\le 3\text{-minute}$ walkthrough presentation and demo recorded and uploaded.
+- [ ] Demo fallback runbook verified with persistent **`DEMO DATA`** labels.
+
+### Gate F — Final Submission Delivered (Target: Oct 30)
+- [ ] Final repository audit completed (no secrets, Apache 2.0 license).
+- [ ] Devpost form submitted with demo video, repo link, and mandatory Nebius/NVIDIA tool feedback.
+- [ ] Submission confirmed prior to **October 30, 2026, 10:00 AM PDT (10:30 PM IST)** with 4-hour buffer.
 
 ---
 

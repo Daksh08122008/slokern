@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "CandidateSummary": {
+      "properties": {
+        "ranking_metric": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ranking Metric"
+        },
+        "verdict": {
+          "$ref": "#/$defs/FeasibilityVerdict"
+        }
+      },
+      "required": [
+        "verdict"
+      ],
+      "title": "CandidateSummary",
+      "type": "object"
+    },
+    "FeasibilityVerdict": {
+      "description": "Deterministic assessment of a MetricSet against hard SLO constraints.",
+      "enum": [
+        "FEASIBLE",
+        "INFEASIBLE",
+        "INCONCLUSIVE"
+      ],
+      "title": "FeasibilityVerdict",
+      "type": "string"
+    },
+    "RankingObjective": {
+      "description": "Optimization objective for ranking feasible candidates.",
+      "enum": [
+        "monetary_cost_per_token",
+        "monetary_cost_per_1k_requests",
+        "gpu_seconds_per_request",
+        "max_throughput_under_slo"
+      ],
+      "title": "RankingObjective",
+      "type": "string"
+    }
+  },
+  "description": "Bounded search exploration history and candidate ranking.",
+  "properties": {
+    "baseline_candidate_id": {
+      "description": "ID of baseline configuration",
+      "title": "Baseline Candidate Id",
+      "type": "string"
+    },
+    "candidate_summaries": {
+      "additionalProperties": {
+        "$ref": "#/$defs/CandidateSummary"
+      },
+      "description": "Map of candidate ID to feasibility verdict and ranking metric",
+      "title": "Candidate Summaries",
+      "type": "object"
+    },
+    "experiment_id": {
+      "description": "Parent experiment identifier",
+      "title": "Experiment Id",
+      "type": "string"
+    },
+    "ranking_objective": {
+      "$ref": "#/$defs/RankingObjective",
+      "description": "Declared objective function"
+    },
+    "selected_candidate_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Winning feasible candidate ID (null if no candidate was feasible)",
+      "title": "Selected Candidate Id"
+    },
+    "selection_rationale": {
+      "description": "Deterministic justification for the winning choice",
+      "title": "Selection Rationale",
+      "type": "string"
+    },
+    "stopping_reason": {
+      "description": "Reason search halted ('budget_exhausted', 'space_exhausted', 'early_convergence', 'timeout')",
+      "title": "Stopping Reason",
+      "type": "string"
+    },
+    "tested_candidates": {
+      "description": "List of tested candidate IDs in execution order",
+      "items": {
+        "type": "string"
+      },
+      "title": "Tested Candidates",
+      "type": "array"
+    }
+  },
+  "required": [
+    "experiment_id",
+    "baseline_candidate_id",
+    "tested_candidates",
+    "candidate_summaries",
+    "ranking_objective",
+    "selection_rationale",
+    "stopping_reason"
+  ],
+  "title": "SearchResult",
+  "type": "object"
+}

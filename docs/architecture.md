@@ -384,17 +384,20 @@ SLOKern explicitly resolves cost accounting into a dual-mode model to prevent fa
 
 ## 7. Component Ownership & Consolidated Engineering Responsibilities
 
-Under the consolidated single-owner execution model (effective October 18, 2026), **Rajdeep** assumes sole end-to-end accountability and integration authority across all architectural subsystems. The modular component boundaries originally designed for the distributed team remain strictly enforced to preserve architectural integrity:
+Under the single-owner core execution model with bounded collaborators (updated October 19, 2026), **Rajdeep** assumes sole end-to-end accountability, critical-path implementation, and integration authority across all architectural subsystems, with bounded collaborator workstreams for **Adriraj** (Benchmark Integrity, active Oct 21) and **Daksh** (Independent Decision Verification, active Oct 24). The modular component boundaries originally designed for the distributed team remain strictly enforced to preserve architectural integrity:
 
-| Component | Accountable Owner | Deliverable | Enforced Subsystem Boundary |
+| Subsystem Component | Accountable Owner | Active Window | Deliverable & Boundary |
 |---|---|---|---|
-| **Architecture & Integration** | **Rajdeep** | Contracts, control plane, schema validation, API/dashboard alignment, final report narrative | Stable interfaces; cross-subsystem contracts |
-| **Serving & Infrastructure** | **Rajdeep** *(Historical: Aman)* | Serving adapter, model runtime deployment, parameter read-back, environment fingerprint | Declares what parameters are truly mutable; validates adapter reality |
-| **Verification & Evaluator** | **Rajdeep** *(Historical: Daksh)* | Feasibility evaluator, deterministic SLO logic, reason codes, verification runner | Controls verdict semantics; prevents invalid runs from winning |
-| **Benchmarking & Loadgen** | **Rajdeep** *(Historical: Adriraj)* | Workload fixtures, load generator, raw timestamp capture, metrics engine | Owns raw data fidelity; flags generator saturation |
-| **Search & Optimization** | **Rajdeep** *(Historical: Rohan)* | Legal candidate space, bounded search controller, candidate ranking, stopping rules | Generates only legal candidates; respects search budget |
+| **Architecture & Contracts** | **Rajdeep** | Full sprint | Canonical Pydantic v2 schemas (`src/slokern/contracts/`), API/dashboard contracts, stable interfaces. |
+| **Serving & Infrastructure** | **Rajdeep** *(Historical: Aman)* | Full sprint | Serving adapter (`src/slokern/engine/serving/`), model runtime deployment, parameter read-back, environment fingerprint. |
+| **Loadgen Subprocess & Workload** | **Rajdeep** *(Historical: Adriraj)* | Full sprint | Workload fixtures, subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture to JSONL (`RawRequestMeasurement`). |
+| **Evaluator Core & Feasibility** | **Rajdeep** *(Historical: Daksh)* | Full sprint | Feasibility evaluator (`src/slokern/core/evaluator/`), deterministic SLO logic, reason codes, verification runner. |
+| **Search & Optimizer** | **Rajdeep** *(Historical: Rohan)* | Full sprint | Bounded 2×2 parameter matrix, search controller (`src/slokern/core/search/`), candidate ranking, 6-run budget limit. |
+| **Control Plane & Presentation** | **Rajdeep** | Full sprint | FastAPI app (`src/slokern/api/`), CLI (`src/slokern/cli/`), report generator (`src/slokern/engine/reporting/`), demo command center. |
+| **Benchmark Integrity & Credibility** | **Adriraj** | **Oct 21–30** | Benchmark schema validation, required metadata checks, missing/inconsistent record detection, offered-vs-achieved load audits, comparison summaries (`docs/metrics.md`). |
+| **Independent Decision Verification** | **Daksh** | **Oct 24–30** | Independent verification test suite, hard SLO violation tests, feasibility boundary tests, missing/invalid measurement handling, reproducible defect reports (`docs/decision-policy.md`). |
 
-For the complete responsibility matrix, single-owner development loop, and historical attribution, see [docs/ownership.md](ownership.md).
+For the complete responsibility matrix, collaborator workstream boundaries, daily engineering rituals, and historical attribution, see [docs/ownership.md](ownership.md).
 
 ---
 

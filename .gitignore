@@ -6,20 +6,34 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+*.egg-info/
+build/
 
 # Frontend
 node_modules/
 dist/
 coverage/
+.vite/
 
-# Local environment and editor files
+# Local environment and secrets
 .env
 .env.*
 !.env.example
+
+# Editors and operating systems
 .DS_Store
-.vscode/
+Thumbs.db
 .idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
 
 # Generated and local artifacts
 artifacts/
 *.log
+
+# Local test and coverage outputs
+htmlcov/
+.coverage
+.coverage.*
+

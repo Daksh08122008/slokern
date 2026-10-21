@@ -1,2 +1,58 @@
 # Purpose: CI pipeline for lint, types, import boundaries, tests, contract drift and secret checks.
 # Owner: Rajdeep
+
+name: SLOKern CI
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Upgrade pip and build tools
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install -e ".[dev]"
+
+      - name: Validate dependencies
+        run: |
+          python -m pip check
+
+      - name: Validate syntax and bytecode compilation
+        run: |
+          python -m compileall src tests
+
+      - name: Validate core imports and contracts
+        run: |
+          python -c "import slokern; from slokern.contracts import *; from slokern.core.evaluator.evaluate import evaluate_slo; print('SLOKern modules imported successfully')"
+
+      - name: Run automated test suite
+        run: |
+          pytest -v -m "not live"
