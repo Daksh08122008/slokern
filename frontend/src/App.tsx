@@ -91,6 +91,46 @@ function MetricCard({ label, value, unit, delta, tone = 'neutral', icon }: { lab
   return <div className="metric-card"><div className="metric-top"><span>{label}</span>{icon && <span className="metric-icon"><Icon name={icon} size={15}/></span>}</div><div className="metric-value">{value}<small>{unit}</small></div>{delta && <div className={`metric-delta ${tone}`}>{delta}</div>}</div>;
 }
 
+function LatencyInstruments({
+  ttftP95,
+  itlP95,
+  compact = false,
+}: {
+  ttftP95: number
+  itlP95: number
+  compact?: boolean
+}) {
+  return (
+    <div className={`telemetry-latency-grid ${compact ? 'is-compact' : ''}`}>
+      <div className="telemetry-cell">
+        <span
+          className="telemetry-label"
+          title="Time to First Token (prefill phase latency at 95th percentile)"
+        >
+          TTFT P95
+        </span>
+        <div className="telemetry-value-pair">
+          <strong className="telemetry-number">{ttftP95}</strong>
+          <span className="telemetry-unit">ms</span>
+        </div>
+      </div>
+      <div className="telemetry-divider" aria-hidden="true" />
+      <div className="telemetry-cell">
+        <span
+          className="telemetry-label"
+          title="Inter-Token Latency (decode phase generation speed at 95th percentile)"
+        >
+          ITL P95
+        </span>
+        <div className="telemetry-value-pair">
+          <strong className="telemetry-number">{itlP95}</strong>
+          <span className="telemetry-unit">ms/token</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type SamplePoint = { time: string; x: number; y: number; val: number; unit: string; delta: string };
 
 const LATENCY_SAMPLES: SamplePoint[] = [
@@ -804,13 +844,10 @@ export default function App() {
                         <span>TOP CANDIDATE</span>
                         <Status tone={winner ? 'success' : 'danger'}>{winner ? 'FEASIBLE' : 'NONE'}</Status>
                       </div>
-                      <strong>{winner?.id ?? '—'}</strong>
+                      <strong className="orbit-candidate-id">{winner?.id ?? '—'}</strong>
                       <small>{winner ? `${winner.name} · b${winner.batch}_c${winner.concurrency} (${winner.kvCache})` : 'No feasible winner'}</small>
                       {winner && (
-                        <div className="orbit-telemetry-breakdown">
-                          <span>TTFT: <strong>{winner.ttftP95} ms</strong></span>
-                          <span>ITL: <strong>{winner.itlP95} ms/t</strong></span>
-                        </div>
+                        <LatencyInstruments ttftP95={winner.ttftP95} itlP95={winner.itlP95} />
                       )}
                     </div>
                   </div>
@@ -1425,8 +1462,7 @@ export default function App() {
                         </div>
                       </div>
                       <div className="candidate-telemetry-split">
-                        <span>Prefill (TTFT): <strong>{c.ttftP95}ms</strong></span>
-                        <span>Decode (ITL): <strong>{c.itlP95}ms/t</strong></span>
+                        <LatencyInstruments ttftP95={c.ttftP95} itlP95={c.itlP95} compact />
                       </div>
                       <div className="candidate-mini-chart">
                         <div className="mini-chart-line" style={{ height: `${Math.max(23, 85 - c.p95)}%` }} />
@@ -1477,8 +1513,8 @@ export default function App() {
                     {currentCandidate.reason}
                   </p>
                   <div className="inspector-metrics">
-                    <div><span>TTFT P95</span><strong>{currentCandidate.ttftP95}<small>ms</small></strong></div>
-                    <div><span>ITL P95</span><strong>{currentCandidate.itlP95}<small>ms/t</small></strong></div>
+                    <div><span>TTFT P95</span><strong className="inspector-value-pair">{currentCandidate.ttftP95}<small>ms</small></strong></div>
+                    <div><span>ITL P95</span><strong className="inspector-value-pair">{currentCandidate.itlP95}<small>ms/token</small></strong></div>
                     <div><span>P50 LATENCY</span><strong>{currentCandidate.p50}<small>ms</small></strong></div>
                     <div><span>P95 LATENCY</span><strong>{currentCandidate.p95}<small>ms</small></strong></div>
                     <div><span>THROUGHPUT</span><strong>{currentCandidate.throughput}<small>k</small></strong></div>

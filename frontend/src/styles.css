@@ -1580,21 +1580,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
   box-shadow: var(--shadow-card), 0 0 16px rgba(118, 185, 0, 0.12);
 }
 
-.orbit-center span {
+.orbit-center > span,
+.orbit-center-top > span {
   font: 8.5px var(--mono);
   letter-spacing: 0.08em;
   color: var(--secondary);
 }
 
-.orbit-center strong {
+.orbit-center > strong,
+.orbit-candidate-id {
   font-size: 30px;
   letter-spacing: -0.04em;
   line-height: 1.15;
   color: var(--text);
   margin: 4px 0 2px;
+  font-variant-numeric: tabular-nums;
 }
 
-.orbit-center small {
+.orbit-center > small {
   font-size: 11.5px;
   color: var(--secondary);
 }
@@ -4928,13 +4931,13 @@ tbody tr:last-child td {
     width: calc(100% - 66px);
   }
   .decision-hero {
-    grid-template-columns: minmax(0, 1fr) 190px;
+    grid-template-columns: minmax(0, 1.25fr) minmax(235px, 0.75fr);
   }
   .hero-right {
-    padding-left: 12px;
+    padding-left: 16px;
   }
   .orbit-center {
-    min-height: 96px;
+    min-height: auto;
   }
   .metric-card {
     padding: 11px;
@@ -5008,7 +5011,21 @@ tbody tr:last-child td {
     padding: 16px;
   }
   .hero-right {
-    display: none;
+    display: flex;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding-left: 0;
+    padding-top: 16px;
+    margin-top: 16px;
+    width: 100%;
+  }
+  .orbit-center {
+    min-height: auto;
+    width: 100%;
+  }
+  .hero-right-foot {
+    margin-top: 12px;
+    gap: 20px;
   }
   .metric-grid.four {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5640,19 +5657,156 @@ tbody tr:last-child td {
   width: 100%;
 }
 
-.orbit-telemetry-breakdown {
-  display: flex;
-  gap: 12px;
-  margin-top: 8px;
-  padding-top: 6px;
+/* ==========================================================================
+   Instrument-Grade Dual-Column Latency Telemetry Grid
+   ========================================================================== */
+.telemetry-latency-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0;
+  margin-top: 10px;
+  padding-top: 9px;
   border-top: 1px solid var(--border);
   width: 100%;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--secondary);
+  box-sizing: border-box;
 }
 
-.orbit-telemetry-breakdown strong {
-  color: var(--text);
+.telemetry-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
+
+.telemetry-cell:first-child {
+  padding-right: 12px;
+}
+
+.telemetry-cell:last-child {
+  padding-left: 12px;
+}
+
+.telemetry-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.telemetry-label {
+  font: 8.5px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--secondary);
+  white-space: nowrap;
+  cursor: help;
+  line-height: 1;
+}
+
+.telemetry-value-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.telemetry-number {
+  font-family: var(--mono);
+  font-size: clamp(16px, 1.6vw, 20px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--text);
+  line-height: 1.1;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.telemetry-unit {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--secondary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Candidate card compact mode */
+.telemetry-latency-grid.is-compact {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--border);
+}
+
+.telemetry-latency-grid.is-compact .telemetry-cell {
+  gap: 2px;
+}
+
+.telemetry-latency-grid.is-compact .telemetry-cell:first-child {
+  padding-right: 8px;
+}
+
+.telemetry-latency-grid.is-compact .telemetry-cell:last-child {
+  padding-left: 8px;
+}
+
+.telemetry-latency-grid.is-compact .telemetry-divider {
+  height: 20px;
+}
+
+.telemetry-latency-grid.is-compact .telemetry-number {
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.telemetry-latency-grid.is-compact .telemetry-unit {
+  font-size: 9.5px;
+}
+
+.candidate-telemetry-split {
+  width: 100%;
+}
+
+.inspector-value-pair {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+  gap: 3px;
+}
+
+@media (max-width: 520px) {
+  .telemetry-number {
+    font-size: 16px;
+  }
+  .telemetry-unit {
+    font-size: 9.5px;
+  }
+  .telemetry-cell:first-child {
+    padding-right: 8px;
+  }
+  .telemetry-cell:last-child {
+    padding-left: 8px;
+  }
+}
+
+@media (max-width: 380px) {
+  .telemetry-number {
+    font-size: 14.5px;
+  }
+  .telemetry-unit {
+    font-size: 9px;
+  }
+  .telemetry-cell:first-child {
+    padding-right: 5px;
+  }
+  .telemetry-cell:last-child {
+    padding-left: 5px;
+  }
+  .telemetry-label {
+    font-size: 8px;
+    letter-spacing: 0.05em;
+  }
+}
+
 
