@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "DriftAnalysis": {
+      "properties": {
+        "metric_deltas": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Percent difference between search run and verification run metrics",
+          "title": "Metric Deltas",
+          "type": "object"
+        },
+        "slo_drift_detected": {
+          "description": "Boolean indicating whether verification drifted across a threshold",
+          "title": "Slo Drift Detected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "metric_deltas",
+        "slo_drift_detected"
+      ],
+      "title": "DriftAnalysis",
+      "type": "object"
+    },
+    "VerificationState": {
+      "description": "Independent verification status of the selected winning candidate.",
+      "enum": [
+        "NOT_RUN",
+        "VERIFYING",
+        "VERIFIED",
+        "VERIFICATION_FAILED",
+        "VERIFICATION_INCONCLUSIVE"
+      ],
+      "title": "VerificationState",
+      "type": "string"
+    }
+  },
+  "description": "Independent verification audit record for the winning candidate.",
+  "properties": {
+    "candidate_id": {
+      "description": "Frozen candidate configuration tested",
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "drift_analysis": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DriftAnalysis"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Drift analysis"
+    },
+    "experiment_id": {
+      "description": "Associated experiment identifier",
+      "title": "Experiment Id",
+      "type": "string"
+    },
+    "final_decision_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Explanation of confirmation or failure",
+      "title": "Final Decision Notes"
+    },
+    "original_run_id": {
+      "description": "Search run ID where candidate was selected",
+      "title": "Original Run Id",
+      "type": "string"
+    },
+    "verification_id": {
+      "description": "Unique identifier for the verification session",
+      "title": "Verification Id",
+      "type": "string"
+    },
+    "verification_run_id": {
+      "description": "Fresh run ID under which rerun was conducted",
+      "title": "Verification Run Id",
+      "type": "string"
+    },
+    "verification_verdict": {
+      "$ref": "#/$defs/VerificationState",
+      "description": "Enum: VERIFIED, VERIFICATION_FAILED, VERIFICATION_INCONCLUSIVE"
+    }
+  },
+  "required": [
+    "verification_id",
+    "experiment_id",
+    "candidate_id",
+    "original_run_id",
+    "verification_run_id",
+    "verification_verdict"
+  ],
+  "title": "VerificationRecord",
+  "type": "object"
+}

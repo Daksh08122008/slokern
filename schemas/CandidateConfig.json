@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "ParameterStatus": {
+      "description": "Status of requested serving configuration parameters after runtime read-back.",
+      "enum": [
+        "applied",
+        "unsupported",
+        "rejected",
+        "default_fallback"
+      ],
+      "title": "ParameterStatus",
+      "type": "string"
+    }
+  },
+  "description": "Represents a concrete serving configuration. Distinguishes intent from verified runtime reality.",
+  "properties": {
+    "candidate_id": {
+      "description": "Stable deterministic hash of canonical parameter values",
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "effective_settings": {
+      "additionalProperties": true,
+      "description": "Key-value pairs confirmed by the adapter via runtime read-back",
+      "title": "Effective Settings",
+      "type": "object"
+    },
+    "environment_fingerprint": {
+      "additionalProperties": true,
+      "description": "Hash/dictionary of GPU hardware, driver, CUDA version, and runtime software commit",
+      "title": "Environment Fingerprint",
+      "type": "object"
+    },
+    "model_name": {
+      "description": "Formal model identifier",
+      "title": "Model Name",
+      "type": "string"
+    },
+    "parameter_status": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ParameterStatus"
+      },
+      "description": "Map of parameters to status",
+      "title": "Parameter Status",
+      "type": "object"
+    },
+    "requested_settings": {
+      "additionalProperties": true,
+      "description": "Key-value pairs requested by the search controller",
+      "title": "Requested Settings",
+      "type": "object"
+    },
+    "runtime_name": {
+      "description": "Serving engine",
+      "title": "Runtime Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "candidate_id",
+    "model_name",
+    "runtime_name",
+    "requested_settings",
+    "effective_settings",
+    "parameter_status",
+    "environment_fingerprint"
+  ],
+  "title": "CandidateConfig",
+  "type": "object"
+}

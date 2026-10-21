@@ -1,0 +1,159 @@
+{
+  "$defs": {
+    "ConstraintEvaluation": {
+      "properties": {
+        "metric_name": {
+          "description": "Target metric",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "observed_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Derived metric value (null if metric missing or sample insufficient)",
+          "title": "Observed Value"
+        },
+        "operator": {
+          "description": "Comparison operator",
+          "title": "Operator",
+          "type": "string"
+        },
+        "passed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Boolean or null",
+          "title": "Passed"
+        },
+        "reason_code": {
+          "$ref": "#/$defs/ReasonCode",
+          "description": "Machine-readable reason code"
+        },
+        "required_threshold": {
+          "description": "Threshold from SLOSpec",
+          "title": "Required Threshold",
+          "type": "number"
+        },
+        "statistic": {
+          "description": "Evaluated statistic",
+          "title": "Statistic",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_name",
+        "statistic",
+        "required_threshold",
+        "operator",
+        "reason_code"
+      ],
+      "title": "ConstraintEvaluation",
+      "type": "object"
+    },
+    "EvidenceValidity": {
+      "description": "Integrity of the measurement evidence collected during a run.",
+      "enum": [
+        "VALID",
+        "INVALID",
+        "CONTAMINATED"
+      ],
+      "title": "EvidenceValidity",
+      "type": "string"
+    },
+    "FeasibilityVerdict": {
+      "description": "Deterministic assessment of a MetricSet against hard SLO constraints.",
+      "enum": [
+        "FEASIBLE",
+        "INFEASIBLE",
+        "INCONCLUSIVE"
+      ],
+      "title": "FeasibilityVerdict",
+      "type": "string"
+    },
+    "ReasonCode": {
+      "description": "Machine-readable reason codes for feasibility and verification decisions.",
+      "enum": [
+        "HARD_CONSTRAINTS_PASSED",
+        "TTFT_P95_EXCEEDED",
+        "TTFT_P50_EXCEEDED",
+        "ITL_P95_EXCEEDED",
+        "E2E_LATENCY_EXCEEDED",
+        "ERROR_RATE_EXCEEDED",
+        "THROUGHPUT_DEFICIT",
+        "INSUFFICIENT_SAMPLES",
+        "GENERATOR_SATURATED",
+        "CONTAMINATED_LOAD",
+        "MISSING_REQUIRED_METRIC",
+        "UNSUPPORTED_OPERATOR",
+        "EXECUTION_CRASHED",
+        "VERIFICATION_DRIFT_EXCEEDED"
+      ],
+      "title": "ReasonCode",
+      "type": "string"
+    }
+  },
+  "description": "Deterministic constraint audit result.",
+  "properties": {
+    "audit_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Structured text explaining edge cases or exclusions",
+      "title": "Audit Notes"
+    },
+    "constraint_evaluations": {
+      "description": "List of per-constraint evaluation records",
+      "items": {
+        "$ref": "#/$defs/ConstraintEvaluation"
+      },
+      "title": "Constraint Evaluations",
+      "type": "array"
+    },
+    "overall_verdict": {
+      "$ref": "#/$defs/FeasibilityVerdict",
+      "description": "Enum: FEASIBLE, INFEASIBLE, INCONCLUSIVE"
+    },
+    "policy_version": {
+      "description": "Version of feasibility evaluation rules",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "run_id": {
+      "description": "Associated run identifier",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "validity_status": {
+      "$ref": "#/$defs/EvidenceValidity",
+      "description": "Enum: VALID, INVALID, CONTAMINATED"
+    }
+  },
+  "required": [
+    "policy_version",
+    "run_id",
+    "overall_verdict",
+    "constraint_evaluations",
+    "validity_status"
+  ],
+  "title": "FeasibilityResult",
+  "type": "object"
+}
