@@ -2,14 +2,14 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Document Type:** October 19 Audit & Scope Freeze Deliverable  
-> **Audit Date:** 2026-10-21T03:19:22Z (Nominal Audit Target: October 19, 2026)  
-> **Audit Baseline Git Commit:** `52a088954e3bbf8f0bb83ef217ac7d2cdb37fab2` (`52a0889`)  
+> **Audit Date:** 2026-10-21 11:15:03 UTC (Nominal Audit Target: October 19, 2026)  
+> **Audit Baseline Git Commit:** `356c489409834aeb7024da1c6ca192e703c0b49c` (`52a0889`)  
 > **Working Tree State:** `NOT CLEAN-BASELINE` (`README.md` modified: uncommitted badge text edit)  
 > **Integration Branch:** `origin/main` (active audit branch: `repository-audit-and-mvp-scope-freeze`)  
 > **Authority & Sole Technical Owner:** Rajdeep  
 > **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21), Daksh (Decision Verification, active Oct 24)  
 > **Hackathon Submission Deadline:** October 30, 2026, 10:00 AM PDT (10:30 PM IST / 17:00 UTC)  
-> **Remaining Sprint Time:** 9 days, 13 hours, 40 minutes (~229.7 hours)
+> **Remaining Sprint Time:** 9 days, 5 hours, 44 minutes, 57 seconds (~221.75 hours)
 
 ---
 
@@ -93,8 +93,8 @@
 
 ### SUB-01: Architecture & Scope Governance
 - **Intended Behavior:** Single-owner technical authority governing modular monolith architecture, strict 6-run budget, deterministic decision policies, and hackathon compliance rules.
-- **Actual Behavior:** Modular monolith design documented in `docs/architecture.md:L1-430@52a0889` and `docs/decision-policy.md:L1-141@52a0889`. Governance is active, but documentation contained completion claims that contradicted repository reality.
-- **Evidence:** `docs/architecture.md:L1-430@52a0889`, `docs/decision-policy.md:L1-141@52a0889`, `docs/ownership.md:L1-188@52a0889`.
+- **Actual Behavior:** Modular monolith design documented in `docs/architecture.md:L1-430@356c489` and `docs/decision-policy.md:L1-141@356c489`. Governance is active, but documentation contained completion claims that contradicted repository reality.
+- **Evidence:** `docs/architecture.md:L1-430@356c489`, `docs/decision-policy.md:L1-141@356c489`, `docs/ownership.md:L1-188@356c489`.
 - **Dependencies:** None.
 - **Risks:** High concentration of ownership under Rajdeep (P1 concentration risk BLK-07).
 - **Next Testable Step:** Ratify the MVP Scope Freeze and resolve DEC-01 through DEC-05. Acceptance: `docs/implementation-status.md` accepted as sole status source of truth.
@@ -102,23 +102,23 @@
 ### SUB-02: Shared Contracts & Schema Registry
 - **Intended Behavior:** 11 canonical Pydantic v2 models representing the entire optimization lifecycle, exporting committed JSON schemas and enforcing strict boundary validation.
 - **Actual Behavior:** All 11 models are defined and exported in `src/slokern/contracts/`. All round-trip serialize perfectly (P-18). However, only 4 contracts are consumed outside contracts (`SLOSpec`, `CandidateConfig`, `MetricSet`, `FeasibilityResult`). Schemas directory contains only `.gitkeep`; `scripts/gen_contracts.py` is a stub (BLK-10); models lack `extra='forbid'` (BLK-12).
-- **Evidence:** `src/slokern/contracts/__init__.py:L1-36@52a0889`, `tests/contract/test_schemas.py:L1-114@52a0889` (observed in R-10, R-11), `probe_b_contracts_roundtrip.py` (P-18).
+- **Evidence:** `src/slokern/contracts/__init__.py:L1-36@356c489`, `tests/contract/test_schemas.py:L1-114@356c489` (observed in R-10, R-11), `probe_b_contracts_roundtrip.py` (P-18).
 - **Dependencies:** None.
 - **Risks:** Drift between contracts and external tooling due to missing emitted JSON schemas.
 - **Next Testable Step:** Update `scripts/gen_contracts.py` to write JSON schemas into a temporary directory and verify with `pytest tests/contract/test_generated_files_current.py`.
 
 ### SUB-03: Feasibility Evaluator Core
 - **Intended Behavior:** Pure deterministic Python evaluation of a `MetricSet` against `SLOSpec`, producing an auditable `FeasibilityResult` with machine-readable `ReasonCode`.
-- **Actual Behavior:** Implemented in `src/slokern/core/evaluator/evaluate.py:evaluate_slo@52a0889`. Evaluates hard constraints, generator saturation, and sample size. Tested across 7 unit tests. However, NaN floating-point values are misclassified as `INFEASIBLE` with `TTFT_P95_EXCEEDED` (P-05 / BLK-05), and negative latencies are accepted as `FEASIBLE` (P-06 / BLK-06).
-- **Evidence:** `src/slokern/core/evaluator/evaluate.py:L66-130@52a0889`, `tests/unit/core/test_evaluator.py:L1-133@52a0889` (R-10, R-11), probes P-01 through P-10.
+- **Actual Behavior:** Implemented in `src/slokern/core/evaluator/evaluate.py:evaluate_slo@356c489`. Evaluates hard constraints, generator saturation, and sample size. Tested across 7 unit tests. However, NaN floating-point values are misclassified as `INFEASIBLE` with `TTFT_P95_EXCEEDED` (P-05 / BLK-05), and negative latencies are accepted as `FEASIBLE` (P-06 / BLK-06).
+- **Evidence:** `src/slokern/core/evaluator/evaluate.py:L66-130@356c489`, `tests/unit/core/test_evaluator.py:L1-133@356c489` (R-10, R-11), probes P-01 through P-10.
 - **Dependencies:** `SUB-02` (Contracts).
 - **Risks:** Invalid or corrupted measurements generating incorrect feasibility verdicts.
 - **Next Testable Step:** Add `math.isnan(obs_val)` check and non-negative boundary assertions in `evaluate.py`. Acceptance: Probe P-05 returns `INCONCLUSIVE` and unit test passes.
 
 ### SUB-04: Candidate Identity & Deterministic Ranking
 - **Intended Behavior:** Stable deterministic candidate ID generation from canonical configurations; deterministic ranking of feasible candidates under declared objective with candidate-ID tie-breaking.
-- **Actual Behavior:** Implemented in `src/slokern/core/search/candidate_id.py:generate_candidate_id@52a0889` and `src/slokern/core/search/rank.py:rank_candidates@52a0889`. Infeasible/inconclusive candidates are excluded (P-13); ranking is deterministic across 20 shuffles (P-15); ties are broken by candidate ID (P-14). However, formatting numbers as float vs int produces different hashes (P-12 / BLK-11).
-- **Evidence:** `src/slokern/core/search/candidate_id.py:L10-17@52a0889`, `src/slokern/core/search/rank.py:L21-56@52a0889`, probes P-11 through P-16.
+- **Actual Behavior:** Implemented in `src/slokern/core/search/candidate_id.py:generate_candidate_id@356c489` and `src/slokern/core/search/rank.py:rank_candidates@356c489`. Infeasible/inconclusive candidates are excluded (P-13); ranking is deterministic across 20 shuffles (P-15); ties are broken by candidate ID (P-14). However, formatting numbers as float vs int produces different hashes (P-12 / BLK-11).
+- **Evidence:** `src/slokern/core/search/candidate_id.py:L10-17@356c489`, `src/slokern/core/search/rank.py:L21-56@356c489`, probes P-11 through P-16.
 - **Dependencies:** `SUB-02` (Contracts), `SUB-03` (Evaluator).
 - **Risks:** Inconsistent hashing if numeric settings are not coerced to canonical types.
 - **Next Testable Step:** Canonicalize numeric types before JSON serialization in `candidate_id.py`. Acceptance: `generate_candidate_id("m", "r", {"tp": 1}) == generate_candidate_id("m", "r", {"tp": 1.0})`.
@@ -126,7 +126,7 @@
 ### SUB-05: Serving Adapter & Runtime Infrastructure
 - **Intended Behavior:** Interface for serving runtimes (capabilities, apply, environment fingerprint, health); fake adapter for offline testing; Nebius Cloud adapter for live serving.
 - **Actual Behavior:** **ABSENT.** `src/slokern/engine/serving/fake.py`, `nebius.py`, `base.py`, and `capabilities.py` are 4-line docstrings with zero executable code. Live smoke test `test_smoke_live.py` executes `pytest.skip(...)`. Exact Nebius endpoint model string is unverified (BLK-04).
-- **Evidence:** `src/slokern/engine/serving/fake.py:L1-4@52a0889`, `src/slokern/engine/serving/nebius.py:L1-4@52a0889`, `tests/live/test_smoke_live.py:L1-13@52a0889` (R-12).
+- **Evidence:** `src/slokern/engine/serving/fake.py:L1-4@356c489`, `src/slokern/engine/serving/nebius.py:L1-4@356c489`, `tests/live/test_smoke_live.py:L1-13@356c489` (R-12).
 - **Dependencies:** DEC-01 (Serving endpoint interface decision).
 - **Risks:** System cannot execute a single inference request either locally or on cloud infrastructure (P0 Blocker BLK-01).
 - **Next Testable Step:** Implement `FakeServingAdapter` that returns deterministic synthetic responses with simulated latencies tagged `DEMO DATA`. Acceptance: `tests/integration/test_pipeline_fake_adapter.py` passes.
@@ -134,7 +134,7 @@
 ### SUB-06: Subprocess Load Generator & Workload Fixtures
 - **Intended Behavior:** Subprocess-isolated load generator generating Poisson/constant request schedules, recording unaggregated request-level microsecond timings to JSONL (`RawRequestMeasurement`), and detecting client saturation (`generator_saturated = True`).
 - **Actual Behavior:** **ABSENT.** `src/slokern/engine/loadgen/arrival.py`, `recorder.py`, `runner.py`, and `src/slokern/engine/workload/fixtures.py` are empty docstrings. No workload fixtures exist.
-- **Evidence:** `src/slokern/engine/loadgen/runner.py:L1-4@52a0889`, `src/slokern/engine/workload/fixtures.py:L1-4@52a0889`.
+- **Evidence:** `src/slokern/engine/loadgen/runner.py:L1-4@356c489`, `src/slokern/engine/workload/fixtures.py:L1-4@356c489`.
 - **Dependencies:** `SUB-02` (Contracts), `SUB-05` (Serving Adapter).
 - **Risks:** Cannot generate offered load or record raw request events (P0 Blocker BLK-02).
 - **Next Testable Step:** Implement a minimal loadgen runner that dispatches synthetic requests, records timestamps into a `.jsonl` file, and validates each line against `RawRequestMeasurement`. Acceptance: `tests/unit/engine/loadgen/test_runner.py` passes.
@@ -142,7 +142,7 @@
 ### SUB-07: Metrics Engine Core
 - **Intended Behavior:** Pure, deterministic derivation of `MetricSet` from raw `.jsonl` request recordings, computing TTFT/ITL percentiles (p50, p95, p99), throughput, error rate, and offered vs achieved load.
 - **Actual Behavior:** **ABSENT.** `src/slokern/core/metrics/aggregate.py`, `latency.py`, `percentiles.py`, `throughput.py`, and `validity.py` are empty docstrings.
-- **Evidence:** `src/slokern/core/metrics/percentiles.py:L1-4@52a0889`, `src/slokern/core/metrics/throughput.py:L1-4@52a0889`.
+- **Evidence:** `src/slokern/core/metrics/percentiles.py:L1-4@356c489`, `src/slokern/core/metrics/throughput.py:L1-4@356c489`.
 - **Dependencies:** `SUB-02` (Contracts), `SUB-06` (Raw Request Measurements).
 - **Risks:** Missing pipeline link between raw execution traces and feasibility evaluation (P0 Blocker BLK-03).
 - **Next Testable Step:** Implement percentile calculation using standard Python (`math`) and derive `MetricSet` from a fixture JSONL file. Acceptance: `tests/unit/core/metrics/test_percentiles.py` passes.
@@ -150,7 +150,7 @@
 ### SUB-08: Experiment Orchestration & Run Lifecycle
 - **Intended Behavior:** Modular monolith experiment controller managing the 6-run search budget (1 baseline + 4 grid candidates + 1 verification run), lifecycle states (`ExecutionStatus`), cancellation, and artifact persistence.
 - **Actual Behavior:** **ABSENT.** `src/slokern/engine/runner/experiment_controller.py`, `run_executor.py`, `lifecycle.py`, and `src/slokern/engine/store/writer.py` are empty docstrings.
-- **Evidence:** `src/slokern/engine/runner/experiment_controller.py:L1-4@52a0889`, `src/slokern/engine/store/writer.py:L1-4@52a0889`.
+- **Evidence:** `src/slokern/engine/runner/experiment_controller.py:L1-4@356c489`, `src/slokern/engine/store/writer.py:L1-4@356c489`.
 - **Dependencies:** `SUB-04` (Search), `SUB-05` (Serving), `SUB-06` (Loadgen), `SUB-07` (Metrics).
 - **Risks:** No automation exists to execute multi-candidate experiments or manage budgets.
 - **Next Testable Step:** Implement a single-run executor that runs one configuration through serving, loadgen, metrics, and evaluator. Acceptance: A single run executes and persists a `RunRecord`.
@@ -158,7 +158,7 @@
 ### SUB-09: Independent Verification Engine
 - **Intended Behavior:** Takes the winning feasible candidate, triggers a fresh independent rerun under a new `verification_run_id`, computes metric drift ($\Delta M$), and renders a deterministic verification verdict (`VERIFIED` or `VERIFICATION_FAILED`).
 - **Actual Behavior:** **ABSENT.** `src/slokern/core/verification/protocol.py` and `compare.py` are empty docstrings.
-- **Evidence:** `src/slokern/core/verification/protocol.py:L1-4@52a0889`, `src/slokern/core/verification/compare.py:L1-4@52a0889`.
+- **Evidence:** `src/slokern/core/verification/protocol.py:L1-4@356c489`, `src/slokern/core/verification/compare.py:L1-4@356c489`.
 - **Dependencies:** `SUB-08` (Experiment Orchestration), `SUB-03` (Evaluator).
 - **Risks:** Verification cannot be performed independently; violates core product principle (P1 Blocker BLK-08).
 - **Next Testable Step:** Implement drift calculation function comparing two `MetricSet` instances. Acceptance: `tests/unit/core/verification/test_compare.py` passes with positive and negative drift test cases.
@@ -166,7 +166,7 @@
 ### SUB-10: Report Artifact Generator
 - **Intended Behavior:** Generates a self-contained, immutable Markdown and JSON `ReportArtifact` linking headline numbers directly to raw measurement traces, environment fingerprints, cost disclosure, and verification records.
 - **Actual Behavior:** **ABSENT.** `src/slokern/engine/reporting/report_builder.py` and `templates/report.md.jinja` are empty docstrings.
-- **Evidence:** `src/slokern/engine/reporting/report_builder.py:L1-4@52a0889`.
+- **Evidence:** `src/slokern/engine/reporting/report_builder.py:L1-4@356c489`.
 - **Dependencies:** `SUB-02` (Contracts), `SUB-08` (Run artifacts), `SUB-09` (Verification).
 - **Risks:** Inability to publish inspectable proof for hackathon submission (P1 Blocker BLK-09).
 - **Next Testable Step:** Implement a builder that formats a valid `ReportArtifact` instance into a human-readable Markdown summary. Acceptance: `tests/unit/engine/reporting/test_report_builder.py` passes.
@@ -174,7 +174,7 @@
 ### SUB-11: Control Plane API & CLI
 - **Intended Behavior:** FastAPI application with SSE streaming endpoints; CLI tool (`slokern verify`, `slokern optimize`, `slokern smoke-test`).
 - **Actual Behavior:** **ABSENT.** `src/slokern/api/app.py`, `src/slokern/cli/main.py`, and all command files are empty docstrings. No CLI scripts are registered in `pyproject.toml`.
-- **Evidence:** `src/slokern/api/app.py:L1-4@52a0889`, `src/slokern/cli/main.py:L1-4@52a0889`, `pyproject.toml:L1-40@52a0889`.
+- **Evidence:** `src/slokern/api/app.py:L1-4@356c489`, `src/slokern/cli/main.py:L1-4@356c489`, `pyproject.toml:L1-40@356c489`.
 - **Dependencies:** `SUB-08` (Runner), `SUB-09` (Verification), `SUB-10` (Reporting).
 - **Risks:** Lack of user execution entry points.
 - **Next Testable Step:** Freeze FastAPI as DEFERRED; implement minimal CLI entry point for `slokern verify` using Python standard library (`argparse`). Acceptance: `slokern --help` executes and exits code 0.
@@ -182,7 +182,7 @@
 ### SUB-12: Frontend Command Center & Presentation
 - **Intended Behavior:** React + Vite cyber-technical command center visualizing specifications, live run progress, comparisons, and report badges.
 - **Actual Behavior:** **ABSENT / SKELETON-ONLY.** All 22 files in `frontend/src/` are 88–141 byte placeholder comments. `package.json` contains no dependencies, no devDependencies, and no build scripts. No lockfile exists. No mock data exists.
-- **Evidence:** `frontend/package.json:L1-8@52a0889`, `frontend/src/main.tsx:L1-3@52a0889`, probe P-20.
+- **Evidence:** `frontend/package.json:L1-8@356c489`, `frontend/src/main.tsx:L1-3@356c489`, probe P-20.
 - **Dependencies:** SUB-11 (API).
 - **Risks:** Building a full React frontend in remaining 9 days will consume all sprint bandwidth.
 - **Next Testable Step:** **FREEZE AS OUT OF MVP SCOPE / DEFERRED.** All verification evidence and demo deliverables will be presented via static Markdown reports and CLI output.
@@ -190,7 +190,7 @@
 ### SUB-13: CI/CD, Packaging & Test Automation
 - **Intended Behavior:** Production-quality GitHub Actions workflow enforcing linting, static typing, dependency checks, test execution, and contract drift checks; clean reproducible packaging.
 - **Actual Behavior:** `ci.yml` runs `pip install -e ".[dev]"`, `pip check`, `compileall`, and `pytest -v -m "not live"`. However, CI does NOT run linting, static type checking (mypy), contract schema generation, or secret scanning. Build tooling lacks `wheel` in venv. Working tree has uncommitted `README.md` modification (BLK-14).
-- **Evidence:** `.github/workflows/ci.yml:L1-58@52a0889`, command runs R-01, R-04, R-05, R-10, R-11.
+- **Evidence:** `.github/workflows/ci.yml:L1-58@356c489`, command runs R-01, R-04, R-05, R-10, R-11.
 - **Dependencies:** None.
 - **Risks:** Regressions escaping into `main` due to incomplete CI test matrix.
 - **Next Testable Step:** Revert or commit `README.md` to restore a clean working tree; add `wheel` to `build-system.requires` or local setup instructions. Acceptance: Clean `git status --porcelain` and reproducible editable install.
@@ -252,9 +252,9 @@ flowchart LR
 
 | Claim ID | Completion Claim Text | Source Document | Audit Finding | Verified Evidence / Reality |
 |---|---|---|---|---|
-| **CLM-01** | *"Fake Serving Adapter: IMPLEMENTED (src/slokern/engine/serving/fake.py generates deterministic synthetic runs)."* | `README.md:253` | **CONTRADICTED** | `fake.py` is a 4-line empty docstring (`L1-4@52a0889`). It generates zero synthetic runs. |
+| **CLM-01** | *"Fake Serving Adapter: IMPLEMENTED (src/slokern/engine/serving/fake.py generates deterministic synthetic runs)."* | `README.md:253` | **CONTRADICTED** | `fake.py` is a 4-line empty docstring (`L1-4@356c489`). It generates zero synthetic runs. |
 | **CLM-02** | *"Demo Dashboard UI: IMPLEMENTED (React + Vite command center in frontend/; offline fixtures labeled DEMO DATA)."* | `README.md:258` | **CONTRADICTED** | All 22 files in `frontend/` are 88–141 byte comment skeletons. `package.json` contains no dependencies or scripts. No mock data exists (P-20). |
-| **CLM-03** | *"1. Model-Agnostic Core: VERIFIED (Contracts, evaluator, load generator, and search controllers are model-agnostic)."* | `README.md:181` | **CONTRADICTED** | Load generator is absent (`runner.py:L1-4@52a0889`). Search controller is ranker only. Not verified. |
+| **CLM-03** | *"1. Model-Agnostic Core: VERIFIED (Contracts, evaluator, load generator, and search controllers are model-agnostic)."* | `README.md:181` | **CONTRADICTED** | Load generator is absent (`runner.py:L1-4@356c489`). Search controller is ranker only. Not verified. |
 | **CLM-04** | *"Subsystem Modules: IMPLEMENTED (STUBS) (api/, cli/, core/, engine/ scaffolded with clear typed signatures)."* | `README.md:252` | **CONTRADICTED** | Files in `api/`, `cli/`, `engine/` contain only 2-line module docstrings without class or function signatures. |
 | **CLM-05** | *"Phase A (Oct 19) - Audit and Scope Freeze: DONE (Repository audit completed; working baseline established; core interfaces locked)."* | `README.md:370` | **CONTRADICTED** | Audit was never executed on Oct 19. Being executed today on Oct 21. |
 | **CLM-06** | *"Phase A | Oct 19 | Audit and scope freeze | DONE / VERIFIED"* | `ROADMAP.md:236` | **CONTRADICTED** | Fake adapter claimed verified, but `fake.py` is an empty stub. |
@@ -273,19 +273,19 @@ flowchart LR
 
 | Blocker ID | Priority | Evidence | Actual Consequence | Affected Subsystems | Accountable Owner | Smallest Remediation | Closing Test |
 |---|---|---|---|---|---|---|---|
-| **BLK-01** | **P0** | `src/slokern/engine/serving/fake.py:L1-4@52a0889` & `nebius.py:L1-4` are empty docstrings. | System cannot execute any serving requests locally or live. Blocks Stage 1 & Stage 2. | SUB-05, SUB-08 | Rajdeep | Implement `FakeServingAdapter` generating deterministic synthetic responses. | `tests/integration/test_pipeline_fake_adapter.py` |
-| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py:L1-4@52a0889` is an empty docstring. | Cannot dispatch requests or record raw `RawRequestMeasurement` event traces. Blocks Stage 2. | SUB-06, SUB-08 | Rajdeep | Implement minimal dispatch loop writing unaggregated JSONL recordings. | `tests/unit/engine/loadgen/test_runner.py` |
-| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py:L1-4@52a0889` is an empty docstring. | Cannot calculate `MetricSet` from raw event traces. Blocks Stage 3 and feeds into Evaluator. | SUB-07, SUB-08 | Rajdeep | Implement standard library percentile and throughput calculators. | `tests/unit/core/metrics/test_percentiles.py` |
-| **BLK-04** | **P0** | `tests/live/test_smoke_live.py:L12@52a0889` skips; exact Nebius API model string unverified. | Cannot run live compliance benchmark on Nebius Cloud. Blocks Stage 1 on live infra. | SUB-05 | Rajdeep | Execute live preflight probe using `curl` or single-request script with valid API key. | `tests/live/test_smoke_live.py` (live run) |
+| **BLK-01** | **P0** | `src/slokern/engine/serving/fake.py:L1-4@356c489` & `nebius.py:L1-4` are empty docstrings. | System cannot execute any serving requests locally or live. Blocks Stage 1 & Stage 2. | SUB-05, SUB-08 | Rajdeep | Implement `FakeServingAdapter` generating deterministic synthetic responses. | `tests/integration/test_pipeline_fake_adapter.py` |
+| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py:L1-4@356c489` is an empty docstring. | Cannot dispatch requests or record raw `RawRequestMeasurement` event traces. Blocks Stage 2. | SUB-06, SUB-08 | Rajdeep | Implement minimal dispatch loop writing unaggregated JSONL recordings. | `tests/unit/engine/loadgen/test_runner.py` |
+| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py:L1-4@356c489` is an empty docstring. | Cannot calculate `MetricSet` from raw event traces. Blocks Stage 3 and feeds into Evaluator. | SUB-07, SUB-08 | Rajdeep | Implement standard library percentile and throughput calculators. | `tests/unit/core/metrics/test_percentiles.py` |
+| **BLK-04** | **P0** | `tests/live/test_smoke_live.py:L12@356c489` skips; exact Nebius API model string unverified. | Cannot run live compliance benchmark on Nebius Cloud. Blocks Stage 1 on live infra. | SUB-05 | Rajdeep | Execute live preflight probe using `curl` or single-request script with valid API key. | `tests/live/test_smoke_live.py` (live run) |
 | **BLK-05** | **P1** | Probe P-05: `float('nan') <= 200.0` returns `False`, yielding `INFEASIBLE` with `TTFT_P95_EXCEEDED`. | Corrupted or uncalculable floating-point evidence is misclassified as an SLO threshold breach instead of inconclusive evidence. | SUB-03 | Rajdeep | Add `math.isnan(obs_val)` check in `evaluate.py` to route NaN to `INCONCLUSIVE`. | `tests/unit/core/test_evaluator.py::test_evaluator_nan_inconclusive` |
 | **BLK-06** | **P1** | Probe P-06: `-10.0 <= 200.0` returns `True`, yielding `FEASIBLE` with `HARD_CONSTRAINTS_PASSED`. | Physically impossible negative latency passes feasibility checks without rejection. | SUB-03 | Rajdeep | Add physical non-negative constraint assertion (`obs_val >= 0`) in `evaluate.py`. | `tests/unit/core/test_evaluator.py::test_evaluator_negative_latency_invalid` |
-| **BLK-07** | **P1** | `docs/ownership.md:L41-49@52a0889` lists Rajdeep as accountable for 9 of 13 subsystems (69% concentration). | Severe delivery bottleneck on Rajdeep; collaborator workstreams are delayed until Oct 21 and Oct 24. | SUB-01 through SUB-13 | Rajdeep | Freeze scope strictly to CLI + static Markdown report; defer API and Frontend. | Ratified `ROADMAP.md` with explicit deferred tags. |
-| **BLK-08** | **P1** | `src/slokern/core/verification/compare.py:L1-4@52a0889` is an empty docstring. | Cannot independently verify selected winning candidates or compute metric drift ($\Delta M$). Blocks Stage 6. | SUB-09 | Rajdeep | Implement deterministic drift calculation and pass/fail evaluation comparing two `MetricSet`s. | `tests/unit/core/verification/test_compare.py` |
-| **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py:L1-4@52a0889` is an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. Blocks Stage 7. | SUB-10 | Rajdeep | Implement Markdown builder serializing `ReportArtifact` into an inspectable document. | `tests/unit/engine/reporting/test_report_builder.py` |
-| **BLK-10** | **P1** | `schemas/` contains only `.gitkeep`; `scripts/gen_contracts.py:L17@52a0889` is a gap notice. | No emitted JSON Schemas exist in source control; cannot validate external tooling against contracts. | SUB-02 | Rajdeep | Implement script exporting `model_json_schema()` for all 11 models into `schemas/`. | `tests/contract/test_generated_files_current.py` |
+| **BLK-07** | **P1** | `docs/ownership.md:L41-49@356c489` lists Rajdeep as accountable for 9 of 13 subsystems (69% concentration). | Severe delivery bottleneck on Rajdeep; collaborator workstreams are delayed until Oct 21 and Oct 24. | SUB-01 through SUB-13 | Rajdeep | Freeze scope strictly to CLI + static Markdown report; defer API and Frontend. | Ratified `ROADMAP.md` with explicit deferred tags. |
+| **BLK-08** | **P1** | `src/slokern/core/verification/compare.py:L1-4@356c489` is an empty docstring. | Cannot independently verify selected winning candidates or compute metric drift ($\Delta M$). Blocks Stage 6. | SUB-09 | Rajdeep | Implement deterministic drift calculation and pass/fail evaluation comparing two `MetricSet`s. | `tests/unit/core/verification/test_compare.py` |
+| **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py:L1-4@356c489` is an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. Blocks Stage 7. | SUB-10 | Rajdeep | Implement Markdown builder serializing `ReportArtifact` into an inspectable document. | `tests/unit/engine/reporting/test_report_builder.py` |
+| **BLK-10** | **P1** | `schemas/` contains only `.gitkeep`; `scripts/gen_contracts.py:L17@356c489` is a gap notice. | No emitted JSON Schemas exist in source control; cannot validate external tooling against contracts. | SUB-02 | Rajdeep | Implement script exporting `model_json_schema()` for all 11 models into `schemas/`. | `tests/contract/test_generated_files_current.py` |
 | **BLK-11** | **P2** | Probe P-12: `{"tensor_parallel_size": 1}` vs `1.0` produces different candidate IDs (`4fe93deaf8d0` vs `cd0ce0cb5b73`). | Inadvertent type coercion between float and integer changes candidate hash identity. | SUB-04 | Rajdeep | Enforce canonical integer/float normalization before hashing in `candidate_id.py`. | `tests/unit/core/test_ranker.py::test_candidate_id_float_int_equivalence` |
 | **BLK-12** | **P2** | Probe P-19: All 11 models accept unrecognized fields silently (`extra='ignore'`). | Contracts do not strictly reject invalid or misspelled fields at system boundaries. | SUB-02 | Rajdeep | Add `model_config = ConfigDict(extra='forbid')` to all 11 contract classes. | `tests/contract/test_schemas.py::test_extra_fields_forbidden` |
-| **BLK-13** | **P2** | `.github/workflows/ci.yml:L1-58@52a0889` lacks linting, type checks, schema drift, and secret scanning steps. | Code regressions, typing errors, or secret leaks can bypass CI unnoticed. | SUB-13 | Rajdeep | Add `ruff check`, `mypy --strict src/slokern`, and secret scanning checks to `ci.yml`. | `.github/workflows/ci.yml` execution in GitHub Actions |
+| **BLK-13** | **P2** | `.github/workflows/ci.yml:L1-58@356c489` lacks linting, type checks, schema drift, and secret scanning steps. | Code regressions, typing errors, or secret leaks can bypass CI unnoticed. | SUB-13 | Rajdeep | Add `ruff check`, `mypy --strict src/slokern`, and secret scanning checks to `ci.yml`. | `.github/workflows/ci.yml` execution in GitHub Actions |
 | **BLK-14** | **P2** | Git preflight R-01: `README.md` is modified in the working tree (uncommitted badge modification). | Working tree baseline is not clean (`NOT CLEAN-BASELINE`), preventing clean clone verification. | SUB-13 | Rajdeep | Commit or revert the `README.md` change. | `git status --porcelain` returning clean |
 
 ---
