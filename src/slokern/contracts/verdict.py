@@ -4,12 +4,14 @@ Owner: Rajdeep
 """
 
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.enums import FeasibilityVerdict, ReasonCode, EvidenceValidity
 
 
 class ConstraintEvaluation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     metric_name: str = Field(..., description="Target metric")
     statistic: str = Field(..., description="Evaluated statistic")
     observed_value: Optional[float] = Field(None, description="Derived metric value (null if metric missing or sample insufficient)")
@@ -21,6 +23,8 @@ class ConstraintEvaluation(BaseModel):
 
 class FeasibilityResult(BaseModel):
     """Deterministic constraint audit result."""
+    model_config = ConfigDict(extra="forbid")
+
     policy_version: str = Field(..., description="Version of feasibility evaluation rules")
     run_id: str = Field(..., description="Associated run identifier")
     overall_verdict: FeasibilityVerdict = Field(..., description="Enum: FEASIBLE, INFEASIBLE, INCONCLUSIVE")

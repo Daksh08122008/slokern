@@ -1,6 +1,7 @@
 {
   "$defs": {
     "DriftAnalysis": {
+      "additionalProperties": false,
       "properties": {
         "metric_deltas": {
           "additionalProperties": {
@@ -36,12 +37,37 @@
       "type": "string"
     }
   },
+  "additionalProperties": false,
   "description": "Independent verification audit record for the winning candidate.",
   "properties": {
+    "verification_id": {
+      "description": "Unique identifier for the verification session",
+      "title": "Verification Id",
+      "type": "string"
+    },
+    "experiment_id": {
+      "description": "Associated experiment identifier",
+      "title": "Experiment Id",
+      "type": "string"
+    },
     "candidate_id": {
       "description": "Frozen candidate configuration tested",
       "title": "Candidate Id",
       "type": "string"
+    },
+    "original_run_id": {
+      "description": "Search run ID where candidate was selected",
+      "title": "Original Run Id",
+      "type": "string"
+    },
+    "verification_run_id": {
+      "description": "Fresh run ID under which rerun was conducted",
+      "title": "Verification Run Id",
+      "type": "string"
+    },
+    "verification_verdict": {
+      "$ref": "#/$defs/VerificationState",
+      "description": "Enum: VERIFIED, VERIFICATION_FAILED, VERIFICATION_INCONCLUSIVE"
     },
     "drift_analysis": {
       "anyOf": [
@@ -55,11 +81,6 @@
       "default": null,
       "description": "Drift analysis"
     },
-    "experiment_id": {
-      "description": "Associated experiment identifier",
-      "title": "Experiment Id",
-      "type": "string"
-    },
     "final_decision_notes": {
       "anyOf": [
         {
@@ -72,25 +93,6 @@
       "default": null,
       "description": "Explanation of confirmation or failure",
       "title": "Final Decision Notes"
-    },
-    "original_run_id": {
-      "description": "Search run ID where candidate was selected",
-      "title": "Original Run Id",
-      "type": "string"
-    },
-    "verification_id": {
-      "description": "Unique identifier for the verification session",
-      "title": "Verification Id",
-      "type": "string"
-    },
-    "verification_run_id": {
-      "description": "Fresh run ID under which rerun was conducted",
-      "title": "Verification Run Id",
-      "type": "string"
-    },
-    "verification_verdict": {
-      "$ref": "#/$defs/VerificationState",
-      "description": "Enum: VERIFIED, VERIFICATION_FAILED, VERIFICATION_INCONCLUSIVE"
     }
   },
   "required": [

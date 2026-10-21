@@ -4,11 +4,13 @@ Owner: Rajdeep
 """
 
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RawRequestMeasurement(BaseModel):
     """Granular, unaggregated event capture for every request. Must be preserved for reproducibility."""
+    model_config = ConfigDict(extra="forbid")
+
     request_id: str = Field(..., description="Unique request identifier")
     run_id: str = Field(..., description="Associated run identifier")
     scheduled_at: float = Field(..., description="Intended dispatch timestamp (epoch seconds / ISO)")

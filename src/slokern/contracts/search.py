@@ -4,18 +4,22 @@ Owner: Rajdeep
 """
 
 from typing import List, Dict, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.enums import FeasibilityVerdict, RankingObjective
 
 
 class CandidateSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     verdict: FeasibilityVerdict
     ranking_metric: Optional[float] = None
 
 
 class SearchResult(BaseModel):
     """Bounded search exploration history and candidate ranking."""
+    model_config = ConfigDict(extra="forbid")
+
     experiment_id: str = Field(..., description="Parent experiment identifier")
     baseline_candidate_id: str = Field(..., description="ID of baseline configuration")
     tested_candidates: List[str] = Field(..., description="List of tested candidate IDs in execution order")

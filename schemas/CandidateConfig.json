@@ -12,6 +12,7 @@
       "type": "string"
     }
   },
+  "additionalProperties": false,
   "description": "Represents a concrete serving configuration. Distinguishes intent from verified runtime reality.",
   "properties": {
     "candidate_id": {
@@ -19,22 +20,27 @@
       "title": "Candidate Id",
       "type": "string"
     },
+    "model_name": {
+      "description": "Formal model identifier",
+      "title": "Model Name",
+      "type": "string"
+    },
+    "runtime_name": {
+      "description": "Serving engine",
+      "title": "Runtime Name",
+      "type": "string"
+    },
+    "requested_settings": {
+      "additionalProperties": true,
+      "description": "Key-value pairs requested by the search controller",
+      "title": "Requested Settings",
+      "type": "object"
+    },
     "effective_settings": {
       "additionalProperties": true,
       "description": "Key-value pairs confirmed by the adapter via runtime read-back",
       "title": "Effective Settings",
       "type": "object"
-    },
-    "environment_fingerprint": {
-      "additionalProperties": true,
-      "description": "Hash/dictionary of GPU hardware, driver, CUDA version, and runtime software commit",
-      "title": "Environment Fingerprint",
-      "type": "object"
-    },
-    "model_name": {
-      "description": "Formal model identifier",
-      "title": "Model Name",
-      "type": "string"
     },
     "parameter_status": {
       "additionalProperties": {
@@ -44,16 +50,11 @@
       "title": "Parameter Status",
       "type": "object"
     },
-    "requested_settings": {
+    "environment_fingerprint": {
       "additionalProperties": true,
-      "description": "Key-value pairs requested by the search controller",
-      "title": "Requested Settings",
+      "description": "Hash/dictionary of GPU hardware, driver, CUDA version, and runtime software commit",
+      "title": "Environment Fingerprint",
       "type": "object"
-    },
-    "runtime_name": {
-      "description": "Serving engine",
-      "title": "Runtime Name",
-      "type": "string"
     }
   },
   "required": [

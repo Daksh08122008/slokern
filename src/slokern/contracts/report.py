@@ -4,7 +4,7 @@ Owner: Rajdeep
 """
 
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.spec import ExperimentSpec
 from slokern.contracts.config import CandidateConfig
@@ -13,12 +13,16 @@ from slokern.contracts.enums import FeasibilityVerdict
 
 
 class BaselineSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     baseline_candidate_id: str
     verdict: FeasibilityVerdict
     metrics: Dict[str, Any]
 
 
 class SearchSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     tested_candidates: List[str]
     rejected_options: List[str]
     rankings: List[str]
@@ -26,6 +30,8 @@ class SearchSummary(BaseModel):
 
 class ReportArtifact(BaseModel):
     """Self-contained, inspectable artifact published for users and hackathon judges."""
+    model_config = ConfigDict(extra="forbid")
+
     report_id: str = Field(..., description="Unique report identifier")
     created_at: str = Field(..., description="UTC ISO timestamp")
     experiment_spec: ExperimentSpec = Field(..., description="Complete immutable specification")

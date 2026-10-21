@@ -1,7 +1,11 @@
 {
   "$defs": {
     "CandidateSummary": {
+      "additionalProperties": false,
       "properties": {
+        "verdict": {
+          "$ref": "#/$defs/FeasibilityVerdict"
+        },
         "ranking_metric": {
           "anyOf": [
             {
@@ -13,9 +17,6 @@
           ],
           "default": null,
           "title": "Ranking Metric"
-        },
-        "verdict": {
-          "$ref": "#/$defs/FeasibilityVerdict"
         }
       },
       "required": [
@@ -46,12 +47,26 @@
       "type": "string"
     }
   },
+  "additionalProperties": false,
   "description": "Bounded search exploration history and candidate ranking.",
   "properties": {
+    "experiment_id": {
+      "description": "Parent experiment identifier",
+      "title": "Experiment Id",
+      "type": "string"
+    },
     "baseline_candidate_id": {
       "description": "ID of baseline configuration",
       "title": "Baseline Candidate Id",
       "type": "string"
+    },
+    "tested_candidates": {
+      "description": "List of tested candidate IDs in execution order",
+      "items": {
+        "type": "string"
+      },
+      "title": "Tested Candidates",
+      "type": "array"
     },
     "candidate_summaries": {
       "additionalProperties": {
@@ -60,11 +75,6 @@
       "description": "Map of candidate ID to feasibility verdict and ranking metric",
       "title": "Candidate Summaries",
       "type": "object"
-    },
-    "experiment_id": {
-      "description": "Parent experiment identifier",
-      "title": "Experiment Id",
-      "type": "string"
     },
     "ranking_objective": {
       "$ref": "#/$defs/RankingObjective",
@@ -92,14 +102,6 @@
       "description": "Reason search halted ('budget_exhausted', 'space_exhausted', 'early_convergence', 'timeout')",
       "title": "Stopping Reason",
       "type": "string"
-    },
-    "tested_candidates": {
-      "description": "List of tested candidate IDs in execution order",
-      "items": {
-        "type": "string"
-      },
-      "title": "Tested Candidates",
-      "type": "array"
     }
   },
   "required": [
