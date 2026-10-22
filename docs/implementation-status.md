@@ -71,7 +71,7 @@
 
 ## 2. Subsystem Summary Table
 
-> **Reconciled Status (2026-10-22):** Synchronized with verified test execution (284 passed, 1 skipped). `SUB-02` (Contracts), `SUB-03` (Evaluator), `SUB-04` (Ranking/Candidate ID), `SUB-05` (Fake Serving Adapter), `SUB-06` (Subprocess Load Generator), and `SUB-07` (Metrics Engine) are fully implemented with passing unit and regression tests. `SUB-08` is unblocked (`READY`); live Nebius probe (`BLK-04`) remains open.
+> **Reconciled Status (2026-10-22):** Synchronized with verified test execution (316 passed, 1 skipped). `SUB-02` (Contracts), `SUB-03` (Evaluator), `SUB-04` (Ranking/Candidate ID), `SUB-05` (Fake Serving Adapter), `SUB-06` (Subprocess Load Generator), `SUB-07` (Metrics Engine), and `SUB-08` (Single-Run Pipeline Orchestrator) are fully implemented with passing unit, integration, and regression tests. Unblocks `TASK-09` (Nebius Live Probe) and `TASK-10` (2×2 Search Controller).
 
 | ID | Subsystem | Implementation | Verification | Flags | Owner | Blocked-by |
 |---|---|---|---|---|---|---|
@@ -82,7 +82,7 @@
 | **SUB-05** | Serving Adapter & Runtime Infrastructure | `IMPLEMENTED (Fake) / PARTIAL (Live)` | `INTEGRATION` | `BLOCKED(by=BLK-04)` | Rajdeep (INTERIM) | BLK-04 |
 | **SUB-06** | Subprocess Load Generator & Workload Fixtures | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (CONFIRMED) | None |
 | **SUB-07** | Metrics Engine Core | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (CONFIRMED) | None |
-| **SUB-08** | Experiment Orchestration & Run Lifecycle | `ABSENT` | `NONE` | `READY (unblocked by SUB-06, SUB-07)` | Rajdeep (INTERIM) | None |
+| **SUB-08** | Experiment Orchestration & Run Lifecycle | `PARTIAL (Single-Run Orchestrator Implemented)` | `UNIT & INTEGRATION` | `NONE` | Rajdeep (INTERIM) | None |
 | **SUB-09** | Independent Verification Engine | `ABSENT` | `NONE` | `BLOCKED(by=BLK-08)` | Rajdeep (CONFIRMED) | BLK-08 |
 | **SUB-10** | Report Artifact Generator | `ABSENT` | `NONE` | `BLOCKED(by=BLK-09)` | Rajdeep (INTERIM) | BLK-09 |
 | **SUB-11** | Control Plane API & CLI | `ABSENT` | `NONE` | `DEFERRED` | Rajdeep (INTERIM) | BLK-08 |
@@ -151,11 +151,11 @@
 
 ### SUB-08: Experiment Orchestration & Run Lifecycle
 - **Intended Behavior:** Modular monolith experiment controller managing the 6-run search budget (1 baseline + 4 grid candidates + 1 verification run), lifecycle states (`ExecutionStatus`), cancellation, and artifact persistence.
-- **Actual Behavior:** **ABSENT.** `src/slokern/engine/runner/experiment_controller.py`, `run_executor.py`, `lifecycle.py`, and `src/slokern/engine/store/writer.py` are empty docstrings.
-- **Evidence:** `src/slokern/engine/runner/experiment_controller.py:L1-4@356c489`, `src/slokern/engine/store/writer.py:L1-4@356c489`.
+- **Actual Behavior:** **PARTIAL (Single-Run Orchestrator Implemented).** `SingleRunExecutor` (`src/slokern/engine/runner/run_executor.py`), `RunLifecycle` (`lifecycle.py`), and `CancellationToken` (`cancel.py`) are fully implemented and verified with 31 unit tests (`tests/unit/engine/runner/`) and 1 integration test (`tests/integration/test_pipeline_fake_adapter.py`). End-to-end execution wires config application, health checks, load generation, metrics calculation, SLO feasibility evaluation, and disk persistence under `artifacts/experiments/<experiment_id>/runs/<run_id>/`. Multi-candidate experiment controller managing search budget is pending in `TASK-10`.
+- **Evidence:** `src/slokern/engine/runner/run_executor.py`, `lifecycle.py`, `cancel.py`, `tests/unit/engine/runner/`, `tests/integration/test_pipeline_fake_adapter.py`.
 - **Dependencies:** `SUB-04` (Search), `SUB-05` (Serving), `SUB-06` (Loadgen), `SUB-07` (Metrics).
-- **Risks:** No automation exists to execute multi-candidate experiments or manage budgets.
-- **Next Testable Step:** Implement a single-run executor that runs one configuration through serving, loadgen, metrics, and evaluator. Acceptance: A single run executes and persists a `RunRecord`.
+- **Risks:** Multi-candidate search loop and budget controller (`TASK-10`) still required before live campaigns.
+- **Next Testable Step:** Implement `GridSearchController` (`TASK-10`) exploring 2×2 parameter matrix using `SingleRunExecutor`. Acceptance: 5 runs executed within 6-run budget.
 
 ### SUB-09: Independent Verification Engine
 - **Intended Behavior:** Takes the winning feasible candidate, triggers a fresh independent rerun under a new `verification_run_id`, computes metric drift ($\Delta M$), and renders a deterministic verification verdict (`VERIFIED` or `VERIFICATION_FAILED`).
