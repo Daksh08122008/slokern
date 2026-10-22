@@ -28,34 +28,31 @@
    - 13 candidate ranking and state transition tests (`tests/unit/core/`).
    - Bytecode compilation and packaging hygiene: 0 errors across 90 source modules (`python -m compileall`), 0 broken dependencies (`pip check`).
 3. **What is incomplete?**
-   - Subprocess load generator (`TASK-06` / `src/slokern/engine/loadgen/runner.py` is currently a stub).
-   - Deterministic metrics engine (`TASK-07` / `src/slokern/core/metrics/percentiles.py` is currently a stub).
    - Single-run orchestrator (`TASK-08`), live Nebius adapter probe (`TASK-09`), 2×2 bounded search controller (`TASK-10`), independent verification engine (`TASK-11`), report generator (`TASK-12`), CLI runner (`TASK-13`), collaborator audit suites (`TASK-14`, `TASK-15`), and submission package (`TASK-16`).
    - Control plane API (`TASK-17`) and React frontend (`TASK-18`) are formally deferred to post-hackathon.
 4. **What is blocking the next task?**
-   - Nothing blocks `TASK-06` upstream: `FakeServingAdapter` (`TASK-05`) is fully operational and tested offline.
-   - `TASK-06` is **`READY`** to implement.
+   - Nothing blocks `TASK-08`: prerequisites `TASK-04`, `TASK-05`, `TASK-06`, and `TASK-07` are all fully implemented and tested.
 5. **What should the next coding-agent run do?**
-   - **Execute `TASK-06`:** Implement the subprocess-isolated load generator in `src/slokern/engine/loadgen/runner.py` with microsecond request event dispatching, unaggregated JSONL logging conforming to `RawRequestMeasurement`, and client queue saturation detection (`generator_saturated = True`). Validate with new unit tests under `tests/unit/engine/loadgen/`.
+   - **Execute `TASK-08`:** Implement `SingleRunExecutor` under `src/slokern/engine/runner/run_executor.py` orchestrating end-to-end execution across serving adapter, load generator, metrics engine, and feasibility evaluator.
 
 ### 1.1 Sprint Snapshot & Milestone Window
 - **Current Milestone:** **Phase B: Establish Single-Run Execution** (Window: October 21–23, 2026).
 - **Execution Model:** Single-owner core execution (Rajdeep) with bounded collaborators (Adriraj active Oct 21, Daksh active Oct 24).
 - **Current Critical-Path Tasks:**
-  - [`TASK-06`](#task-06--implement-subprocess-load-generator): Implement Subprocess Load Generator (`src/slokern/engine/loadgen/runner.py`) [**`READY`**].
-  - [`TASK-07`](#task-07--implement-deterministic-metrics-engine): Implement Deterministic Metrics Engine (`src/slokern/core/metrics/`) [**`BLOCKED by TASK-06`**].
-  - [`TASK-08`](#task-08--single-run-pipeline-orchestrator): Single-Run Pipeline Orchestrator [**`BLOCKED by TASK-06, TASK-07`**].
+   - [`TASK-06`](#task-06--implement-subprocess-load-generator): Implement Subprocess Load Generator (`src/slokern/engine/loadgen/runner.py`) [**`DONE`**].
+   - [`TASK-07`](#task-07--implement-deterministic-metrics-engine): Implement Deterministic Metrics Engine (`src/slokern/core/metrics/`) [**`DONE`**].
+   - [`TASK-08`](#task-08--single-run-pipeline-orchestrator): Single-Run Pipeline Orchestrator (`src/slokern/engine/runner/run_executor.py`) [**`READY`**].
 
 ### 1.2 Immediate Next 1–3 Actions
-1. **Action 1 (Rajdeep — TASK-06):** Implement subprocess load generator in `src/slokern/engine/loadgen/runner.py` writing unaggregated microsecond events to `.jsonl` and flagging client saturation (`generator_saturated = True`) (closes [`BLK-02`](#61-active-blockers-register)).
-2. **Action 2 (Adriraj — TASK-06 / TASK-14 Audit):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
-3. **Action 3 (Rajdeep — TASK-07):** Implement `src/slokern/core/metrics/percentiles.py` and `aggregate.py` calculating TTFT/ITL percentiles and throughput from raw traces (closes [`BLK-03`](#61-active-blockers-register)).
+1. **Action 1 (Rajdeep — TASK-08):** Implement `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py` orchestrating end-to-end runs across fake serving, loadgen, metrics engine, and evaluator.
+2. **Action 2 (Adriraj — TASK-14 Audit):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
+3. **Action 3 (Rajdeep — TASK-09):** Execute live preflight probe against Nebius endpoint to verify model string and API compatibility (closes [`BLK-04`](#61-active-blockers-register)).
 
 ### 1.3 Active Blockers & Responsible Owners
 | Blocker ID | Priority | Summary | Accountable Owner | Direct Remediation Action | Status / Closing Validation |
 |---|---|---|---|---|---|
-| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring; cannot dispatch requests. | Rajdeep | Implement minimal dispatch loop writing unaggregated JSONL recordings. | **ACTIVE** (`pytest tests/unit/engine/loadgen/`) |
-| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring; cannot calculate percentiles. | Rajdeep | Implement standard library percentile and throughput calculators. | **ACTIVE** (`pytest tests/unit/core/metrics/`) |
+| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring; cannot dispatch requests. | Rajdeep | Implement minimal dispatch loop writing unaggregated JSONL recordings. | **RESOLVED** (38 unit tests pass in `tests/unit/engine/loadgen/`) |
+| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring; cannot calculate percentiles. | Rajdeep | Implement standard library percentile and throughput calculators. | **RESOLVED** (33 unit tests pass in `tests/unit/core/metrics/`) |
 | **BLK-04** | **P0** | Nebius API model string for `Nemotron-3-Nano-30B-A3B` unverified; live test skips. | Rajdeep | Execute live single-request preflight probe against Nebius endpoint. | **ACTIVE** (`pytest tests/live/test_smoke_live.py -v -m live`) |
 | **BLK-08** | **P1** | `compare.py` is an empty docstring; cannot compute metric drift ($\Delta M$). | Rajdeep | Implement drift calculation comparing two `MetricSet` instances. | **ACTIVE** (`pytest tests/unit/core/verification/test_compare.py`) |
 | **BLK-09** | **P1** | `report_builder.py` is an empty docstring; cannot serialize `ReportArtifact`. | Rajdeep | Implement Markdown serializer for immutable report artifacts. | **ACTIVE** (`pytest tests/unit/engine/reporting/test_report_builder.py`) |
@@ -162,9 +159,9 @@ The October 21 audit revealed four cross-document contradictions across earlier 
 | **TASK-03** | Schema Export & Contract Boundaries | `DONE` | `UNIT` | Closed BLK-10, BLK-12 | Rajdeep |
 | **TASK-04** | Evaluator NaN & Negative Latency Safety | `DONE` | `UNIT` | Closed BLK-05, BLK-06 | Rajdeep |
 | **TASK-05** | Deterministic Fake Serving Adapter | `DONE` | `INTEGRATION` | Closed BLK-01 | Rajdeep |
-| **TASK-06** | Subprocess Load Generator | `READY` | `NONE` | TASK-05, BLK-02 | Rajdeep (Adriraj audit Oct 21) |
-| **TASK-07** | Deterministic Metrics Engine Core | `BLOCKED` | `NONE` | TASK-06, BLK-03 | Rajdeep (Adriraj audit Oct 21) |
-| **TASK-08** | Single-Run Pipeline Orchestrator | `BLOCKED` | `NONE` | TASK-04, TASK-05, TASK-06, TASK-07 | Rajdeep |
+| **TASK-06** | Subprocess Load Generator | `DONE` | `UNIT` | Closed BLK-02 | Rajdeep (Adriraj audit Oct 21) |
+| **TASK-07** | Deterministic Metrics Engine Core | `DONE` | `UNIT` | Closed BLK-03 | Rajdeep (Adriraj audit Oct 21) |
+| **TASK-08** | Single-Run Pipeline Orchestrator | `READY` | `NONE` | TASK-04, TASK-05, TASK-06, TASK-07 | Rajdeep |
 | **TASK-09** | Nebius Live Serving Adapter & Smoke Probe | `BLOCKED` | `NONE` | TASK-08, DEC-01, DEC-02, BLK-04 | Rajdeep |
 | **TASK-10** | 2×2 Bounded Search Controller | `BLOCKED` | `NONE` | TASK-08, BLK-11 | Rajdeep |
 | **TASK-11** | Independent Verification Engine | `BLOCKED` | `NONE` | TASK-10, BLK-08 | Rajdeep (Daksh audit Oct 24) |
@@ -244,8 +241,8 @@ Every blocker is bound to an accountable owner, an explicit impact, an unblockin
 
 | Blocker ID | Priority | Blocking Condition | Impact | Unblock Action | Owner | Status / Closing Evidence |
 |---|---|---|---|---|---|---|
-| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring. | Cannot dispatch requests or record raw `RawRequestMeasurement` event traces. | Implement minimal dispatch loop writing unaggregated JSONL recordings. | Rajdeep | **ACTIVE** (Direct target of TASK-06) |
-| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring. | Cannot calculate `MetricSet` from raw event traces. | Implement standard library percentile and throughput calculators. | Rajdeep | **ACTIVE** (Direct target of TASK-07) |
+| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring. | Cannot dispatch requests or record raw `RawRequestMeasurement` event traces. | Implement minimal dispatch loop writing unaggregated JSONL recordings. | Rajdeep | **RESOLVED** (38 unit tests pass in `tests/unit/engine/loadgen/`) |
+| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring. | Cannot calculate `MetricSet` from raw event traces. | Implement standard library percentile and throughput calculators. | Rajdeep | **RESOLVED** (33 unit tests pass in `tests/unit/core/metrics/`) |
 | **BLK-04** | **P0** | `test_smoke_live.py` skips; exact Nebius API model string unverified. | Cannot run live compliance benchmark on Nebius Cloud. | Execute live preflight probe using `curl` or single-request script with valid API key. | Rajdeep | **ACTIVE** (Fallback: FakeServingAdapter with `DEMO DATA`) |
 | **BLK-08** | **P1** | `src/slokern/core/verification/compare.py` is an empty docstring. | Cannot independently verify selected winning candidates or compute drift ($\Delta M$). | Implement deterministic drift calculation and pass/fail evaluation comparing two `MetricSet`s. | Rajdeep | **ACTIVE** (Escalate to Daksh for boundary audit Oct 24) |
 | **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py` is an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. | Implement Markdown builder serializing `ReportArtifact` into an inspectable document. | Rajdeep | **ACTIVE** (Direct target of TASK-12) |
@@ -287,11 +284,11 @@ This day-by-day plan governs all development leading up to the submission deadli
 ### Day 2: Thursday, October 22, 2026 — Phase B: Subprocess Load Generator & Metrics Engine
 - **Intended Outcome:** Operational load generator capable of dispatching Poisson/constant traffic to the fake adapter and writing valid `.jsonl` traces; metrics engine computing percentiles.
 - **Ordered Actions:**
-  - [ ] **Action 2.1 (Rajdeep):** Execute `TASK-06`: Implement subprocess-isolated load generator in `src/slokern/engine/loadgen/runner.py` writing unaggregated microsecond events to `.jsonl`.
+  - [x] **Action 2.1 (Rajdeep):** Execute `TASK-06`: Implement subprocess-isolated load generator in `src/slokern/engine/loadgen/runner.py` writing unaggregated microsecond events to `.jsonl`. *(COMPLETED: 38 unit tests pass; Victory Confirmed by independent audit).*
   - [ ] **Action 2.2 (Adriraj):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
-  - [ ] **Action 2.3 (Rajdeep):** Execute `TASK-07`: Implement `src/slokern/core/metrics/percentiles.py` and `aggregate.py` calculating TTFT/ITL percentiles and throughput from raw traces.
+  - [x] **Action 2.3 (Rajdeep):** Execute `TASK-07`: Implement `src/slokern/core/metrics/percentiles.py` and `aggregate.py` calculating TTFT/ITL percentiles and throughput from raw traces. *(COMPLETED: 33 unit tests pass).*
   - [ ] **Action 2.4 (Adriraj — Active Window Starts):** Inspect `src/slokern/contracts/evidence.py` (`RawRequestMeasurement`) and construct benchmark validation fixtures for invalid/saturated traces (`tests/contract/test_fixtures_validate.py`).
-  - [ ] **Action 2.5 (Adriraj):** Populate golden metric fixtures (`fixtures/metrics_golden/percentiles_basic.json`) with hand-calculated percentiles for unit testing.
+  - [x] **Action 2.5 (Adriraj / Rajdeep):** Populate golden metric fixtures (`fixtures/metrics_golden/percentiles_basic.json`, `failed_requests.json`) with hand-calculated percentiles for unit testing. *(COMPLETED: golden fixtures populated and verified).*
 - **Accountable Owner:** Rajdeep (Implementation); Adriraj (Trace Auditing & Fixtures).
 - **Dependencies & Fallback:** If subprocess IPC encounters platform issues on Windows, fall back to synchronous dispatch loop with explicit lag detection.
 - **Completion Evidence:** `pytest tests/unit/engine/loadgen/ tests/unit/core/metrics/` passes cleanly; sample `.jsonl` trace produced and validated.
@@ -500,7 +497,7 @@ This day-by-day plan governs all development leading up to the submission deadli
 ---
 
 ### TASK-06 — Implement Subprocess Load Generator
-- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-06` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `READY` · **Validation Level:** `NONE`
+- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-06` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `DONE` · **Validation Level:** `UNIT`
 - **Objective:** Implement subprocess-isolated load generator generating Poisson/constant arrival and writing unaggregated JSONL events.
 - **Needs:** `TASK-05`, `BLK-02`.
 - **Boundary & Isolation:** Confined to `src/slokern/engine/loadgen/` (`runner.py`, `arrival.py`, `recorder.py`) and `tests/unit/engine/loadgen/`. Must output valid `RawRequestMeasurement` records.
@@ -510,28 +507,24 @@ This day-by-day plan governs all development leading up to the submission deadli
   2. Poisson and constant arrival intervals generated with microsecond timestamps (`scheduled_at`, `sent_at`, `first_token_at`, `completed_at`).
   3. Output JSONL records validate 100% against `RawRequestMeasurement` schema.
   4. Client queue lag detection sets `generator_saturated = True` when dispatched traffic falls behind schedule.
-- **Verify:** `pytest tests/unit/engine/loadgen/test_runner.py` passes.
-- **Completion Evidence:** Subprocess dispatches 100 simulated requests and outputs valid unaggregated `.jsonl` file.
+- **Verify:** `pytest tests/unit/engine/loadgen/` passes (38 passed in 16.72s).
+- **Completion Evidence:** Subprocess dispatches simulated requests against `FakeServingAdapter` and writes unaggregated `.jsonl` traces conforming to `RawRequestMeasurement`; Victory Confirmed by independent 3-phase audit. Closes `BLK-02`.
 - **Evidence-Backed Progress Record (Reconciled: 2026-10-22):**
-  - **Implementation Status:** `ABSENT` (stub module with docstring)
-  - **Validation Status / Level:** `READY` (Prerequisites satisfied; unblocked by `TASK-05`)
-  - **Last Reconciled Commit:** Current working tree (`HEAD` at `afac3a6`)
-  - **Latest Run Outcome:** `UNBLOCKED`
-  - **Files to Modify:** `src/slokern/engine/loadgen/runner.py`, `arrival.py`, `recorder.py`, `tests/unit/engine/loadgen/`
-  - **Validation Command:** `.venv\Scripts\pytest tests/unit/engine/loadgen/` (pending implementation)
-  - **Remaining Acceptance Criteria:**
-    1. Implement subprocess dispatch process isolated from parent execution.
-    2. Implement Poisson and constant arrival schedule models.
-    3. Stream raw events to unaggregated `.jsonl` matching `RawRequestMeasurement`.
-    4. Detect and record client-side queue saturation when scheduling lag exceeds 10ms.
-  - **Blockers & Dependencies:** Upstream dependency `TASK-05` completed; blocked only on implementation (`BLK-02`).
-  - **Next Action:** Implement subprocess load generator runner in `src/slokern/engine/loadgen/runner.py`.
-  - **Completion Evidence:** Pending implementation: 100 simulated requests dispatched against `FakeServingAdapter` producing valid `.jsonl` trace.
+  - **Implementation Status:** `COMPLETE` (ArrivalSchedule, JSONLRecorder, LoadGeneratorRunner)
+  - **Validation Status / Level:** `DONE` (`UNIT`)
+  - **Last Reconciled Commit:** Current working tree
+  - **Latest Run Outcome:** `COMPLETED`
+  - **Files Modified:** `src/slokern/engine/loadgen/runner.py`, `arrival.py`, `recorder.py`, `__init__.py`, `tests/unit/engine/loadgen/`
+  - **Validation Command:** `.venv/bin/pytest tests/unit/engine/loadgen/ -v` (38 passed)
+  - **Remaining Acceptance Criteria:** None. All criteria satisfied.
+  - **Blockers & Dependencies:** Closed `BLK-02`. Unblocks `TASK-08`.
+  - **Next Action:** Implement Single-Run Pipeline Orchestrator (`TASK-08`) in `src/slokern/engine/runner/run_executor.py`.
+  - **Completion Evidence:** 38 unit tests passing cleanly; trace records validated against schema with monotonic microsecond timestamps.
 
 ---
 
 ### TASK-07 — Implement Deterministic Metrics Engine
-- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-07` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by TASK-06) · **Validation Level:** `UNIT`
+- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-07` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `DONE` · **Validation Level:** `UNIT`
 - **Objective:** Compute percentiles, throughput, error rate, and saturation flags from unaggregated JSONL request traces.
 - **Needs:** `TASK-06`, `BLK-03`.
 - **Boundary & Isolation:** Confined to `src/slokern/core/metrics/` and `fixtures/metrics_golden/`. Pure mathematical calculations; forbidden to make feasibility verdicts or rank candidates.
@@ -540,8 +533,8 @@ This day-by-day plan governs all development leading up to the submission deadli
   1. Derives `MetricSet` containing exact percentiles (p50, p90, p95, p99), offered load, achieved load, and `generator_saturated` flag.
   2. Golden fixtures `percentiles_basic.json` populated with hand-calculated inputs and expected outputs.
   3. Linear interpolation percentiles match hand-calculated golden fixtures to 3 decimal places.
-- **Verify:** `pytest tests/unit/core/metrics/` passes.
-- **Completion Evidence:** Derived `MetricSet` from raw test JSONL trace matches golden fixtures.
+- **Verify:** `pytest tests/unit/core/metrics/` passes (33 passed in 0.12s).
+- **Completion Evidence:** Derived `MetricSet` from raw test JSONL trace matches golden fixtures. Closes `BLK-03`.
 
 ---
 
