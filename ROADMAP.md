@@ -31,12 +31,13 @@
    - 1 live integration test correctly skipped offline (`tests/live/test_smoke_live.py`).
    - Bytecode compilation and packaging hygiene: 0 errors across 90 source modules (`python -m compileall`), 0 broken dependencies (`pip check`).
 3. **What is incomplete?**
-   - Single-run orchestrator (`TASK-08`), live Nebius adapter probe (`TASK-09`), 2×2 bounded search controller (`TASK-10`), independent verification engine (`TASK-11`), report generator (`TASK-12`), CLI runner (`TASK-13`), collaborator audit suites (`TASK-14`, `TASK-15`), and submission package (`TASK-16`).
+   - Live Nebius adapter probe (`TASK-09`), 2×2 bounded search controller (`TASK-10`), independent verification engine (`TASK-11`), report generator (`TASK-12`), CLI runner (`TASK-13`), collaborator audit suites (`TASK-14`, `TASK-15`), and submission package (`TASK-16`).
    - Control plane API (`TASK-17`) and React frontend (`TASK-18`) are formally deferred to post-hackathon.
 4. **What is blocking the next task?**
-   - Nothing blocks `TASK-08`: prerequisites `TASK-04`, `TASK-05`, `TASK-06`, and `TASK-07` are all fully implemented and tested.
+   - Single-run orchestrator (`TASK-08`) is completed and verified (31 unit tests in `tests/unit/engine/runner/` and 1 end-to-end integration test in `tests/integration/test_pipeline_fake_adapter.py`, 316 total passed, 1 skipped).
+   - This unblocks `TASK-09` (Nebius Live Serving Adapter & Smoke Probe) and `TASK-10` (2×2 Bounded Search Controller).
 5. **What should the next coding-agent run do?**
-   - **Execute `TASK-08`:** Implement `SingleRunExecutor` under `src/slokern/engine/runner/run_executor.py` orchestrating end-to-end execution across serving adapter, load generator, metrics engine, and feasibility evaluator.
+   - **Execute `TASK-09` / `TASK-10`:** Execute live Nebius preflight probe (`TASK-09`) or implement the 2×2 bounded search controller (`TASK-10`) orchestrating candidate evaluations via `SingleRunExecutor`.
 
 ### 1.1 Sprint Snapshot & Milestone Window
 - **Current Milestone:** **Phase B: Establish Single-Run Execution** (Window: October 21–23, 2026).
@@ -44,12 +45,12 @@
 - **Current Critical-Path Tasks:**
    - [`TASK-06`](#task-06--implement-subprocess-load-generator): Implement Subprocess Load Generator (`src/slokern/engine/loadgen/runner.py`) [**`DONE`**].
    - [`TASK-07`](#task-07--implement-deterministic-metrics-engine): Implement Deterministic Metrics Engine (`src/slokern/core/metrics/`) [**`DONE`**].
-   - [`TASK-08`](#task-08--single-run-pipeline-orchestrator): Single-Run Pipeline Orchestrator (`src/slokern/engine/runner/run_executor.py`) [**`READY`**].
+   - [`TASK-08`](#task-08--single-run-pipeline-orchestrator): Single-Run Pipeline Orchestrator (`src/slokern/engine/runner/run_executor.py`) [**`DONE`**].
 
 ### 1.2 Immediate Next 1–3 Actions
-1. **Action 1 (Rajdeep — TASK-08):** Implement `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py` orchestrating end-to-end runs across fake serving, loadgen, metrics engine, and evaluator.
-2. **Action 2 (Adriraj — TASK-14 Audit):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
-3. **Action 3 (Rajdeep — TASK-09):** Execute live preflight probe against Nebius endpoint to verify model string and API compatibility (closes [`BLK-04`](#61-active-blockers-register)).
+1. **Action 1 (Rajdeep — TASK-09):** Execute live preflight probe against Nebius endpoint to verify model string and API compatibility (closes [`BLK-04`](#61-active-blockers-register)).
+2. **Action 2 (Rajdeep — TASK-10):** Implement 2×2 bounded search controller under `src/slokern/core/search/` orchestrating multi-candidate evaluations using `SingleRunExecutor`.
+3. **Action 3 (Adriraj — TASK-14 Audit):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
 
 ### 1.3 Active Blockers & Responsible Owners
 | Blocker ID | Priority | Summary | Accountable Owner | Direct Remediation Action | Status / Closing Validation |
@@ -164,9 +165,9 @@ The October 21 audit revealed four cross-document contradictions across earlier 
 | **TASK-05** | Deterministic Fake Serving Adapter | `DONE` | `INTEGRATION` | Closed BLK-01 | Rajdeep |
 | **TASK-06** | Subprocess Load Generator | `DONE` | `UNIT` | Closed BLK-02 | Rajdeep (Adriraj audit Oct 21) |
 | **TASK-07** | Deterministic Metrics Engine Core | `DONE` | `UNIT` | Closed BLK-03 | Rajdeep (Adriraj audit Oct 21) |
-| **TASK-08** | Single-Run Pipeline Orchestrator | `READY` | `NONE` | TASK-04, TASK-05, TASK-06, TASK-07 | Rajdeep |
-| **TASK-09** | Nebius Live Serving Adapter & Smoke Probe | `BLOCKED` | `NONE` | TASK-08, DEC-01, DEC-02, BLK-04 | Rajdeep |
-| **TASK-10** | 2×2 Bounded Search Controller | `BLOCKED` | `NONE` | TASK-08, BLK-11 | Rajdeep |
+| **TASK-08** | Single-Run Pipeline Orchestrator | `DONE` | `UNIT` | TASK-04, TASK-05, TASK-06, TASK-07 | Rajdeep |
+| **TASK-09** | Nebius Live Serving Adapter & Smoke Probe | `READY` | `NONE` | TASK-08, DEC-01, DEC-02, BLK-04 | Rajdeep |
+| **TASK-10** | 2×2 Bounded Search Controller | `READY` | `NONE` | TASK-08, BLK-11 | Rajdeep |
 | **TASK-11** | Independent Verification Engine | `BLOCKED` | `NONE` | TASK-10, BLK-08 | Rajdeep (Daksh audit Oct 24) |
 | **TASK-12** | Report Artifact Generator & Publisher | `BLOCKED` | `NONE` | TASK-11, BLK-09 | Rajdeep |
 | **TASK-13** | Minimal CLI Runner (`slokern verify`) | `BLOCKED` | `NONE` | TASK-12 | Rajdeep |
@@ -299,8 +300,8 @@ This day-by-day plan governs all development leading up to the submission deadli
 ### Day 3: Friday, October 23, 2026 — Phase B: Single-Run Orchestrator & Live Nebius Preflight Smoke Test
 - **Intended Outcome:** Complete single-run execution path verified offline; live Nebius endpoint probed with valid API key to confirm NVIDIA model identifier string.
 - **Ordered Actions:**
-  - [ ] **Action 3.1 (Rajdeep):** Execute `TASK-08`: Implement `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py` wiring adapter, loadgen, metrics, and evaluator into an end-to-end run.
-  - [ ] **Action 3.2 (Rajdeep):** Verify single-run execution offline using `FakeServingAdapter`, saving `RunRecord`, raw JSONL, and `FeasibilityResult`.
+  - [x] **Action 3.1 (Rajdeep):** Execute `TASK-08`: Implement `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py` wiring adapter, loadgen, metrics, and evaluator into an end-to-end run. *(COMPLETED: SingleRunExecutor, RunLifecycle, CancellationToken implemented and verified).*
+  - [x] **Action 3.2 (Rajdeep):** Verify single-run execution offline using `FakeServingAdapter`, saving `RunRecord`, raw JSONL, and `FeasibilityResult`. *(COMPLETED: 31 unit tests and 1 integration test pass; all 4 artifacts verified on disk).*
   - [ ] **Action 3.3 (Rajdeep):** Execute `TASK-09`: Implement `NebiusServingAdapter` in `src/slokern/engine/serving/nebius.py` and run live preflight smoke probe (`test_smoke_live.py`) with `NEBIUS_API_KEY`. Confirm model string (`DEC-02`).
   - [ ] **Action 3.4 (Adriraj):** Audit single-run JSONL output for client saturation flags (`generator_saturated = True`) when queue lag exceeds 10 ms.
 - **Accountable Owner:** Rajdeep (Implementation & Cloud Probe); Adriraj (Output Validation).
@@ -589,18 +590,18 @@ This day-by-day plan governs all development leading up to the submission deadli
 ---
 
 ### TASK-08 — Implement Single-Run Pipeline Orchestrator
-- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-08` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `READY` · **Validation Level:** `NONE`
+- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-08` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `DONE` · **Validation Level:** `UNIT`
 - **Objective:** Wire serving adapter, load generator, metrics engine, and evaluator into a single end-to-end execution path.
 - **Needs:** `TASK-04`, `TASK-05`, `TASK-06`, `TASK-07`.
 - **Boundary & Isolation:** Confined to `src/slokern/engine/runner/` and `tests/unit/engine/runner/`. Orchestrates components via established interfaces.
-- **Deliverables:** `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py`, lifecycle management, and artifact persistence.
+- **Deliverables:** `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py`, lifecycle management (`lifecycle.py`), cooperative cancellation (`cancel.py`), and artifact persistence.
 - **Definition of Done:**
   1. `SingleRunExecutor.execute()` wires: apply config -> health check -> warmup -> active measurement -> metrics derivation -> feasibility evaluation.
-  2. Emits and saves immutable `RunRecord`, raw request `.jsonl`, `MetricSet`, and `FeasibilityResult` into structured disk directory.
+  2. Emits and saves immutable `RunRecord`, raw request `.jsonl`, `MetricSet`, and `FeasibilityResult` into structured disk directory (`artifacts/experiments/<experiment_id>/runs/<run_id>/`).
   3. Clean cancellation handling via `CancellationToken` without leaving zombie subprocesses.
-  4. Unit tests in `tests/unit/engine/runner/test_run_executor.py` pass offline using `FakeServingAdapter`.
-- **Verify:** `pytest tests/unit/engine/runner/test_run_executor.py` passes with 0 errors.
-- **Completion Evidence:** Single run executes end-to-end locally and persists all required artifacts.
+  4. Unit tests in `tests/unit/engine/runner/test_run_executor.py`, `test_lifecycle.py`, and `test_cancel.py` pass offline using `FakeServingAdapter`.
+- **Verify:** `pytest tests/unit/engine/runner/ tests/integration/test_pipeline_fake_adapter.py` passes with 0 errors (32 passed).
+- **Completion Evidence:** Single run executes end-to-end locally and persists all required artifacts; 31 unit tests and 1 integration test pass; unblocks `TASK-09` and `TASK-10`.
 
 ---
 
