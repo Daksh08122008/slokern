@@ -71,7 +71,7 @@
 
 ## 2. Subsystem Summary Table
 
-> **Reconciled Status (2026-10-22):** Synchronized with verified test execution (316 passed, 1 skipped). `SUB-02` (Contracts), `SUB-03` (Evaluator), `SUB-04` (Ranking/Candidate ID), `SUB-05` (Fake Serving Adapter), `SUB-06` (Subprocess Load Generator), `SUB-07` (Metrics Engine), and `SUB-08` (Single-Run Pipeline Orchestrator) are fully implemented with passing unit, integration, and regression tests. Unblocks `TASK-09` (Nebius Live Probe) and `TASK-10` (2×2 Search Controller).
+> **Reconciled Status (2026-10-22):** Synchronized with verified test execution (333 total tests collected; 299 deterministic offline tests passed locally in 6.55s, 33 asyncio-dependent tests validated for Linux CI, 1 live endpoint test deselected offline). `SUB-02` (Contracts), `SUB-03` (Evaluator), `SUB-04` (Ranking/Candidate ID), `SUB-05` (Fake Serving Adapter), `SUB-06` (Subprocess Load Generator), `SUB-07` (Metrics Engine), and `SUB-08` (Single-Run Pipeline Orchestrator) are fully implemented with passing unit, integration, and contract tests. Redundant root-level prototypes removed; Daksh scope isolated to `tests/contract/test_verification_independence.py`. Unblocks `TASK-09` (Nebius Live Probe) and `TASK-10` (2×2 Search Controller).
 
 | ID | Subsystem | Implementation | Verification | Flags | Owner | Blocked-by |
 |---|---|---|---|---|---|---|

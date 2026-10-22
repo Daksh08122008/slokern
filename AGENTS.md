@@ -229,10 +229,30 @@ Former contributors (Aman on serving, Rohan on search) contributed early design 
 1. **Single Accountable Owner:** Every subsystem has exactly one directly accountable owner.
 2. **Architecture Authority:** Rajdeep is the final integration, architecture, and submission authority.
 3. **Credibility & Correctness:** Adriraj owns measurement credibility; Daksh owns decision correctness. Neither collaborator owns architecture or final release.
-4. **Contract Discipline:** Shared interfaces (`src/slokern/contracts/`) are altered only with Rajdeep's explicit approval. Collaborators document schema gaps or ambiguities rather than unilaterally changing shared data models.
-5. **Autonomous Critical Path:** Critical-path functionality must remain executable without pending collaborator contributions.
-6. **Physical Evidence Standard:** All technical claims must be grounded in physical artifacts (unaggregated JSONL traces, environment fingerprints); no mock success or simulated benchmarks may be presented as live evidence.
-7. **Daily Delivery Alignment:** Follow `ROADMAP.md` for daily engineering objectives, deliverables, acceptance criteria, and fallbacks leading to the October 30, 2026, 10:00 AM PDT (10:30 PM IST) submission deadline. For the complete operational model, see `docs/ownership.md`.
+4. **Daksh's Scope Isolation & Permission Boundaries:**
+   - **Role:** Independent Decision Correctness and Verdict Audit Engineer (adversarial audit, not production implementation).
+   - **Exclusive Responsibilities:** (1) Decision correctness, (2) Verification independence, (3) Verdict audit.
+   - **Permitted Routine Edit Allowlist:** Daksh is permitted to modify ONLY `tests/contract/test_verification_independence.py` (and approved audit reports under `artifacts/audits/` or `docs/audits/` when explicitly authorized).
+   - **Forbidden Implementation Surfaces:** Daksh must NOT directly modify:
+     - `src/slokern/contracts/**`
+     - `src/slokern/engine/**` (serving, loadgen, runner, reporting)
+     - `src/slokern/core/evaluator/**`
+     - `src/slokern/core/verification/**`
+     - `src/slokern/core/search/**` (optimizer)
+     - `src/slokern/core/metrics/**`
+     - `scripts/gen_contracts.py` or contract-generation tools
+     - `pyproject.toml`
+     - `.github/workflows/**`
+     - `frontend/**`
+     - `AGENTS.md`, `docs/architecture.md`, `docs/decision-policy.md`, `docs/ownership.md`, or general roadmap architecture/dependency definitions
+     - Any other collaborator's assigned subsystem
+   - **No Parallel Architectures:** Daksh must never introduce root-level prototype packages (e.g. `evaluator/`, `verification/`), parallel data models, or alternate verification runners.
+   - **Defect Escalation Procedure:** Production defects discovered by Daksh must be reported to Rajdeep via documented issue or pull request proposing a minimal fix, never pushed directly to production implementation files.
+   - **Review Gate:** Daksh's PRs must contain only allowlisted files, must pass CI, and require mandatory review from `@dev-paulrajdeep`.
+5. **Contract Discipline:** Shared interfaces (`src/slokern/contracts/`) are altered only with Rajdeep's explicit approval. Collaborators document schema gaps or ambiguities rather than unilaterally changing shared data models.
+6. **Autonomous Critical Path:** Critical-path functionality must remain executable without pending collaborator contributions.
+7. **Physical Evidence Standard:** All technical claims must be grounded in physical artifacts (unaggregated JSONL traces, environment fingerprints); no mock success or simulated benchmarks may be presented as live evidence.
+8. **Daily Delivery Alignment:** Follow `ROADMAP.md` for daily engineering objectives, deliverables, acceptance criteria, and fallbacks leading to the October 30, 2026, 10:00 AM PDT (10:30 PM IST) submission deadline. For the complete operational model, see `docs/ownership.md`.
 
 ## 14. Documentation and experiment artifacts
 

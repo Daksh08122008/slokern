@@ -59,18 +59,31 @@ SLOKern operates under a **hybrid solo-core model**: a single technical owner (R
   6. Document experimental measurement limitations, client overhead, and reproducibility requirements.
 - **Boundary Rule:** Adriraj does not modify shared contracts or optimizer logic. Gaps are reported to Rajdeep via documented defect reports.
 
-### 3.2 Daksh: Independent Decision Verification
+### 3.2 Daksh: Independent Decision Verification & Verdict Audit
+- **Role:** Independent Decision Correctness and Verdict Audit Engineer (adversarial audit, not production implementation)
 - **Status:** CONFIRMED
 - **Active Window:** October 24–30, 2026.
-- **Accountable Area:** Correctness verification auditing for `SUB-03` (Evaluator) and `SUB-09` (Verification).
-- **Core Responsibilities:**
-  1. Construct deterministic test suites auditing hard SLO constraint evaluation across boundary thresholds (`<`, `<=`, `>`, `>=`).
-  2. Test candidate feasibility and rejection behavior to ensure non-feasible candidates never win selection.
-  3. Verify system handling of edge cases: missing metrics, invalid measurements, divide-by-zero, empty traces, and client saturation.
-  4. Validate system behavior on failed or incomplete experiments, ensuring `FAILED` execution state is never conflated with `INFEASIBLE` SLO verdict.
-  5. Validate that candidate selection deterministically follows declared objective semantics and tie-breaking rules.
-  6. Audit consistency between observed physical evidence (JSONL traces) and reported recommendations.
-- **Boundary Rule:** Daksh does not alter contracts or optimizer implementation. Ambiguities are escalated to Rajdeep.
+- **Accountable Area:** Decision correctness and verification audit for `SUB-03` (Evaluator) and `SUB-09` (Verification).
+- **Sole Responsibilities:**
+  1. **Decision Correctness:** Construct deterministic contract test suites auditing hard SLO constraint evaluation across boundary thresholds (`<`, `<=`, `>`, `>=`), reason codes, and missing/invalid metric handling.
+  2. **Verification Independence:** Audit that verification reruns use distinct run identities (`verification_run_id != original_run_id`), recompute metrics from fresh physical evidence, and never conflate execution crashes with SLO infeasibility.
+  3. **Verdict Audit:** Audit consistency between observed physical evidence (JSONL traces) and reported candidate recommendations, publishing reproducible verdict-audit reports.
+- **Exclusive Permitted Routine Edit Allowlist:**
+  - `tests/contract/test_verification_independence.py` (primary routine implementation edit surface)
+  - Dedicated verdict-audit reports under `artifacts/audits/` or `docs/audits/` when explicitly authorized.
+- **Strictly Forbidden Implementation Surfaces:**
+  Daksh has zero implementation authority and must NOT directly modify:
+  - `src/slokern/contracts/**`
+  - `src/slokern/engine/**` (serving, loadgen, runner, reporting)
+  - `src/slokern/core/evaluator/**` (production evaluator is owned by Rajdeep)
+  - `src/slokern/core/verification/**` (production verification engine is owned by Rajdeep)
+  - `src/slokern/core/search/**` (optimizer)
+  - `src/slokern/core/metrics/**`
+  - `scripts/gen_contracts.py` or contract-generation tooling
+  - `pyproject.toml`, `.github/workflows/**`, `frontend/**`
+  - `AGENTS.md`, `docs/architecture.md`, `docs/decision-policy.md`, `docs/ownership.md`, or general roadmap definitions
+- **Defect Escalation Procedure:**
+  Daksh operates as an adversarial auditor. Production defects must be reported to Rajdeep via documented issue or pull request proposing a minimal fix, accompanied by reproducible test cases in `tests/contract/test_verification_independence.py`. Daksh must never push fixes directly to production modules or introduce parallel architectures.
 
 ---
 
@@ -108,3 +121,4 @@ When work on a subsystem is impeded:
 | **2026-10-19** | SUB-06, SUB-07 | Rajdeep | Rajdeep (Adriraj audit) | BOUNDED COLLABORATOR | Established bounded collaborator workstream for Adriraj (Benchmark Integrity, active Oct 21). |
 | **2026-10-19** | SUB-03, SUB-09 | Rajdeep | Rajdeep (Daksh audit) | BOUNDED COLLABORATOR | Established bounded collaborator workstream for Daksh (Decision Verification, active Oct 24). |
 | **2026-10-21** | SUB-11, SUB-12 | Rajdeep | Rajdeep | DEFERRED | Formally deferred FastAPI control plane and React UI to post-MVP to mitigate concentration risk (BLK-07). |
+| **2026-10-22** | SUB-03, SUB-09 | Rajdeep (Daksh audit) | Rajdeep (confirmed sole implementer; Daksh restricted to decision audit allowlist) | RESTRICTED | Repository repair and strict collaborator scope isolation: Daksh restricted to test allowlist `tests/contract/test_verification_independence.py`. |
