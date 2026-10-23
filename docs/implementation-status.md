@@ -71,18 +71,18 @@
 
 ## 2. Subsystem Summary Table
 
-> **Reconciled Status (2026-10-22):** Synchronized with verified test execution (333 total tests collected; 299 deterministic offline tests passed locally in 6.55s, 33 asyncio-dependent tests validated for Linux CI, 1 live endpoint test deselected offline). `SUB-02` (Contracts), `SUB-03` (Evaluator), `SUB-04` (Ranking/Candidate ID), `SUB-05` (Fake Serving Adapter), `SUB-06` (Subprocess Load Generator), `SUB-07` (Metrics Engine), and `SUB-08` (Single-Run Pipeline Orchestrator) are fully implemented with passing unit, integration, and contract tests. Redundant root-level prototypes removed; Daksh scope isolated to `tests/contract/test_verification_independence.py`. Unblocks `TASK-09` (Nebius Live Probe) and `TASK-10` (2×2 Search Controller).
+> **Reconciled Status (2026-10-24):** 355 tests collected (354 non-live, 1 live). Focused search/ranking/serving/CLI/integration checks passed (68 tests in 1.21s). CI-equivalent checks passed under Python 3.11.11: `pip check`, `compileall`, core imports, and full non-live suite (354 passed, 1 live test deselected in 27.56s). GitHub Actions run 39989410573 succeeded on PR head `b7ac44d`, but source correctness gaps remain to be incorporated into a final PR commit. The earlier local async runner stall reproduces with a minimal `asyncio.to_thread` probe inside the sandbox; the same runner test passes outside it under Python 3.11. `TASK-10` is implemented and integration-tested using **DEMO DATA**. Live serving remains blocked by `BLK-04`, and independent verification by `BLK-08`.
 
 | ID | Subsystem | Implementation | Verification | Flags | Owner | Blocked-by |
 |---|---|---|---|---|---|---|
 | **SUB-01** | Architecture & Scope Governance | `IMPLEMENTED` | `STATIC` | `NONE` | Rajdeep (CONFIRMED) | None |
 | **SUB-02** | Shared Contracts & Schema Registry | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (CONFIRMED) | None |
 | **SUB-03** | Feasibility Evaluator Core | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (CONFIRMED) | None |
-| **SUB-04** | Candidate Identity & Deterministic Ranking | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (INTERIM) | None |
-| **SUB-05** | Serving Adapter & Runtime Infrastructure | `IMPLEMENTED (Fake) / PARTIAL (Live)` | `INTEGRATION` | `BLOCKED(by=BLK-04)` | Rajdeep (INTERIM) | BLK-04 |
+| **SUB-04** | Candidate Identity & Deterministic Ranking | `IMPLEMENTED` | `INTEGRATION` | `NONE` | Rajdeep (INTERIM) | None |
+| **SUB-05** | Serving Adapter & Runtime Infrastructure | `IMPLEMENTED (Fake) / FAIL-CLOSED (Live Scaffold)` | `INTEGRATION` | `BLOCKED(by=BLK-04)` | Rajdeep (INTERIM) | BLK-04 |
 | **SUB-06** | Subprocess Load Generator & Workload Fixtures | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (CONFIRMED) | None |
 | **SUB-07** | Metrics Engine Core | `IMPLEMENTED` | `UNIT` | `NONE` | Rajdeep (CONFIRMED) | None |
-| **SUB-08** | Experiment Orchestration & Run Lifecycle | `PARTIAL (Single-Run Orchestrator Implemented)` | `UNIT & INTEGRATION` | `NONE` | Rajdeep (INTERIM) | None |
+| **SUB-08** | Experiment Orchestration & Run Lifecycle | `PARTIAL (Single-Run + Search; Verification Pending)` | `INTEGRATION` | `BLOCKED(by=BLK-08)` | Rajdeep (INTERIM) | BLK-08 |
 | **SUB-09** | Independent Verification Engine | `ABSENT` | `NONE` | `BLOCKED(by=BLK-08)` | Rajdeep (CONFIRMED) | BLK-08 |
 | **SUB-10** | Report Artifact Generator | `ABSENT` | `NONE` | `BLOCKED(by=BLK-09)` | Rajdeep (INTERIM) | BLK-09 |
 | **SUB-11** | Control Plane API & CLI | `ABSENT` | `NONE` | `DEFERRED` | Rajdeep (INTERIM) | BLK-08 |
@@ -119,19 +119,19 @@
 
 ### SUB-04: Candidate Identity & Deterministic Ranking
 - **Intended Behavior:** Stable deterministic candidate ID generation from canonical configurations; deterministic ranking of feasible candidates under declared objective with candidate-ID tie-breaking.
-- **Actual Behavior:** Implemented in `src/slokern/core/search/candidate_id.py:generate_candidate_id@356c489` and `src/slokern/core/search/rank.py:rank_candidates@356c489`. Infeasible/inconclusive candidates are excluded (P-13); ranking is deterministic across 20 shuffles (P-15); ties are broken by candidate ID (P-14). However, formatting numbers as float vs int produces different hashes (P-12 / BLK-11).
-- **Evidence:** `src/slokern/core/search/candidate_id.py:L10-17@356c489`, `src/slokern/core/search/rank.py:L21-56@356c489`, probes P-11 through P-16.
+- **Actual Behavior:** Candidate IDs canonicalize numeric values. Ranking excludes non-FEASIBLE candidates and missing, non-numeric, negative, or non-finite objective metrics; ties break by candidate ID. `GridSearchController` runs a baseline and a bounded 2×2 candidate set and returns a typed `SearchResult`.
+- **Evidence:** `src/slokern/core/search/{candidate_id.py,rank.py,grid.py}`; `tests/unit/core/test_ranker_validation.py`; `tests/integration/test_grid_search_fake_adapter.py` (offline runs are **DEMO DATA**).
 - **Dependencies:** `SUB-02` (Contracts), `SUB-03` (Evaluator).
-- **Risks:** Inconsistent hashing if numeric settings are not coerced to canonical types.
-- **Next Testable Step:** Canonicalize numeric types before JSON serialization in `candidate_id.py`. Acceptance: `generate_candidate_id("m", "r", {"tp": 1}) == generate_candidate_id("m", "r", {"tp": 1.0})`.
+- **Risks:** Live search cannot run until `TASK-09` verifies that the selected runtime can apply and read back legal parameters. Monetary and GPU-seconds objectives remain unavailable without evidence.
+- **Next Testable Step:** Complete `TASK-11` independent verification using a fresh run ID; maintain live serving as blocked by `BLK-04`.
 
 ### SUB-05: Serving Adapter & Runtime Infrastructure
 - **Intended Behavior:** Interface for serving runtimes (capabilities, apply, environment fingerprint, health); fake adapter for offline testing; Nebius Cloud adapter for live serving.
-- **Actual Behavior:** **IMPLEMENTED (Fake) / PARTIAL (Live).** `FakeServingAdapter` is fully implemented in `src/slokern/engine/serving/fake.py` along with `base.py` and `capabilities.py`. Generates deterministic synthetic token streams, simulates latency scaling, validates capabilities, and supports controlled failure injection (OOM, timeout, server error) labeled **`DEMO DATA`**. Verified across 43 unit tests (`tests/unit/engine/serving/`). Live Nebius adapter (`nebius.py`) remains pending live cloud preflight probe (BLK-04).
-- **Evidence:** `src/slokern/engine/serving/fake.py`, `base.py`, `capabilities.py`: 43 unit tests passing (`.venv/bin/pytest tests/unit/engine/serving/ -v`).
+- **Actual Behavior:** **IMPLEMENTED (Fake) / FAIL-CLOSED (Live Scaffold).** `FakeServingAdapter` generates synthetic responses labeled **`DEMO DATA`** and supports controlled failure injection. `NebiusCloudAdapter` advertises no verified capabilities, reports unhealthy, and rejects configuration or generation until `TASK-09` is implemented and live-probed.
+- **Evidence:** `tests/unit/engine/serving/test_fake.py`, `tests/unit/engine/serving/test_nebius.py`; live probe is not run.
 - **Dependencies:** DEC-01, BLK-04.
 - **Risks:** Live GPU inference unverified until Nebius Cloud credentials and preflight probe are executed (`TASK-09`).
-- **Next Testable Step:** Wire `FakeServingAdapter` into `SingleRunExecutor` (`TASK-08`) and execute live preflight probe (`TASK-09`). Acceptance: `tests/live/test_smoke_live.py` passes on live endpoint.
+- **Next Testable Step:** Implement actual Nebius request/configuration handling and run the one-request live preflight (`TASK-09`). Acceptance: the endpoint, model identifier, applied settings, and environment fingerprint are verified with physical evidence.
 
 ### SUB-06: Subprocess Load Generator & Workload Fixtures
 - **Intended Behavior:** Subprocess-isolated load generator generating Poisson/constant request schedules, recording unaggregated request-level microsecond timings to JSONL (`RawRequestMeasurement`), and detecting client saturation (`generator_saturated = True`).
@@ -151,11 +151,11 @@
 
 ### SUB-08: Experiment Orchestration & Run Lifecycle
 - **Intended Behavior:** Modular monolith experiment controller managing the 6-run search budget (1 baseline + 4 grid candidates + 1 verification run), lifecycle states (`ExecutionStatus`), cancellation, and artifact persistence.
-- **Actual Behavior:** **PARTIAL (Single-Run Orchestrator Implemented).** `SingleRunExecutor` (`src/slokern/engine/runner/run_executor.py`), `RunLifecycle` (`lifecycle.py`), and `CancellationToken` (`cancel.py`) are fully implemented and verified with 31 unit tests (`tests/unit/engine/runner/`) and 1 integration test (`tests/integration/test_pipeline_fake_adapter.py`). End-to-end execution wires config application, health checks, load generation, metrics calculation, SLO feasibility evaluation, and disk persistence under `artifacts/experiments/<experiment_id>/runs/<run_id>/`. Multi-candidate experiment controller managing search budget is pending in `TASK-10`.
-- **Evidence:** `src/slokern/engine/runner/run_executor.py`, `lifecycle.py`, `cancel.py`, `tests/unit/engine/runner/`, `tests/integration/test_pipeline_fake_adapter.py`.
+- **Actual Behavior:** **PARTIAL (Single-Run + Search Implemented; Verification Pending).** `SingleRunExecutor` persists individual run evidence. `GridSearchController` validates budgets before run side effects, executes one baseline plus up to four candidates, applies a wall-clock cancellation budget, and returns deterministic ranking history. A positive cost ceiling is rejected before execution because authoritative pricing is unavailable. Search has been integration-tested only with `FakeServingAdapter` (**DEMO DATA**).
+- **Evidence:** `src/slokern/engine/runner/`, `src/slokern/core/search/grid.py`, `tests/integration/test_pipeline_fake_adapter.py`, `tests/integration/test_grid_search_fake_adapter.py`.
 - **Dependencies:** `SUB-04` (Search), `SUB-05` (Serving), `SUB-06` (Loadgen), `SUB-07` (Metrics).
-- **Risks:** Multi-candidate search loop and budget controller (`TASK-10`) still required before live campaigns.
-- **Next Testable Step:** Implement `GridSearchController` (`TASK-10`) exploring 2×2 parameter matrix using `SingleRunExecutor`. Acceptance: 5 runs executed within 6-run budget.
+- **Risks:** Independent verification remains absent (`BLK-08`); live experiments remain blocked by `BLK-04`.
+- **Next Testable Step:** Implement `TASK-11` independent verification and preserve a fresh verification run ID and evidence trail.
 
 ### SUB-09: Independent Verification Engine
 - **Intended Behavior:** Takes the winning feasible candidate, triggers a fresh independent rerun under a new `verification_run_id`, computes metric drift ($\Delta M$), and renders a deterministic verification verdict (`VERIFIED` or `VERIFICATION_FAILED`).
@@ -289,6 +289,9 @@ flowchart LR
 | **BLK-12** | **P2** | Probe P-19: All 11 models accepted unrecognized fields silently (`extra='ignore'`). | Contracts did not strictly reject invalid or misspelled fields at system boundaries. | SUB-02 | Rajdeep | Added `model_config = ConfigDict(extra='forbid')` to all 11 contract classes. | **RESOLVED** (103 roundtrip tests pass in `tests/contract/`) |
 | **BLK-13** | **P2** | `.github/workflows/ci.yml:L1-58@356c489` lacks linting, type checks, schema drift, and secret scanning steps. | Code regressions, typing errors, or secret leaks can bypass CI unnoticed. | SUB-13 | Rajdeep | Add `ruff check`, `mypy --strict src/slokern`, and secret scanning checks to `ci.yml`. | `.github/workflows/ci.yml` execution in GitHub Actions |
 | **BLK-14** | **P2** | Git preflight R-01: `README.md` was modified in the working tree. | Working tree baseline was not clean. | SUB-13 | Rajdeep | Committed baseline modifications on integration branch. | **RESOLVED** (Clean tree verified on branch) |
+| **BLK-15** | **P1** | Budget validation did not cover wall-clock, cost, or verification duration limits and was not wired into a search entry point. | Invalid experiment budgets could reach an expensive execution path. | SUB-08 | Rajdeep | Validate finite positive limits before search, enforce wall-clock cancellation, and reject cost ceilings without authoritative pricing. | **RESOLVED** (`tests/unit/core/search/test_budget.py`; `tests/integration/test_grid_search_fake_adapter.py`) |
+| **BLK-16** | **P1** | Candidate ranking accepted missing and non-finite objective metrics. | Invalid objective evidence could affect deterministic selection. | SUB-04 | Rajdeep | Exclude missing, non-numeric, negative, and non-finite objective values and preserve deterministic tie-breaking. | **RESOLVED** (`tests/unit/core/test_ranker_validation.py`) |
+| **BLK-17** | **P1** | Nebius scaffold reported healthy and advertised runtime capabilities despite having no live request implementation. | A preflight could appear healthy before generation failed. | SUB-05 | Rajdeep | Fail closed, report unhealthy, and advertise no unverified serving capabilities until `TASK-09` completes. | **RESOLVED** (`tests/unit/engine/serving/test_nebius.py`; live adapter remains blocked by BLK-04) |
 
 ---
 
@@ -305,7 +308,7 @@ flowchart LR
 | **2. Client Saturation** | Client thread starvation and saturation detection | SUB-06 | `IMPLEMENTED` | BLK-02 | Flags `generator_saturated = True` when client loop lag exceeds 10% of dispatch interval. | **IN (CRITICAL)** |
 | **3. Metrics Derivation** | Derive TTFT/ITL percentiles (p50, p95, p99), throughput, error rate | SUB-07 | `IMPLEMENTED` | None | Produces valid `MetricSet` from unaggregated JSONL recordings. | **IN (CRITICAL)** |
 | **4. Feasibility Audit** | Deterministic hard SLO constraint evaluation with reason codes | SUB-03 | `IMPLEMENTED` | BLK-05 | Emits `FeasibilityResult` with FEASIBLE, INFEASIBLE, or INCONCLUSIVE verdict. | **IN** |
-| **5. Candidate Search** | Bounded 2×2 grid search (4 candidates + 1 baseline = 5 runs) | SUB-04, SUB-08 | `PARTIAL` | SUB-05 | Evaluates exactly 5 runs without exceeding declared 6-run experiment budget. | **IN (CRITICAL)** |
+| **5. Candidate Search** | Bounded 2×2 grid search (4 candidates + 1 baseline = 5 runs) | SUB-04, SUB-08 | `IMPLEMENTED (OFFLINE)` | BLK-04 for live path | Executes five bounded search runs; verification remains a separate sixth run. Fake runs are **DEMO DATA**. | **IN (CRITICAL)** |
 | **5. Ranking** | Deterministic candidate ranking by Mode B proxy or Mode A cost | SUB-04 | `IMPLEMENTED` | SUB-03 | Lowest cost/proxy feasible candidate selected with candidate-ID tie-breaking. | **IN** |
 | **6. Verification** | Independent rerun of winning candidate under fresh run ID | SUB-09 | `ABSENT` | BLK-08 | Re-evaluates candidate under distinct `verification_run_id`, computes drift $\Delta M$. | **IN (CRITICAL)** |
 | **7. Reporting** | Publish self-contained Markdown ReportArtifact with raw trace links | SUB-10 | `ABSENT` | BLK-09 | Emits complete Markdown file documenting spec, evidence, drift, and verdict. | **IN (CRITICAL)** |
