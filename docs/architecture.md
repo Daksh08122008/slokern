@@ -241,7 +241,7 @@ The root document defining an entire optimization experiment.
 - `budget`:
   - `max_candidates`: Hard upper limit on candidate configurations tested.
   - `max_wallclock_seconds`: Maximum total experiment duration.
-  - `max_cost_limit`: Optional expenditure ceiling.
+  - `max_cost_limit`: Optional expenditure ceiling. Search fails closed if this is set but no authoritative pricing model is available to enforce it.
 - `verification_policy`: Rules governing the independent verification rerun (e.g., repetitions, duration multiplier).
 
 #### 5. `RunRecord` (Owner: Rajdeep; Historical design: Rajdeep & Aman)

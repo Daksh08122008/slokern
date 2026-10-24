@@ -3,6 +3,7 @@ Purpose: Deterministic ranking of feasible candidates by the declared objective.
 Owner: Rohan
 """
 
+import math
 from typing import List, Optional
 from dataclasses import dataclass
 
@@ -26,10 +27,23 @@ def rank_candidates(
     Filters feasible candidates and ranks them according to the given objective.
     Tie-breaking: if metric values are equal, sort by candidate_id to be deterministic.
     """
-    feasible_candidates = [
-        c for c in evaluated_candidates
-        if c.verdict == FeasibilityVerdict.FEASIBLE
-    ]
+    feasible_candidates = []
+    for candidate in evaluated_candidates:
+        if candidate.verdict != FeasibilityVerdict.FEASIBLE:
+            continue
+        value = candidate.ranking_metric
+        if (
+            value is None
+            or isinstance(value, bool)
+            or not isinstance(value, (int, float))
+        ):
+            continue
+        try:
+            if not math.isfinite(value) or value < 0:
+                continue
+        except OverflowError:
+            continue
+        feasible_candidates.append(candidate)
 
     # Determine sorting direction.
     # Cost and time should be minimized (ascending).
@@ -40,15 +54,9 @@ def rank_candidates(
         RankingObjective.GPU_SECONDS_PER_REQUEST
     ]
 
-    # Sort
-    # Fix: if ranking_metric is None, treat it as inf if minimizing to push to end
-    # If maximizing (minimize is False), treat it as -inf. But we negate the metric for sorting!
-    # So if metric is None and we negate, it should sort AFTER valid numbers.
-    # We want max valid numbers first (lowest negated value), and None last (highest value).
-    # Therefore, if metric is None and maximize, key is +inf.
     feasible_candidates.sort(
         key=lambda c: (
-            c.ranking_metric if minimize and c.ranking_metric is not None else float('inf') if minimize else -c.ranking_metric if c.ranking_metric is not None else float('inf'),
+            c.ranking_metric if minimize else -c.ranking_metric,
             c.candidate_id
         )
     )

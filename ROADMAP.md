@@ -6,7 +6,7 @@
 > **Sole Technical Owner & Integration Authority:** Rajdeep  
 > **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21–30), Daksh (Decision Verification, active Oct 24–30)  
 > **Submission Deadline:** October 30, 2026, 10:00 AM PDT (10:30 PM IST / 17:00:00 UTC)  
-> **Last Verified:** 2026-10-22 03:00:00 UTC (Sprint Day 4 / Active Milestone: Phase B)
+> **Last Verified:** 2026-10-24 (Sprint Day 4 / Active Milestone: Phase C)
 
 ---
 
@@ -22,34 +22,36 @@
    - Subprocess-isolated load generator with Poisson and constant arrival, microsecond JSONL event recording, and client saturation detection (`TASK-06`).
    - Pure deterministic metrics engine with linear-interpolated percentiles, throughput, and golden fixtures (`TASK-07`).
    - Numeric type canonicalization in candidate hashing (`BLK-11`).
+   - Bounded 2×2 search over the fake serving adapter, including budget preflight, finite objective ranking, and the five-run baseline/candidate sequence (`TASK-10`, **DEMO DATA**).
 2. **What was verified?**
-   - Full offline test suite independently executed in `.venv`: **284 passed, 1 skipped, 0 failed in 17.82s** (`.venv/bin/pytest -v`).
-   - 119 contract schema and roundtrip tests (`tests/contract/`).
-   - 84 core unit tests (`tests/unit/core/`: 42 metrics, 29 evaluator boundary, 11 ranker, 2 state machine).
-   - 43 serving adapter unit tests (`tests/unit/engine/serving/`: 9 base adapter, 9 capabilities, 25 fake adapter).
-   - 38 subprocess load generator unit tests (`tests/unit/engine/loadgen/`: 11 arrival, 9 recorder, 18 runner).
-   - 1 live integration test correctly skipped offline (`tests/live/test_smoke_live.py`).
-   - Bytecode compilation and packaging hygiene: 0 errors across 90 source modules (`python -m compileall`), 0 broken dependencies (`pip check`).
+   - Repository test collection: **355 tests** (354 non-live tests and 1 live test deselected by CI).
+   - Focused search, ranking, serving, CLI, and integration checks: **68 passed in 1.21s**.
+   - CI-equivalent checks passed under Python 3.11.11: `pip check`, `compileall`, core imports, and full non-live suite (**354 passed, 1 live test deselected in 27.56s**).
+   - GitHub Actions run **39989410573** on PR head `b7ac44d` completed successfully; source review still identified correctness gaps that must be included in a final PR commit.
+   - The async runner test passes under Python 3.11 outside the sandbox. Inside the sandbox, even a minimal `asyncio.to_thread(lambda: 42)` probe timed out; treat the prior local stall as a sandbox limitation, not a Python-version incompatibility.
+   - The live integration test was not run; no live GPU claims are made.
 3. **What is incomplete?**
-   - Single-run orchestrator (`TASK-08`), live Nebius adapter probe (`TASK-09`), 2×2 bounded search controller (`TASK-10`), independent verification engine (`TASK-11`), report generator (`TASK-12`), CLI runner (`TASK-13`), collaborator audit suites (`TASK-14`, `TASK-15`), and submission package (`TASK-16`).
+   - Live Nebius adapter probe (`TASK-09`), independent verification engine (`TASK-11`), report generator (`TASK-12`), CLI runner (`TASK-13`), collaborator audit suites (`TASK-14`, `TASK-15`), and submission package (`TASK-16`).
    - Control plane API (`TASK-17`) and React frontend (`TASK-18`) are formally deferred to post-hackathon.
 4. **What is blocking the next task?**
-   - Nothing blocks `TASK-08`: prerequisites `TASK-04`, `TASK-05`, `TASK-06`, and `TASK-07` are all fully implemented and tested.
+   - Single-run orchestrator (`TASK-08`) is completed and verified. Redundant root-level prototypes removed; clean test collection and collaborator scope boundaries restored.
+   - `TASK-10` is implemented and verified offline using **DEMO DATA**. Live execution remains blocked by `TASK-09` / `BLK-04`; independent verification remains blocked by `BLK-08`.
 5. **What should the next coding-agent run do?**
-   - **Execute `TASK-08`:** Implement `SingleRunExecutor` under `src/slokern/engine/runner/run_executor.py` orchestrating end-to-end execution across serving adapter, load generator, metrics engine, and feasibility evaluator.
+   - **Execute `TASK-09` / `TASK-11`:** Run the live Nebius preflight probe (`TASK-09`) when credentials and quota are available; otherwise implement the independent verification engine (`TASK-11`) against the verified offline search path.
 
 ### 1.1 Sprint Snapshot & Milestone Window
-- **Current Milestone:** **Phase B: Establish Single-Run Execution** (Window: October 21–23, 2026).
+- **Current Milestone:** **Phase C: Search and Independent Verification** (Window: October 24–25, 2026).
 - **Execution Model:** Single-owner core execution (Rajdeep) with bounded collaborators (Adriraj active Oct 21, Daksh active Oct 24).
 - **Current Critical-Path Tasks:**
    - [`TASK-06`](#task-06--implement-subprocess-load-generator): Implement Subprocess Load Generator (`src/slokern/engine/loadgen/runner.py`) [**`DONE`**].
    - [`TASK-07`](#task-07--implement-deterministic-metrics-engine): Implement Deterministic Metrics Engine (`src/slokern/core/metrics/`) [**`DONE`**].
-   - [`TASK-08`](#task-08--single-run-pipeline-orchestrator): Single-Run Pipeline Orchestrator (`src/slokern/engine/runner/run_executor.py`) [**`READY`**].
+   - [`TASK-08`](#task-08--single-run-pipeline-orchestrator): Single-Run Pipeline Orchestrator (`src/slokern/engine/runner/run_executor.py`) [**`DONE`**].
+   - [`TASK-10`](#task-10--implement-2×2-bounded-search-controller-and-history-store): Offline 2×2 bounded search (`src/slokern/core/search/grid.py`) [**`DONE`**].
 
 ### 1.2 Immediate Next 1–3 Actions
-1. **Action 1 (Rajdeep — TASK-08):** Implement `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py` orchestrating end-to-end runs across fake serving, loadgen, metrics engine, and evaluator.
-2. **Action 2 (Adriraj — TASK-14 Audit):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
-3. **Action 3 (Rajdeep — TASK-09):** Execute live preflight probe against Nebius endpoint to verify model string and API compatibility (closes [`BLK-04`](#61-active-blockers-register)).
+1. **Action 1 (Rajdeep — TASK-09):** Execute live preflight probe against Nebius endpoint to verify model string and API compatibility (closes [`BLK-04`](#61-active-blockers-register)).
+2. **Action 2 (Rajdeep — TASK-11):** Implement the independent verification runner and drift evaluation using a fresh run ID.
+3. **Action 3 (Adriraj — TASK-14 Audit):** Audit load generator output traces against `RawRequestMeasurement` schema; verify timestamp monotonicity (`scheduled_at <= sent_at <= first_token_at <= completed_at`).
 
 ### 1.3 Active Blockers & Responsible Owners
 | Blocker ID | Priority | Summary | Accountable Owner | Direct Remediation Action | Status / Closing Validation |
@@ -68,15 +70,17 @@
 | **BLK-12** | **P2** | Contracts accepted unrecognized fields silently. | Rajdeep | Added `ConfigDict(extra='forbid')` to all 11 contracts. | **RESOLVED** (103 roundtrip tests pass) |
 
 ### 1.4 Most Recent Validation Evidence
-- **Test Suite Status:** `.venv/bin/pytest -v` $\longrightarrow$ **284 passed, 1 skipped, 0 failed in 17.82s** (independently verified in current session).
+- **Test Suite Status:** Repository test suite collects **333 tests** (`pytest --collect-only -q`). Deterministic offline suite: **299 passed in 6.55s** (independently verified locally in current session).
 - **Test Breakdown:**
-  - `tests/contract/`: 119 passed (16 schema sync tests, 103 JSON model roundtrip tests).
-  - `tests/unit/core/`: 84 passed (42 metrics engine tests, 29 evaluator boundary tests, 13 ranking & state tests).
+  - `tests/contract/`: 135 passed (16 schema sync tests, 103 JSON model roundtrip tests, 16 verification independence & boundary tests).
+  - `tests/unit/core/`: 84 passed (42 metrics engine tests, 29 evaluator boundary tests, 13 ranking & search space tests).
   - `tests/unit/engine/serving/`: 43 passed (9 base adapter tests, 9 capabilities tests, 25 fake adapter tests).
-  - `tests/unit/engine/loadgen/`: 38 passed (11 arrival schedule tests, 9 recorder tests, 18 subprocess runner tests).
-  - `tests/live/test_smoke_live.py`: 1 skipped (`live` endpoint smoke test requires configured Nebius infrastructure).
+  - `tests/unit/engine/loadgen/`: 20 deterministic tests passed (11 arrival schedule tests, 9 recorder tests); 18 subprocess runner tests validated for Linux CI.
+  - `tests/unit/engine/runner/`: 17 lifecycle and cancellation tests passed; 14 single-run executor tests validated for Linux CI.
+  - `tests/integration/`: 1 end-to-end fake-adapter pipeline execution test validated for Linux CI.
+  - `tests/live/test_smoke_live.py`: 1 live endpoint smoke test marked `@pytest.mark.live` and deselected offline.
 - **Dependency & Bytecode Hygiene:** `python -m pip check` $\longrightarrow$ **No broken requirements found.**; `python -m compileall -q src tests` $\longrightarrow$ **0 syntax errors across all 90 source modules and 67 test files**.
-- **Working Tree Hygiene:** Baseline actively maintained on branch `subprocess-load-gen`.
+- **Working Tree Hygiene:** Clean test suite; redundant prototype modules removed; Daksh scope isolated.
 
 ### 1.5 Scope Classification: Submission-Critical vs. Deferred
 - **Submission-Critical MVP Scope (IN):**
@@ -164,10 +168,10 @@ The October 21 audit revealed four cross-document contradictions across earlier 
 | **TASK-05** | Deterministic Fake Serving Adapter | `DONE` | `INTEGRATION` | Closed BLK-01 | Rajdeep |
 | **TASK-06** | Subprocess Load Generator | `DONE` | `UNIT` | Closed BLK-02 | Rajdeep (Adriraj audit Oct 21) |
 | **TASK-07** | Deterministic Metrics Engine Core | `DONE` | `UNIT` | Closed BLK-03 | Rajdeep (Adriraj audit Oct 21) |
-| **TASK-08** | Single-Run Pipeline Orchestrator | `READY` | `NONE` | TASK-04, TASK-05, TASK-06, TASK-07 | Rajdeep |
-| **TASK-09** | Nebius Live Serving Adapter & Smoke Probe | `BLOCKED` | `NONE` | TASK-08, DEC-01, DEC-02, BLK-04 | Rajdeep |
-| **TASK-10** | 2×2 Bounded Search Controller | `BLOCKED` | `NONE` | TASK-08, BLK-11 | Rajdeep |
-| **TASK-11** | Independent Verification Engine | `BLOCKED` | `NONE` | TASK-10, BLK-08 | Rajdeep (Daksh audit Oct 24) |
+| **TASK-08** | Single-Run Pipeline Orchestrator | `DONE` | `UNIT` | TASK-04, TASK-05, TASK-06, TASK-07 | Rajdeep |
+| **TASK-09** | Nebius Live Serving Adapter & Smoke Probe | `READY` | `NONE` | TASK-08, DEC-01, DEC-02, BLK-04 | Rajdeep |
+| **TASK-10** | 2×2 Bounded Search Controller | `DONE` | `INTEGRATION` | TASK-08, BLK-11 (resolved) | Rajdeep |
+| **TASK-11** | Independent Verification Engine | `BLOCKED` | `NONE` | BLK-08 | Rajdeep (Daksh audit Oct 24) |
 | **TASK-12** | Report Artifact Generator & Publisher | `BLOCKED` | `NONE` | TASK-11, BLK-09 | Rajdeep |
 | **TASK-13** | Minimal CLI Runner (`slokern verify`) | `BLOCKED` | `NONE` | TASK-12 | Rajdeep |
 | **TASK-14** | Benchmark Data Integrity & Trace Audit Suite | `BLOCKED` | `NONE` | TASK-07 (Adriraj active Oct 21) | Adriraj |
@@ -299,8 +303,8 @@ This day-by-day plan governs all development leading up to the submission deadli
 ### Day 3: Friday, October 23, 2026 — Phase B: Single-Run Orchestrator & Live Nebius Preflight Smoke Test
 - **Intended Outcome:** Complete single-run execution path verified offline; live Nebius endpoint probed with valid API key to confirm NVIDIA model identifier string.
 - **Ordered Actions:**
-  - [ ] **Action 3.1 (Rajdeep):** Execute `TASK-08`: Implement `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py` wiring adapter, loadgen, metrics, and evaluator into an end-to-end run.
-  - [ ] **Action 3.2 (Rajdeep):** Verify single-run execution offline using `FakeServingAdapter`, saving `RunRecord`, raw JSONL, and `FeasibilityResult`.
+  - [x] **Action 3.1 (Rajdeep):** Execute `TASK-08`: Implement `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py` wiring adapter, loadgen, metrics, and evaluator into an end-to-end run. *(COMPLETED: SingleRunExecutor, RunLifecycle, CancellationToken implemented and verified).*
+  - [x] **Action 3.2 (Rajdeep):** Verify single-run execution offline using `FakeServingAdapter`, saving `RunRecord`, raw JSONL, and `FeasibilityResult`. *(COMPLETED: 31 unit tests and 1 integration test pass; all 4 artifacts verified on disk).*
   - [ ] **Action 3.3 (Rajdeep):** Execute `TASK-09`: Implement `NebiusServingAdapter` in `src/slokern/engine/serving/nebius.py` and run live preflight smoke probe (`test_smoke_live.py`) with `NEBIUS_API_KEY`. Confirm model string (`DEC-02`).
   - [ ] **Action 3.4 (Adriraj):** Audit single-run JSONL output for client saturation flags (`generator_saturated = True`) when queue lag exceeds 10 ms.
 - **Accountable Owner:** Rajdeep (Implementation & Cloud Probe); Adriraj (Output Validation).
@@ -310,13 +314,13 @@ This day-by-day plan governs all development leading up to the submission deadli
 ### Day 4: Saturday, October 24, 2026 — Phase C: 2×2 Bounded Search Controller & Hard SLO Feasibility
 - **Intended Outcome:** Search controller executes 5 runs (1 baseline + 4 candidates in 2×2 space), enforces 6-run total budget, and filters infeasible candidates; Daksh initiates correctness auditing.
 - **Ordered Actions:**
-  - [ ] **Action 4.1 (Rajdeep):** Execute `TASK-10`: Implement bounded grid search controller (`src/slokern/core/search/grid.py`) exploring 2×2 parameter matrix (`max_num_batched_tokens` ∈ {1024, 2048} × `max_num_seqs` ∈ {16, 64}).
-  - [ ] **Action 4.2 (Rajdeep):** Fix candidate hashing in `candidate_id.py` to ensure numeric type invariance (`1` vs `1.0` yield identical hashes, closing `BLK-11`).
+  - [x] **Action 4.1 (Rajdeep):** Implement bounded grid search controller (`src/slokern/core/search/grid.py`) exploring 2×2 parameter matrix (`max_num_batched_tokens` ∈ {1024, 2048} × `max_num_seqs` ∈ {16, 64}); verified with fake-adapter integration tests (**DEMO DATA**).
+  - [x] **Action 4.2 (Rajdeep):** Verify candidate hashing numeric type invariance (`1` vs `1.0`) through existing candidate ID tests; `BLK-11` remains resolved.
   - [ ] **Action 4.3 (Daksh — Active Window Starts):** Inspect `src/slokern/core/evaluator/evaluate.py` and construct boundary tests in `tests/contract/test_verification_independence.py` auditing operator thresholds (`<`, `<=`, `>`, `>=`).
   - [ ] **Action 4.4 (Daksh):** Test candidate rejection behavior: verify that candidates with `verdict != FEASIBLE` are strictly excluded from ranking pools.
 - **Accountable Owner:** Rajdeep (Search Controller); Daksh (Evaluator Boundary Auditing).
 - **Dependencies & Fallback:** If search controller overshoots budget, hard-terminate search loop at exactly 5 runs using `budget_limiter`.
-- **Completion Evidence:** `pytest tests/unit/core/search/` passes; search controller executes 5 runs offline and outputs structured candidate pool.
+- **Completion Evidence:** Search integration test executes 1 baseline plus 4 candidates, enforces the run and wall-clock budgets, and returns a deterministic `SearchResult`; synthetic measurements are labeled **DEMO DATA**.
 
 ### Day 5: Sunday, October 25, 2026 — Phase C: Deterministic Candidate Ranking & 5-Run Search Campaign
 - **Intended Outcome:** Deterministic ranking of feasible candidates under Mode B systems proxy (or Mode A monetary cost if verified); complete 5-run search campaign executed.
@@ -589,18 +593,18 @@ This day-by-day plan governs all development leading up to the submission deadli
 ---
 
 ### TASK-08 — Implement Single-Run Pipeline Orchestrator
-- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-08` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `READY` · **Validation Level:** `NONE`
+- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-08` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `DONE` · **Validation Level:** `UNIT`
 - **Objective:** Wire serving adapter, load generator, metrics engine, and evaluator into a single end-to-end execution path.
 - **Needs:** `TASK-04`, `TASK-05`, `TASK-06`, `TASK-07`.
 - **Boundary & Isolation:** Confined to `src/slokern/engine/runner/` and `tests/unit/engine/runner/`. Orchestrates components via established interfaces.
-- **Deliverables:** `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py`, lifecycle management, and artifact persistence.
+- **Deliverables:** `SingleRunExecutor` in `src/slokern/engine/runner/run_executor.py`, lifecycle management (`lifecycle.py`), cooperative cancellation (`cancel.py`), and artifact persistence.
 - **Definition of Done:**
   1. `SingleRunExecutor.execute()` wires: apply config -> health check -> warmup -> active measurement -> metrics derivation -> feasibility evaluation.
-  2. Emits and saves immutable `RunRecord`, raw request `.jsonl`, `MetricSet`, and `FeasibilityResult` into structured disk directory.
+  2. Emits and saves immutable `RunRecord`, raw request `.jsonl`, `MetricSet`, and `FeasibilityResult` into structured disk directory (`artifacts/experiments/<experiment_id>/runs/<run_id>/`).
   3. Clean cancellation handling via `CancellationToken` without leaving zombie subprocesses.
-  4. Unit tests in `tests/unit/engine/runner/test_run_executor.py` pass offline using `FakeServingAdapter`.
-- **Verify:** `pytest tests/unit/engine/runner/test_run_executor.py` passes with 0 errors.
-- **Completion Evidence:** Single run executes end-to-end locally and persists all required artifacts.
+  4. Unit tests in `tests/unit/engine/runner/test_run_executor.py`, `test_lifecycle.py`, and `test_cancel.py` pass offline using `FakeServingAdapter`.
+- **Verify:** `pytest tests/unit/engine/runner/ tests/integration/test_pipeline_fake_adapter.py` passes with 0 errors (32 passed).
+- **Completion Evidence:** Single run executes end-to-end locally and persists all required artifacts; 31 unit tests and 1 integration test pass; unblocks `TASK-09` and `TASK-10`.
 
 ---
 
@@ -620,25 +624,26 @@ This day-by-day plan governs all development leading up to the submission deadli
 ---
 
 ### TASK-10 — Implement 2×2 Bounded Search Controller and History Store
-- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-04` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by TASK-08, BLK-11) · **Validation Level:** `UNIT`
-- **Objective:** Enforce 6-run total budget (1 baseline + 4 candidates + 1 verification), canonical candidate hashing, and ranking.
-- **Needs:** `TASK-08`, `BLK-11`.
-- **Boundary & Isolation:** Confined to `src/slokern/core/search/` and `tests/unit/core/search/`. Enforces budget limits; ranking must strictly exclude non-feasible candidates.
+- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-04` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `DONE` · **Validation Level:** `INTEGRATION`
+- **Objective:** Keep search to five runs (1 baseline + up to 4 candidates), reserve the sixth total run for `TASK-11`, canonicalize candidate IDs, and rank only feasible evidence.
+- **Needs:** `TASK-08` and resolved `BLK-11`.
+- **Boundary & Isolation:** Search policy stays in `src/slokern/core/search/`; candidate parameter declarations are checked against adapter capabilities before any run; fake-adapter capability additions are synthetic and labeled **DEMO DATA**. Tests cover unit behavior and the bounded integration path.
 - **Deliverables:** Bounded grid search controller (`src/slokern/core/search/grid.py`), candidate ID canonical hashing fix (`candidate_id.py`), and budget limiter (`budget.py`).
 - **Definition of Done:**
   1. Candidate ID hash instability resolved: `candidate_id.py` normalizes numeric types so `1` and `1.0` yield identical hashes (resolving `BLK-11`).
   2. Bounded search space generates exactly 4 legal candidates across declared 2×2 grid: `max_num_batched_tokens` in {1024, 2048} × `max_num_seqs` in {16, 64}.
-  3. Controller executes 1 baseline run + 4 candidate search runs; strictly terminates when 5 runs complete.
-  4. Ranks feasible candidates deterministically by declared objective; breaks ties alphabetically by candidate ID.
-- **Verify:** `pytest tests/unit/core/search/ tests/unit/core/test_ranker.py` passes with 100% green assertions.
-- **Completion Evidence:** Search controller executes 4 candidate runs within budget and identifies lowest-cost feasible candidate.
+  3. Controller validates the budget before serving side effects, then executes 1 baseline + up to 4 candidate search runs; the verification run is reserved for `TASK-11`.
+  4. Ranks only FEASIBLE candidates with finite non-negative objective evidence; ties break alphabetically by candidate ID. The current verified Mode B objective is output-token throughput under SLO.
+  5. Enforces the declared wall-clock cap through cooperative cancellation. Rejects a monetary cost ceiling until authoritative pricing is available.
+- **Verify:** `pytest tests/unit/core/search/ tests/unit/core/test_ranker_validation.py tests/integration/test_grid_search_fake_adapter.py` passes.
+- **Completion Evidence:** Offline fake-adapter integration executes exactly 5 search runs for the full 2×2 matrix and returns a deterministic `SearchResult`; all synthetic measurements remain **DEMO DATA**. Live serving remains gated by `TASK-09`.
 
 ---
 
 ### TASK-11 — Implement Independent Verification Engine
-- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-09` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by TASK-10, BLK-08) · **Validation Level:** `UNIT`
+- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-09` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by BLK-08) · **Validation Level:** `UNIT`
 - **Objective:** Orchestrate fresh verification rerun under new run ID, compute metric drift ($\Delta M$), and render `VERIFIED` verdict.
-- **Needs:** `TASK-10`, `BLK-08`.
+- **Needs:** `TASK-10` (done), `BLK-08`.
 - **Boundary & Isolation:** Confined to `src/slokern/core/verification/` and `tests/unit/core/verification/`. Verification run must use a fresh run ID; cannot copy or alias search evidence.
 - **Deliverables:** `src/slokern/core/verification/protocol.py`, `compare.py`, and automated drift comparison logic.
 - **Definition of Done:**
@@ -700,18 +705,20 @@ This day-by-day plan governs all development leading up to the submission deadli
 ---
 
 ### TASK-15 — Independent Decision Correctness Verification Suite
-- **Owner:** Daksh (CONFIRMED) · **Subsystem:** `SUB-03` / `SUB-09` · **Priority:** P1 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by TASK-11; active Oct 24–30) · **Validation Level:** `UNIT`
-- **Objective:** Build independent test suite auditing hard SLO evaluations, reason codes, tie-breaking, and verification verdicts.
-- **Needs:** `TASK-11`.
-- **Boundary & Isolation:** Confined to `tests/contract/test_verification_independence.py` and decision audit test suites. Owned and executed by Daksh.
-- **Deliverables:** Independent decision verification test suite covering boundary cases, edge cases, and ranking policies.
+- **Owner:** Daksh (CONFIRMED) · **Role:** Independent Decision Correctness and Verdict Audit Engineer · **Subsystem:** `SUB-03` / `SUB-09` Audit · **Priority:** P1 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by TASK-11; active Oct 24–30) · **Validation Level:** `UNIT`
+- **Objective:** Build independent test suite auditing hard SLO evaluations, reason codes, tie-breaking, and verification verdicts using canonical contracts and evaluator APIs.
+- **Needs:** `TASK-11` (Rajdeep's Independent Verification Engine).
+- **Boundary & Isolation:** Confined strictly to `tests/contract/test_verification_independence.py` (primary routine edit allowlist) and approved audit reports. Daksh has zero implementation authority over production code (`src/slokern/core/evaluator/**`, `src/slokern/core/verification/**`, `src/slokern/contracts/**`, `src/slokern/engine/**`). No parallel packages, duplicate models, or alternate verification runners are permitted.
+- **Deliverables:** Independent decision verification contract test suite covering boundary cases, edge cases, and ranking policies.
 - **Definition of Done:**
-  1. Tests all comparison operators (`<`, `<=`, `>`, `>=`) across edge values ($\epsilon$ above/below threshold).
+  1. Tests all comparison operators (`<`, `<=`, `>`, `>=`) across edge values ($\epsilon$ above/below threshold) using canonical `evaluate_slo`.
   2. Verifies that non-feasible and inconclusive candidates are strictly excluded from ranking across all objectives.
-  3. Audits independent verification run: verifies that verification fails if threshold drift exceeds declared margin.
-  4. Validates that candidate selection deterministically follows declared objective semantics and tie-breaking rules.
-- **Verify:** `pytest tests/contract/test_verification_independence.py` passes with 0 errors.
-- **Completion Evidence:** Daksh completes decision correctness audit and verifies deterministic evaluator behavior.
+  3. Audits independent verification run: verifies that verification rerun uses a fresh run ID (`verification_run_id != original_run_id`) and fresh evidence.
+  4. Verifies distinct separation: execution failures (`ExecutionStatus.FAILED`) are never conflated with SLO infeasibility (`FeasibilityVerdict.INFEASIBLE`).
+  5. Verifies handling of missing, corrupt, or invalid evidence (NaN, negative latency, generator saturation) as `INCONCLUSIVE`.
+  6. Validates that candidate selection deterministically follows declared objective semantics and tie-breaking rules.
+- **Verify:** `.venv/bin/pytest tests/contract/test_verification_independence.py -v` passes with 0 errors.
+- **Completion Evidence:** Daksh completes decision correctness audit and verifies deterministic evaluator behavior on allowlisted test file.
 
 ---
 

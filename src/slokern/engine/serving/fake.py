@@ -58,6 +58,14 @@ def _build_default_capabilities(runtime_name: str) -> RuntimeCapabilities:
             "*"
         ],
         parameters={
+            "max_num_batched_tokens": ParameterSpec(
+                name="max_num_batched_tokens",
+                param_type="int",
+                default=2048,
+                min_value=128,
+                max_value=65536,
+                description="Maximum batched token budget in the synthetic vLLM runtime",
+            ),
             "max_num_seqs": ParameterSpec(
                 name="max_num_seqs",
                 param_type="int",

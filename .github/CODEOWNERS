@@ -1,2 +1,35 @@
-# Purpose: Maps repository paths to the accountable owners for review.
-# Owner: Rajdeep
+# Purpose: Maps repository paths to accountable owners for review and change gating.
+# Owner: Rajdeep (Architecture & Technical Direction)
+# Authority: AGENTS.md Section 13, docs/ownership.md
+
+# Default catch-all: Sole technical owner must review all changes
+* @dev-paulrajdeep
+
+# Protected Core Architecture, Contracts, and Execution Engines
+/src/ @dev-paulrajdeep
+/src/slokern/contracts/ @dev-paulrajdeep
+/src/slokern/core/ @dev-paulrajdeep
+/src/slokern/engine/ @dev-paulrajdeep
+/src/slokern/api/ @dev-paulrajdeep
+/src/slokern/cli/ @dev-paulrajdeep
+
+# Infrastructure, CI/CD, Packaging, and Configuration
+/.github/ @dev-paulrajdeep
+/pyproject.toml @dev-paulrajdeep
+/scripts/ @dev-paulrajdeep
+
+# Canonical Documentation, Architecture Specifications, and Decision Policies
+/docs/ @dev-paulrajdeep
+/AGENTS.md @dev-paulrajdeep
+/README.md @dev-paulrajdeep
+/ROADMAP.md @dev-paulrajdeep
+
+# Frontend Command Center
+/frontend/ @dev-paulrajdeep
+
+# Test Suites
+/tests/ @dev-paulrajdeep
+
+# Designated Decision Correctness / Verification Independence Test Scope
+# Daksh is assigned to this verification test file; Rajdeep retains final approval
+/tests/contract/test_verification_independence.py @dev-paulrajdeep @Daksh08122008

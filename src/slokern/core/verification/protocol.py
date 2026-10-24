@@ -1,4 +1,4 @@
 """
 Purpose: Verification protocol definition.
-Owner: Daksh
+Owner: Rajdeep (Architecture & Implementation); Decision Verification Audit: Daksh (active Oct 24)
 """

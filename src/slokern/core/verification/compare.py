@@ -1,4 +1,4 @@
 """
 Purpose: Compares search evidence with verification evidence.
-Owner: Daksh
+Owner: Rajdeep (Architecture & Implementation); Decision Verification Audit: Daksh (active Oct 24)
 """

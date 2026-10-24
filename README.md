@@ -249,9 +249,9 @@ SLOKern enforces strict cost accounting boundaries to prevent fabricated claims:
 | Subsystem / Deliverable | Status | Verified Evidence & Repository Reality |
 |---|---|---|
 | **Data Contracts** | `IMPLEMENTED` | Pydantic v2 schemas in `src/slokern/contracts/` (`enums.py`, `metrics.py`). |
-| **Subsystem Modules** | `IMPLEMENTED (STUBS)` | `api/`, `cli/`, `core/`, `engine/` scaffolded with clear typed signatures. |
+| **Search Controller** | `IMPLEMENTED (OFFLINE)` | `GridSearchController` performs a bounded baseline plus up to four candidate runs on `FakeServingAdapter`; all outputs are **DEMO DATA**. |
 | **Fake Serving Adapter** | `IMPLEMENTED` | `src/slokern/engine/serving/fake.py` generates deterministic synthetic runs. |
-| **Nebius Serving Adapter** | `IN PROGRESS` | `src/slokern/engine/serving/nebius.py` scaffolded; live HTTP streaming client in development. |
+| **Nebius Serving Adapter** | `UNAVAILABLE / UNVERIFIED` | `src/slokern/engine/serving/nebius.py` fails closed and reports unhealthy until live request handling and preflight verification complete under `TASK-09`. |
 | **Preflight Smoke Test** | `PENDING EXECUTION` | Preflight check defined in `docs/deployment.md`; blocked on live Nebius instance access. |
 | **Target Model Deployment** | `PENDING VERIFICATION` | `Nemotron-3-Nano-30B-A3B` (FP8) selected from catalog; endpoint reachability unverified. |
 | **Live Benchmark Evidence** | `NOT RUN` | No live GPU benchmarks have been executed; zero fabricated claims. |
