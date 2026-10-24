@@ -31,10 +31,22 @@ When a run is evaluated as `INFEASIBLE` or `INCONCLUSIVE`, it must be accompanie
 | Reason Code | Category | Meaning |
 |---|---|---|
 | `TTFT_EXCEEDED` | Infeasible | Measured TTFT percentile exceeded the target threshold. |
+| `TTFT_DRIFT_EXCEEDED` | Infeasible | Verification TTFT P90 degraded beyond the configured tolerance from the original search run. |
 | `ITL_EXCEEDED` | Infeasible | Measured inter-token latency exceeded the target threshold. |
 | `HIGH_ERROR_RATE` | Infeasible | Failed requests exceeded the maximum allowed error rate. |
 | `OOM_CRASH` | Infeasible | GPU Out-Of-Memory exception detected during test. |
 | `INSUFFICIENT_SAMPLES` | Inconclusive | Total completed request count is below the minimum valid sample threshold. |
 | `MISSING_METRICS` | Inconclusive | One or more required metric fields were missing from the benchmark artifact. |
+| `INVALID_METRICS` | Inconclusive | A required metric has a malformed or invalid value. |
 | `RUN_CONTAMINATED` | Inconclusive | Load generator saturation or clock drift flagged the run as invalid. |
 
+## 4. Independent verification
+
+Verification uses a fresh run ID, executes a new benchmark, and evaluates that run's
+measurements independently. The TTFT drift check also requires a finite, positive
+`ttft_p90` from the original search run; missing baseline evidence makes verification
+`INCONCLUSIVE` with `MISSING_METRICS`, and an invalid value makes it `INCONCLUSIVE`
+with `INVALID_METRICS`. If verification TTFT P90 degrades by more than the configured
+tolerance (5% by default), the verdict is `INFEASIBLE` with `TTFT_DRIFT_EXCEEDED`.
+Benchmark execution errors are not SLO failures and must be reported separately by
+the caller.

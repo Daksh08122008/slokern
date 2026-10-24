@@ -16,6 +16,7 @@ class ReasonCode(str, Enum):
     """Explicit reason codes for failed or inconclusive runs."""
     # Infeasible Reason Codes
     TTFT_EXCEEDED = "TTFT_EXCEEDED"
+    TTFT_DRIFT_EXCEEDED = "TTFT_DRIFT_EXCEEDED"
     ITL_EXCEEDED = "ITL_EXCEEDED"
     HIGH_ERROR_RATE = "HIGH_ERROR_RATE"
     OOM_CRASH = "OOM_CRASH"
@@ -23,6 +24,7 @@ class ReasonCode(str, Enum):
     # Inconclusive Reason Codes
     INSUFFICIENT_SAMPLES = "INSUFFICIENT_SAMPLES"
     MISSING_METRICS = "MISSING_METRICS"
+    INVALID_METRICS = "INVALID_METRICS"
     RUN_CONTAMINATED = "RUN_CONTAMINATED"
 
 
