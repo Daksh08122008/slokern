@@ -20,6 +20,14 @@ coverage/
 .env.*
 !.env.example
 
+# Private keys and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials.json
+
 # Editors and operating systems
 .DS_Store
 Thumbs.db
@@ -37,3 +45,5 @@ htmlcov/
 .coverage
 .coverage.*
 
+# Local overrides
+*.local
