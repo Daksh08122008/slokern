@@ -48,6 +48,7 @@ flowchart TD
   - `EvidenceValidity` is `VALID`.
   - At least one constraint observed value violates the threshold condition (e.g., observed TTFT p95 > threshold).
 - **Note:** Infeasible candidates remain permanently in experiment history to explain why they were rejected.
+- A valid completed run can be `INFEASIBLE`; execution failure, invalid evidence, missing metrics, or insufficient samples must not be translated into an SLO miss.
 
 ### 2.3 `INCONCLUSIVE`
 - **Definition:** Evidence is invalid, missing, noisy, or insufficient to support an authoritative pass or fail verdict.
@@ -58,8 +59,16 @@ flowchart TD
   - Benchmark run was aborted before measurement window completed.
 - **Rule:** An inconclusive candidate can never win candidate selection or be submitted for verification.
 
-### 2.4 Execution Failure vs. SLO Infeasibility
+### 2.4 Objective rankability is separate from feasibility
+
+`FEASIBLE` means the declared hard SLO constraints passed; it does not mean a candidate has the evidence needed for the declared ranking objective. A candidate with missing, non-finite, invalid, or unavailable objective evidence must be ineligible for winner selection while retaining its original SLO verdict and an exclusion reason. A monetary-cost objective must not fall back to reciprocal throughput. An alternative objective is allowed only when declared and validated before the campaign.
+
+**Current implementation gap (`BLK-16`):** `rank_candidates()` keeps `FEASIBLE` rows with `ranking_metric=None` and sorts them last; if every row lacks a metric, one can still be returned as winner. `extract_ranking_metric()` substitutes reciprocal throughput for missing Mode A monetary metadata. Documentation states the required policy; code does not yet enforce it.
+
+### 2.5 Execution Failure vs. SLO Infeasibility
 If an experiment terminates abnormally due to a process crash, out-of-memory error, network abort, or bad credentials, the `RunRecord` marks `execution_status = FAILED`. This is **not** an SLO infeasibility verdict (`INFEASIBLE`), because no valid inference distribution was observed.
+
+**Integration limitation:** The current `evaluate_slo()` API receives `MetricSet` and `SLOSpec`, not the corresponding `RunRecord`; therefore the stated separation is a policy requirement, not a complete end-to-end implementation of run-validity gating. The run controller must prevent failed/invalid executions from entering ranking.
 
 ---
 
@@ -125,10 +134,10 @@ Evaluate constraints → Verification Verdict:
 ```
 
 ### Verification Drift Analysis
-The verification report must compute metric deltas between the search run and the verification run:
+If an accepted verification policy requests drift analysis, report metric deltas between the search run and the verification run:
 $$\Delta M = \frac{M_{\text{verification}} - M_{\text{search}}}{M_{\text{search}}} \times 100\%$$
 
-If $\Delta M$ breaches an SLO threshold during the verification run, the verdict is unequivocally `VERIFICATION_FAILED`. The candidate configuration is not recommended, and both search and verification evidence are retained for diagnostics.
+Verification feasibility is determined by applying the same declared hard SLOs to fresh verification evidence. A drift threshold is a separate policy from an SLO threshold and must not be inferred from it. The proposed ±15% p95 TTFT/TPOT tolerance is unapproved; TPOT is not currently in `MetricSet`. `src/slokern/core/verification/protocol.py` and `compare.py` are stubs, so drift behavior is not implemented.
 
 ---
 

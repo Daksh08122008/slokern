@@ -9,7 +9,7 @@
 
 ## 1. Metric Taxonomy & Principles
 
-Every metric reported by SLOKern must be traceable to unaggregated, microsecond-accurate raw request events logged during the active measurement window.
+Every metric reported by SLOKern should be traceable to unaggregated raw request events logged during the active measurement window. Timestamps are recorded as floating-point epoch seconds; decimal precision in a timestamp is not a claim of microsecond clock accuracy.
 
 ### Non-Negotiable Rules
 
@@ -24,31 +24,27 @@ Every metric reported by SLOKern must be traceable to unaggregated, microsecond-
 ## 2. Core Metric Specifications
 
 ### 2.1 Time to First Token (TTFT)
-- **Definition:** The elapsed duration from client request dispatch until the arrival of the very first generated output token.
+- **Definition:** The current collector measures from client request dispatch until the first non-empty streamed content chunk it observes. A server chunk may contain more than one token, so this is first-content-chunk latency and only approximates first-token latency unless the adapter establishes token granularity.
 - **Start Event:** Socket dispatch start timestamp (`sent_at`).
-- **End Event:** Receipt timestamp of the first chunk containing generated tokens (`first_token_at`).
+- **End Event:** Receipt timestamp of the first non-empty content chunk (`first_token_at`).
 - **Units:** Milliseconds (`ms`).
-- **Population:** All successfully initiated streaming requests completed during the measurement window with output tokens $\ge 1$.
+- **Population:** Valid, non-error, non-warmup records with `first_token_at` present and `output_tokens >= 1`.
 - **Aggregations:** Median (`p50`), 90th percentile (`p90`), 95th percentile (`p95`), 99th percentile (`p99`), and arithmetic mean.
 - **Missing Data Handling:** If a request aborts, times out, or fails before emitting a token, TTFT is recorded as `null` and the request increments the error count.
 
 ### 2.2 Inter-Token Latency (ITL)
-- **Definition:** The time interval between consecutive generated tokens within a single streaming response.
-- **Start Event:** Receipt timestamp of token $k-1$ ($t_{k-1}$).
-- **End Event:** Receipt timestamp of token $k$ ($t_k$).
+- **Definition:** The current metric is a per-request average of recorded stream chunk gaps, not guaranteed per-token ITL. A chunk can carry multiple tokens; chunk gaps therefore must not be described as true per-token intervals without token-level evidence.
+- **Source:** Mean of `itl_observations_ms` recorded for the request when present; otherwise `(completed_at - first_token_at) * 1000 / (output_tokens - 1)`.
 - **Units:** Milliseconds per token (`ms/tok`).
-- **Population:** All individual inter-token intervals across completed streaming requests with output tokens $\ge 2$.
-- **Aggregation Method:**
-  1. *Per-Request Average ITL:* Total generation time divided by generated tokens minus one:
-     $$\text{ITL}_{\text{req}} = \frac{t_{\text{completed}} - t_{\text{first\_token}}}{N_{\text{tokens}} - 1}$$
-  2. *Population Percentiles:* Calculated across the distribution of per-request ITL averages (`p50`, `p90`, `p95`).
+- **Population:** One average per valid, non-error, non-warmup request with at least two output tokens.
+- **Aggregations:** Percentiles are calculated across those per-request averages, not across every chunk interval globally.
 - **Missing Data Handling:** Non-streaming runs or single-token responses omit ITL (`null`).
 
 ### 2.3 End-to-End Request Latency (E2E)
 - **Definition:** Total round-trip time experienced by the client from initial dispatch to full response completion.
 - **Start Event:** Client socket write timestamp (`sent_at`).
 - **End Event:** Final stream closing or complete payload receipt (`completed_at`).
-- **Units:** Milliseconds (`ms`) or seconds (`s`).
+- **Units:** Milliseconds (`ms`).
 - **Population:** All completed requests within the measurement window.
 - **Aggregations:** `p50`, `p90`, `p95`, `p99`, arithmetic mean, min, max.
 
@@ -70,7 +66,7 @@ Every metric reported by SLOKern must be traceable to unaggregated, microsecond-
 - **Offered Load (`offered_load_rps`):** The rate at which the client load generator attempted to dispatch requests according to the declared arrival schedule (`WorkloadSpec`).
   $$\text{Offered Load} = \frac{N_{\text{dispatched\_requests}}}{\Delta t_{\text{measurement\_window}}}$$
   - **Units:** Requests per second (`req/s`).
-- **Achieved Load (`achieved_load_rps`):** The rate of requests successfully completed and received back by the client across the active measurement window.
+- **Achieved Load (`achieved_load_rps`):** The rate of valid, completed requests received by the client across the declared active measurement window. It equals `request_throughput_rps` in the current implementation.
   $$\text{Achieved Load} = \frac{N_{\text{completed\_valid\_requests}}}{\Delta t_{\text{measurement\_window}}}$$
   - **Units:** Requests per second (`req/s`).
   - *Distinction:* Achieved load reflects server delivery rate under the offered pressure, whereas offered load reflects client dispatch fidelity.
@@ -82,14 +78,12 @@ Every metric reported by SLOKern must be traceable to unaggregated, microsecond-
   - *Trigger Conditions:* Set to `True` if:
     1. Client dispatch latency (delay between scheduled time and socket write start) exceeds 10 ms; OR
     2. Delivered offered load deviates from the declared target arrival rate by more than 10%.
-  - *Impact on Experiment Validity:* If `generator_saturated = True`, the inference server was never subjected to the intended benchmark conditions. The resulting latency distribution is contaminated (often appearing falsely fast due to under-loaded queuing). Therefore:
-    - Evidence validity is immediately marked `CONTAMINATED`.
-    - Feasibility evaluator emits verdict `INCONCLUSIVE` with reason code `GENERATOR_SATURATED` or `CONTAMINATED_LOAD`.
-    - The candidate is **ineligible** for cost ranking or verification.
+  - *Current trigger:* mean dispatch lag >10 ms, or computed offered rate <90% of target. This checks average lag, not p99 lateness; the proposed p99 ≤20 ms, CPU <70%, and achieved/offered ≥0.98 gates are not implemented.
+  - *Current evaluator behavior:* `generator_saturated` yields `EvidenceValidity.CONTAMINATED` and `INCONCLUSIVE`. The ranker only checks the feasibility verdict; other run execution/record validity is not supplied to the evaluator.
 
 
 ### 2.7 Error Rate
-- **Definition:** The fraction of offered requests that failed, timed out, or returned an HTTP error.
+- **Definition:** The fraction of non-warmup records whose `error_type` is set or whose HTTP status is present and not 200, divided by all non-warmup records. Invalid records with no error/status marker are not included in `failed_request_count` by the current implementation.
 - **Formula:**
   $$\text{Error Rate} = \frac{N_{\text{failed\_requests}}}{N_{\text{total\_offered\_requests}}}$$
 - **Units:** Dimensionless fraction ($0.0 \le \text{rate} \le 1.0$) or percentage (`%`).
@@ -116,10 +110,14 @@ Percentiles are computed deterministically using the standard **linear interpola
 4. Value $P_p = v_k + f \times (v_{k+1} - v_k)$.
 
 ### Minimum Sample Thresholds
-- To report `p50` (Median): Minimum $N = 10$ valid samples.
-- To report `p95`: Minimum $N = 30$ valid samples (preferably $\ge 50$).
-- To report `p99`: Minimum $N = 100$ valid samples.
-- If $N < \text{min\_sample\_count}$, the metric set is flagged `insufficient_samples` and yields an `INCONCLUSIVE` verdict.
+- The percentile helper computes p50/p90/p95/p99 for any non-empty sample vector; it does not implement per-percentile minimum counts or confidence intervals.
+- `SLOSpec.min_sample_count` is the current general minimum valid request count used by the evaluator. If total `MetricSet.sample_count` is below this declared threshold, the evaluator returns `INCONCLUSIVE`.
+- Proposed methodology: collect at least 2,000 measured requests and use p95 as the primary tail constraint. Keep p99 informational unless the pre-registered sample size provides enough tail observations. Bootstrap confidence intervals are a proposal; no bootstrap implementation exists.
+
+### Metrics not currently represented
+- **TPOT:** There is no `tpot_ms`/TPOT field in `MetricSet`; the proposed formula `(E2E - TTFT) / (completion_tokens - 1)` is not an implemented metric.
+- **Queueing, GPU utilization, cache state, preemption, and client CPU:** These are not current `MetricSet` fields. Do not report them as measured unless a separate source and artifact are added.
+- **Validity details:** `RawRequestMeasurement.is_valid` exists, but `MetricSet` does not expose invalid-record counts or a general run-validity summary. `RunRecord.execution_status` is a separate field, and current `evaluate_slo()` only sees `MetricSet` plus `SLOSpec`.
 
 ---
 

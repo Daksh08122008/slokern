@@ -5,6 +5,8 @@
 > **Owner:** Rajdeep (Sole Presenter & Technical Lead)  
 > **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
+> **Rehearsal script only:** Sample thresholds and result narration below are illustrative placeholders, not measured evidence. Do not claim a live baseline, winning candidate, or `VERIFIED` outcome unless the corresponding fresh raw artifacts exist. If using fake or prerecorded synthetic data, label it **DEMO DATA**. The proposed Nemotron 30B / Serverless / vLLM 0.12.0 path and new search profile are not yet verified.
+
 ---
 
 ## 1. Demo Narrative Arc & Timing
@@ -31,13 +33,13 @@ The SLOKern presentation tells a coherent, evidence-first systems story in 3.5 t
 > *"SLOKern starts with a strict contract. Here in the Workload & SLO Builder, we declare our traffic profile: an open-loop Poisson arrival process at 10 requests per second with 512 input tokens. Crucially, we specify non-negotiable hard SLO constraints: TTFT p95 must remain under 250 milliseconds, and error rate must stay below 1%. Deterministic code—not an LLM—validates this specification and enforces a hard candidate budget before any expensive GPU compute begins."*
 
 ### Act 3: Baseline Reality (1:15 – 2:00)
-> *"We first establish our baseline using the default serving configuration on our Nebius NVIDIA GPU instance. As the load generator delivers the offered load, SLOKern records every single request with microsecond client timestamps. The metrics engine calculates the distribution, and the deterministic evaluator renders its verdict: the default configuration violates our tail latency constraint—TTFT p95 reached 380 ms. Verdict: INFEASIBLE. Reason: TTFT_P95_EXCEEDED."*
+> *"We first establish the baseline under the declared configuration. [Show the run ID, endpoint/model revision, effective flags, offered and achieved load, valid sample count, and raw artifact.] The observed result is [insert only values derived from that artifact]; the deterministic evaluator reports [FEASIBLE / INFEASIBLE / INCONCLUSIVE] with [reason]. If using fixtures, label this screen DEMO DATA."*
 
 ### Act 4: Bounded Candidate Search (2:00 – 3:00)
-> *"Next, our Search Controller explores a bounded space of legal parameters confirmed by our serving adapter: GPU memory utilization, max sequence concurrency, and KV-cache precision. Notice that SLOKern doesn't invent speculative settings; it applies only parameters it can read back and verify. As candidates execute, the Live Monitor tracks offered versus achieved load to guarantee client saturation didn't contaminate the run. Candidate A improves throughput but fails latency. Candidate B satisfies every hard constraint: TTFT p95 drops to 195 ms with zero errors. It is certified FEASIBLE and selected based on our declared efficiency objective."*
+> *"Next, the controller explores only the pre-registered bounded matrix. [Show each requested/effective setting pair and candidate artifact.] These vLLM settings are not eligible for an optimization claim until the runtime confirms them. Candidate results and verdicts come from their own valid evidence; [state the actual selected candidate/objective result, or say no eligible candidate was found]."*
 
 ### Act 5: Mandatory Independent Verification (3:00 – 4:00)
-> *"This is the core architectural innovation of SLOKern: we never award a verified badge from search evidence alone. A lucky run is not a verified recommendation. SLOKern automatically launches an independent verification run with a brand new, distinct run ID. Under the exact same workload protocol, Candidate B is benchmarked afresh. The verification engine recalculates metrics from the new raw measurements and compares drift. The candidate passes every hard constraint again. The verdict is sealed: VERIFIED."*
+> *"A search result is not a verified recommendation. [If the verification engine has been implemented and run, show its distinct run ID and fresh raw evidence, then read its actual verdict.] Otherwise state plainly that independent verification is not yet available; do not show a `VERIFIED` badge."*
 
 ### Act 6: Auditable Evidence & Limitations (4:00 – 4:30)
 > *"Finally, SLOKern generates a complete, self-contained Report Artifact. Every headline figure links directly to raw JSONL event traces, complete with environment fingerprints (NVIDIA driver, CUDA version, vLLM commit). If cloud pricing was unconfirmed, we declare cost unavailable and report GPU resource-time honestly. We don't claim global optimality—we prove the best verified candidate within the tested space. With SLOKern, teams optimize inference and verify performance."*
@@ -58,8 +60,7 @@ If the live Nebius endpoint experiences an outage or network latency during the 
 
 1. **Activate Fallback Mode:** In the dashboard shell, toggle to the archived evidence bundle:
    - Select the pre-recorded experiment session: `fixtures/demo/demo_experiment.json`.
-2. **Explicit Disclosure:** Open the presentation by stating:
-   > *"To ensure a smooth presentation within our 5-minute window, we are reviewing an evidence bundle measured on our Nebius NVIDIA H100 GPU instance earlier today, fully traceable to raw JSONL artifacts on disk."*
+2. **Explicit Disclosure:** State whether the bundle contains live evidence or synthetic fixtures. For fixtures, say **DEMO DATA**. For live evidence, identify the run IDs and verify that the raw JSONL and environment fingerprint are present before describing the measurements.
 3. **Walk Through Artifacts:** Point out the `environment_fingerprint`, the distinct `search_run_id` vs `verification_run_id`, and open a raw measurement sample to demonstrate transparency.
 
 ---

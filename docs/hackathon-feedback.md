@@ -24,7 +24,7 @@ The official submission guidelines state:
   - *Verdict:* Yes. High compute stability, predictable network latency between load generation client and inference endpoint, and competitive hourly GPU cost.
 
 ### 2.2 NVIDIA Nemotron Open-Source Model (`Nemotron-3-Nano-30B-A3B` FP8)
-- **Use Case in SLOKern:** Selected compliance benchmark model candidate for evaluating a fixed 2×2 configuration space under strict SLO targets (e.g., TTFT p95 $\le 250\text{ ms}$, ITL p95 $\le 30\text{ ms}$). Exact candidate dimensions are pending confirmation from the serving interface.
+- **Use Case in SLOKern:** Selected compliance benchmark model candidate for evaluating a fixed 2×2 configuration space under declared SLO targets (e.g., TTFT p95 $\le 250\text{ ms}$, ITL p95 $\le 30\text{ ms}$). Current source defines `{1024, 2048} × {16, 64}`; runtime acceptance and application remain unverified.
 - **Architectural Expectations & Serving Observations (Staging):**
   - *Design Specifications:* Hybrid Mamba-2 Mixture-of-Experts architecture (~30B total, ~3B active parameters per token in design) with FP8 quantization and 262K context window. Listed in Nebius catalog materials; physical serving throughput, latency distributions, and memory behavior will be recorded during live benchmarks.
   - *Areas for Improvement / Gaps Identified:* Documentation needed on catalog display name vs. exact API model identifier strings in Nebius Token Factory; clarity on whether managed endpoints expose serving-engine controls or only client request parameters.

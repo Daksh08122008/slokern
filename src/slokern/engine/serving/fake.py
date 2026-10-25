@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import ParameterStatus
-from slokern.core.search.candidate_id import generate_candidate_id
 from slokern.engine.serving.capabilities import RuntimeCapabilities, ParameterSpec
 from slokern.engine.serving.base import (
     BaseServingAdapter,
@@ -58,14 +57,6 @@ def _build_default_capabilities(runtime_name: str) -> RuntimeCapabilities:
             "*"
         ],
         parameters={
-            "max_num_batched_tokens": ParameterSpec(
-                name="max_num_batched_tokens",
-                param_type="int",
-                default=2048,
-                min_value=128,
-                max_value=65536,
-                description="Maximum batched token budget in the synthetic vLLM runtime",
-            ),
             "max_num_seqs": ParameterSpec(
                 name="max_num_seqs",
                 param_type="int",
@@ -73,6 +64,14 @@ def _build_default_capabilities(runtime_name: str) -> RuntimeCapabilities:
                 min_value=1,
                 max_value=256,
                 description="Maximum concurrent sequences in a batch"
+            ),
+            "max_num_batched_tokens": ParameterSpec(
+                name="max_num_batched_tokens",
+                param_type="int",
+                default=2048,
+                min_value=128,
+                max_value=65536,
+                description="Maximum number of batched tokens per iteration"
             ),
             "gpu_memory_utilization": ParameterSpec(
                 name="gpu_memory_utilization",
@@ -223,10 +222,12 @@ class FakeServingAdapter(BaseServingAdapter):
 
         cand_id = candidate_config.candidate_id
         if not cand_id:
+            from slokern.core.search.candidate_id import generate_candidate_id
+
             cand_id = generate_candidate_id(
                 candidate_config.model_name,
                 candidate_config.runtime_name or self.runtime_name,
-                candidate_config.requested_settings
+                candidate_config.requested_settings,
             )
 
         updated_config = CandidateConfig(

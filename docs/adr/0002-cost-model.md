@@ -58,7 +58,7 @@ flowchart TD
 - **Strict Rule:** A non-monetary proxy must **never** be described as monetary savings, dollar discounts, or financial ROI.
 
 ### 3.3 Rule of Constraint Primacy
-Hard SLO constraints (TTFT, ITL, error rate) are evaluated strictly *before* cost ranking. An infeasible configuration is never evaluated for cost efficiency. Cost ranking applies solely among the subset of verified `FEASIBLE` candidates.
+Hard SLO constraints (TTFT, ITL, error rate) are evaluated strictly *before* search ranking. An infeasible configuration is never eligible for cost efficiency ranking. Search ranks only candidates whose search-run evidence is `FEASIBLE` and whose declared objective metric is valid; independent verification happens after winner selection and must not be implied by the `FEASIBLE` label. The current ranker still has a missing-objective evidence gap (`BLK-16`).
 
 ---
 

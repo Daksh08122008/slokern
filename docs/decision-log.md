@@ -190,7 +190,7 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 - **Decision:**
   1. **Strict Six-Run Benchmark Budget:** The benchmark budget is defined as exactly six benchmark runs: 1 Baseline + 4 Candidates + 1 Independent Verification Rerun under a fresh `verification_run_id`.
   2. **Preflight Smoke Test Separated:** The preflight smoke test is a separate preliminary single-request verification (checking connectivity, model ID, and streaming headers) and is **not counted among the six benchmark runs**.
-  3. **Fixed 2×2 Search Space Pending Interface Confirmation:** Candidate exploration is restricted to a fixed 2×2 parameter matrix (4 candidates total) as a design requirement. Its two specific dimensions and candidate values are **pending confirmation from the actual serving interface** during Aman's preflight check.
+  3. **Fixed 2×2 Search Space:** Candidate exploration is restricted to four candidates. Current code defines `max_num_batched_tokens ∈ {1024, 2048}` and `max_num_seqs ∈ {16, 64}`; whether the selected runtime accepts and applies these values remains pending preflight read-back.
   4. **Distinguishing Client/Workload vs. Serving-Engine Knobs:**
      - Client/workload knobs (e.g. client concurrency limit, request output token limits) govern client request dispatch. **Changing workload parameters does not prove GPU-serving optimization.**
      - Serving-engine knobs (e.g. batch concurrency, GPU memory utilization, max model length) govern the internal serving runtime on the GPU.
@@ -198,6 +198,7 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
   5. **Architectural Blocker Notice:** If the chosen endpoint interface (such as a managed Token Factory endpoint) exposes only client request parameters and lacks serving-engine controls, this constitutes an architectural blocker. Resolving this blocker requires an explicit architecture decision by Rajdeep and Aman (such as deploying containerized vLLM on a dedicated Nebius Compute GPU instance).
   6. **Duration Policy & Calibration:** The original 60s warm-up + 180s measurement schedule remains **labelled illustrative**. Proposed shorter durations remain **strictly unvalidated** until actual timing, overhead, and measurement-quality evidence is gathered during live runs.
   7. **Fake-Adapter-First Workflow:** Implement and validate the feasibility evaluator, metrics pipeline, search controller, report generator, and dashboard primarily against the deterministic fake adapter (`DEMO DATA` labeled) before consuming real GPU credits.
+- **Implementation status (2026-10-23):** `generate_2x2_candidates()` now generates `{1024, 2048} × {16, 64}`, but this does not prove those controls are applied remotely. `BudgetLimiter` remains configurable and can spend the verification reserve (`BLK-15`); the current Nebius adapter does not read back remote flags (`BLK-17`). The proposed five-point profile is tracked separately in DEC-0013.
 - **Owners:** Rajdeep (Architecture), Aman (Serving), Rohan (Search), Daksh (Evaluator), Adriraj (Benchmarking)
 - **Affected Contracts/Components:** `docs/deployment.md`, `docs/architecture.md`, `README.md`, `ROADMAP.md`
 
@@ -233,14 +234,29 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 - **Trade-offs:** Requires Rajdeep to package sample schemas and records for Adriraj by Oct 21, and stable contracts/fixtures for Daksh by Oct 23.
 - **Revisit Condition:** None; locked through final submission on October 30, 2026.
 
+### DEC-0013: Reconcile the Controlled Deployment and Search Profile (OPEN)
+- **Date:** 2026-10-23
+- **Question:** What exact Nemotron checkpoint, Nebius hosting mode, vLLM release, launch-time search matrix, and benchmark protocol should the live campaign use?
+- **Options Considered:**
+  1. Continue with accepted ADR 0001-B's `Nemotron-3-Nano-30B-A3B` (FP8) family, verify the exact model revision, and use a Nebius Serverless AI custom container with H100 subject to account and runtime checks.
+  2. Use the prior `deployment-decision-2026-10-23.md` alternative: Nemotron Nano 9B v2 on an H100 VM.
+  3. Defer selection until the 30B deployment profile and vLLM 0.12.0 are smoke-tested and account constraints are known.
+- **Decision:** **OPEN; no new deployment or search-profile decision is ratified by this documentation task.** ADR 0001-B remains the accepted model-family decision. The 30B exact checkpoint string, Serverless endpoint, vLLM 0.12.0, and the proposed five-point values remain planned pending compatibility and account validation. The 9B VM memo is an alternative study, not an amendment to the accepted ADR.
+- **Reason:** Avoid replacing an accepted model decision with an unverified research alternative or documenting proposed flags as applied. Actual source still generates `{1024, 2048} × {16, 64}` candidates; it does not generate the new proposed `{2048, 16384} × {64, 256}` matrix or the `(128, 8192)` centre baseline.
+- **Owner:** Rajdeep (Sole Technical Owner & Integration Authority)
+- **Affected Contracts/Components:** `docs/deployment.md`, `docs/experiment-methodology.md`, `docs/metrics.md`, `docs/decision-policy.md`, `docs/deployment-decision-2026-10-23.md`, `src/slokern/core/search/`, `src/slokern/engine/serving/nebius.py`
+- **Evidence:** Accepted `docs/adr/0001-model-runtime.md` Addendum 0001-B; current source reads in `src/slokern/core/search/{space.py,budget.py,grid.py,rank.py}` and `src/slokern/engine/serving/nebius.py`. No provider API or live deployment was checked in this documentation task.
+- **Trade-offs:** The deployment and experiment schedule remain blocked until the owner resolves model revision, account capacity, container support, configuration application/read-back, and run-count policy. Provider startup, pilot, replicate, and teardown time still incur operational cost even if excluded from the controller's counted runs.
+- **Revisit Condition:** After the owner accepts an ADR addendum/profile and a bounded preflight confirms effective runtime settings and model readiness.
+
 ---
 
 ## 3. Pending Decisions to Finalize
 
 The following technical decisions remain open and are assigned to Rajdeep for resolution during Phases A and B (October 19–22):
 
-1. **Exact Nebius GPU Instance & Runtime Revision (Rajdeep / Target: Oct 21):** Finalize exact GPU model (e.g., 1× H100 80GB SXM) and confirm exact Nebius API model identifier string and endpoint access for `Nemotron-3-Nano-30B-A3B` (FP8) via preflight smoke test.
-2. **Confirmed Search Space Dimensions & Blocker Resolution (Rajdeep / Target: Oct 21):** Confirm whether the serving endpoint exposes serving-engine controls (vLLM batch concurrency + memory utilization) or only client request parameters. If controls are insufficient, execute the containerized vLLM deployment fallback on Nebius Compute.
+1. **Deployment Profile (Rajdeep / DEC-0013):** Confirm the exact 30B model and tokenizer revisions, Serverless AI custom-container support, H100 quota/capacity, and vLLM 0.12.0 compatibility. No live access was checked in this documentation task.
+2. **Search Profile and Budget (Rajdeep / DEC-0013, BLK-15–BLK-17):** Resolve the proposed `(128, 8192)` baseline and `{64, 256} × {2048, 16384}` candidate matrix against the current `{16, 64} × {1024, 2048}` generator, enforce a verification reserve, and verify every searched flag through runtime read-back.
 3. **Official Deadline & Submission Verification (Rajdeep / Confirmed: Oct 19):** Target deadline confirmed: **October 30, 2026, 10:00 AM PDT / 10:30 PM IST**.
 
 ---

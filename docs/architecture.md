@@ -89,6 +89,14 @@ flowchart TD
 - **Subprocess Load Generation:** The load generator runs in an isolated subprocess to guarantee that request scheduling, socket I/O, and microsecond-level timing timestamps are not warped by garbage collection or concurrent UI tasks.
 - **Filesystem Artifact Persistence:** Experiment data is written to structured JSON/JSONL files on disk (`artifacts/experiments/<experiment_id>/`). No external database is required for the MVP, ensuring maximum inspectability and zero deployment friction.
 
+### Current Implementation Boundary and Proposed Deployment Profile
+
+The architecture above describes intended boundaries; it is not evidence that all lifecycle stages are implemented. Current runtime integration is an OpenAI-compatible HTTP/SSE adapter. `NebiusServingAdapter.apply_config()` evaluates candidate settings against locally declared capabilities and updates its local configuration object; it does not launch/restart a vLLM process or read effective server flags from the provider. `BLK-17` remains active.
+
+The accepted model-family candidate is Nemotron-3-Nano-30B-A3B FP8 (exact checkpoint/revision and provider identifier pending). The current proposal is a Nebius Serverless AI custom container on H100 using vLLM 0.12.0, with a Docker GPU VM fallback. This remains unratified and unverified; see [DEC-0013](decision-log.md#dec-0013-reconcile-the-controlled-deployment-and-search-profile-open). The prior 9B VM memo is an alternative study, not a change to ADR 0001-B.
+
+The proposed `(max_num_seqs, max_num_batched_tokens)` centre baseline `(128, 8192)` and four corners `{64,256} × {2048,16384}` are distinct from the current source grid `{16,64} × {1024,2048}`. Keep these profiles explicitly separate until the owner ratifies an implementation change. Restart/recreate requirements, Serverless argument forwarding, effective-setting read-back, image/model compatibility, and H100 availability require a physical preflight.
+
 ---
 
 ## 3. End-to-End Execution Pipeline
@@ -241,7 +249,7 @@ The root document defining an entire optimization experiment.
 - `budget`:
   - `max_candidates`: Hard upper limit on candidate configurations tested.
   - `max_wallclock_seconds`: Maximum total experiment duration.
-  - `max_cost_limit`: Optional expenditure ceiling. Search fails closed if this is set but no authoritative pricing model is available to enforce it.
+  - `max_cost_limit`: Optional expenditure ceiling.
 - `verification_policy`: Rules governing the independent verification rerun (e.g., repetitions, duration multiplier).
 
 #### 5. `RunRecord` (Owner: Rajdeep; Historical design: Rajdeep & Aman)
