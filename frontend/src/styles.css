@@ -2143,6 +2143,7 @@ tbody tr:last-child td {
   font-weight: 600;
 }
 
+.table-footer > nav,
 .table-footer > div {
   display: flex;
   align-items: center;
