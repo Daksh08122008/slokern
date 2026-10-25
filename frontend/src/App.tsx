@@ -1096,12 +1096,12 @@ export default function App() {
                 </div>
                 <div className="table-footer">
                   <span>Showing <strong>{visibleExperiments.length}</strong> of {experimentRecords.length} matching demo records</span>
-                  <div>
-                    <button disabled>Previous</button>
-                    <button className="pagination-active">1</button>
-                    <button onClick={() => notify('Only the first fixture page is included in this demo.')}>2</button>
-                    <button onClick={() => notify('Only the first fixture page is included in this demo.')}>Next <Icon name="chevron" size={12} /></button>
-                  </div>
+                  <nav aria-label="Pagination">
+                    <button disabled aria-label="Go to previous page">Previous</button>
+                    <button className="pagination-active" aria-label="Page 1" aria-current="page">1</button>
+                    <button aria-label="Go to page 2" onClick={() => notify('Only the first fixture page is included in this demo.')}>2</button>
+                    <button aria-label="Go to next page" onClick={() => notify('Only the first fixture page is included in this demo.')}>Next <Icon name="chevron" size={12} /></button>
+                  </nav>
                 </div>
               </section>
             </>
