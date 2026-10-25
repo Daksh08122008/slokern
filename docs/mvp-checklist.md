@@ -24,10 +24,10 @@ Every task in the project is evaluated against whether it advances this core end
 
 ### In-Scope for the Hackathon MVP
 
-1. **One Permitted Model:** A single NVIDIA open-source model supported by the hackathon environment (target: `Nemotron-3-Nano-30B-A3B` FP8 on Nebius; baseline: `meta-llama/Meta-Llama-3-8B-Instruct`).
-2. **One Serving Runtime:** A single dedicated serving backend (vLLM or OpenAI-compatible endpoint on Nebius Cloud GPU infrastructure).
+1. **One Permitted Model:** Accepted model-family candidate is `Nemotron-3-Nano-30B-A3B` FP8; exact checkpoint/tokenizer revision and endpoint identifier remain pending. `meta-llama/Meta-Llama-3-8B-Instruct` is an internal pipeline baseline only.
+2. **One Serving Runtime:** Proposed Nebius AI Cloud Serverless custom container running vLLM 0.12.0 on H100; Docker GPU VM is a fallback. Both require account, image, model, and effective-flag preflight before being called operational.
 3. **One Reproducible Workload Protocol:** A fixed prompt fixture with explicit arrival distributions (Poisson or constant rate) and separate warm-up and measurement windows.
-4. **Small Legal Search Space:** A bounded set of 2–4 tunable parameters that the serving adapter can actively apply, observe, and read back (fixed 2×2 parameter matrix, 4 candidates).
+4. **Small Legal Search Space:** The proposed 5-point profile is baseline `(max_num_seqs=128, max_num_batched_tokens=8192)` plus four corners `{64, 256} × {2048, 16384}`. Current code instead generates four candidates `{16, 64} × {1024, 2048}`; do not mark the proposed profile accepted until DEC-0013 and adapter read-back are resolved.
 5. **Offered vs. Achieved Load Separation:** Clear architectural distinction and measurement of intended traffic rate versus actual delivered rate.
 6. **Key Inference Metrics:** Deterministic calculation of TTFT, ITL (with defined aggregation), end-to-end latency, request throughput, output-token throughput, error rate, and percentiles (p50, p90, p95, p99).
 7. **Deterministic Feasibility Evaluator:** Auditable constraint-by-constraint rule engine returning `FEASIBLE`, `INFEASIBLE`, or `INCONCLUSIVE` with structured reason codes.
@@ -57,22 +57,24 @@ Project advancement is governed by evidence, not elapsed calendar days. A gate i
 - [x] Experiment budget (strict 6 benchmark runs) and stopping limits defined.
 - [x] Consolidated single-owner technical execution with bounded collaborator workstreams established in `docs/ownership.md`.
 
-### Gate B — Serving Path & Baseline Measured (Target: End of Oct 22)
-- [ ] Dedicated model endpoint responds reliably to live preflight smoke inference request (`scripts/smoke.py`).
+### Gate B — Serving Path & Baseline Measured (Target: End of Oct 22 — Offline Complete, Live Pending)
+- [ ] Dedicated model endpoint responds reliably to live preflight smoke inference request (`scripts/smoke.py`) (HTTP client in `nebius.py` implemented; live run pending credentials).
 - [ ] Effective runtime, model revision, and hardware environment fingerprint captured.
-- [ ] Mutable serving parameters documented and confirmed by runtime read-back tests.
-- [ ] Empirical baseline run executed; raw JSONL stream and metrics captured.
-- [ ] Adriraj's benchmark integrity validation suite operational on result records.
-- [ ] Zero API keys, tokens, or private endpoint credentials committed to source control or logs.
+- [ ] Mutable serving parameters documented and confirmed by runtime read-back tests (`BLK-17`).
+- [x] Single-run execution pipeline operational with deterministic fake adapter (`SingleRunExecutor` writes JSON metadata and JSONL raw traces).
+- [ ] Live empirical baseline run executed on Nebius GPU instance; raw JSONL stream and metrics captured.
+- [x] Adriraj's benchmark integrity validation suite operational on result records.
+- [x] Zero API keys, tokens, or private endpoint credentials committed to source control or logs.
 
-### Gate C — Bounded Optimization Validated (Target: End of Oct 25)
-- [ ] Bounded 2×2 search space executed (4 candidate runs) within 6-run budget ceiling.
-- [ ] Subprocess load generator logs granular `RawRequestMeasurement` records (JSONL) with client timestamps.
-- [ ] Metrics engine derives documented metrics with explicit units and sample counts.
-- [ ] Offered load and achieved load are reported separately; generator saturation is detected.
-- [ ] Deterministic feasibility evaluator produces `FEASIBLE`, `INFEASIBLE`, and `INCONCLUSIVE` verdicts with structured reason codes.
-- [ ] Lowest-cost feasible candidate selected under declared objective (Mode A cost or Mode B proxy).
-- [ ] Daksh's independent decision-verification test suite operational on hard SLO boundaries.
+### Gate C — Bounded Optimization Validated (Target: End of Oct 25 — Active / In Progress)
+- [x] Bounded 2×2 search space controller implemented (`GridSearchController`, `SearchSpace`, `BudgetLimiter`, 33 unit tests; caveat `BLK-15`).
+- [x] Subprocess load generator logs granular `RawRequestMeasurement` records (JSONL) with client timestamps.
+- [x] Metrics engine derives documented metrics with explicit units and sample counts.
+- [x] Offered load and achieved load are reported separately; generator saturation is detected.
+- [x] Deterministic feasibility evaluator produces `FEASIBLE`, `INFEASIBLE`, and `INCONCLUSIVE` verdicts with structured reason codes.
+- [x] Lowest-cost feasible candidate selected under declared objective (`CandidateRanker`).
+- [ ] Daksh's independent decision-verification test suite operational on hard SLO boundaries (active Oct 24).
+
 
 ### Gate D — Independent Evidence Reviewed (Target: End of Oct 27)
 - [ ] Selected winning candidate configuration rerun independently under a fresh, distinct `verification_run_id`.

@@ -6,6 +6,8 @@
 > **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21), Daksh (Decision Verification, active Oct 24)  
 > **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
+> **Guide status:** This is an acceptance checklist, not proof that its CLI commands or live controls currently exist. `slokern smoke-test/optimize/verify`, provider preflight artifacts, vLLM flag application/read-back, and independent verification must be treated as planned until implemented and executed. Current gaps are tracked in TASK-09–TASK-11 and BLK-04/08/15/16/17.
+
 ---
 
 ## 1. Single-Owner Daily Engineering Ritual
@@ -88,41 +90,40 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
 
 ### Stage Checkpoints
 
-- [ ] **Step 1: Serving Smoke Test (Rajdeep):**
-  - Run `slokern smoke-test` against live endpoint.
-  - Verify model name, runtime version, and GPU fingerprint are returned.
-  - Assert HTTP 200 response and valid non-empty token stream.
-- [ ] **Step 2: Single-Run Measurement (Rajdeep) & Benchmark Integrity Audit (Adriraj, from Oct 21):**
-  - Dispatch small workload (e.g., 20 requests at 2 req/s).
-  - Verify `RawRequestMeasurement` records are written to JSONL with non-zero timestamps.
-  - Verify `MetricSet` calculates TTFT, ITL, throughput, and error rate.
-  - Adriraj validates metadata schema conformance, client dispatch skew, and detects generator saturation (`generator_saturated = True`).
-- [ ] **Step 3: Deterministic Evaluator (Rajdeep):**
-  - Feed single-run `MetricSet` into `FeasibilityEvaluator`.
-  - Assert that an exact threshold violation produces `INFEASIBLE` with the correct reason code.
-  - Assert that insufficient samples produce `INCONCLUSIVE`.
-- [ ] **Step 4: Baseline Establishment (Rajdeep):**
-  - Execute the default/reference serving configuration.
-  - Archive baseline raw measurements, metric summary, and verdict.
-- [ ] **Step 5: Bounded Search (Rajdeep):**
-  - Execute `slokern optimize` across legal candidates within budget (fixed 2×2 matrix, 4 candidates).
-  - Verify each candidate settings change is applied and verified by the adapter.
-  - Verify search stops when budget is exhausted.
-- [ ] **Step 6: Candidate Selection (Rajdeep):**
-  - Verify that only `FEASIBLE` candidates are ranked.
-  - Verify candidate with best declared objective is selected with documented rationale.
+- [x] **Step 1: Serving Adapter & Preflight Infrastructure (Rajdeep):**
+  - `FakeServingAdapter` implemented in `src/slokern/engine/serving/fake.py` generating deterministic synthetic runs labeled **`DEMO DATA`**.
+  - `NebiusServingAdapter` implemented in `src/slokern/engine/serving/nebius.py` with OpenAI-compatible HTTP client and health probe; live endpoint verification pending credentials (`BLK-04`, `BLK-17`).
+- [x] **Step 2: Single-Run Measurement & Load Generation (Rajdeep; Adriraj audit from Oct 21):**
+  - Subprocess load generator `LoadGeneratorRunner` (`runner.py`) dispatches Poisson and constant arrivals.
+  - `RawRequestMeasurement` records written to JSONL with client-side timestamps.
+  - Metrics engine (`src/slokern/core/metrics/`) computes TTFT/ITL percentiles, throughput, error rate, and offered vs achieved load.
+  - Client dispatch skew and generator saturation detected (`generator_saturated = True`).
+- [x] **Step 3: Deterministic Evaluator (Rajdeep):**
+  - Implemented in `src/slokern/core/evaluator/evaluate.py`.
+  - Inclusive boundary checks, NaN misclassification guard, and negative latency guards active.
+  - Emits `FeasibilityResult` with structured reason codes.
+- [x] **Step 4: Single-Run Executor & Baseline Pipeline (Rajdeep):**
+  - Implemented in `src/slokern/engine/runner/run_executor.py` (`SingleRunExecutor`).
+  - Wires together serving adapter, load generator, metrics engine, and feasibility evaluator.
+  - Persists JSON metadata and unaggregated JSONL recordings.
+- [x] **Step 5: Bounded 2×2 Search Controller (Rajdeep):**
+  - Implemented in `src/slokern/core/search/grid.py` (`GridSearchController`), `space.py`, and `budget.py`.
+  - Evaluates 2×2 discrete search grid under `BudgetLimiter` (default 5 search runs, 1 verification reserve; caveat `BLK-15`).
+- [x] **Step 6: Deterministic Candidate Selection (Rajdeep):**
+  - Implemented in `src/slokern/core/search/rank.py` (`CandidateRanker`).
+  - Filters strictly on `FEASIBLE` candidates with deterministic candidate-ID tie-breaking.
 - [ ] **Step 7: Independent Verification (Rajdeep) & Decision Verification Audit (Daksh, from Oct 24):**
-  - Automatically dispatch `slokern verify` for the winning candidate.
-  - Confirm a NEW unique `run_id` is assigned.
-  - Verify raw measurements are collected afresh.
-  - Confirm final verdict is emitted (`VERIFIED` or `VERIFICATION_FAILED`).
-  - Daksh verifies hard SLO constraint evaluation boundaries, rejection of infeasible candidates, and edge-case handling.
+  - Pydantic contract `VerificationRecord` locked and round-trip tested.
+  - Verification runner in `src/slokern/core/verification/` ready for Phase C implementation (`TASK-11`).
+  - Confirms unique `verification_run_id`, re-evaluates candidate, and computes metric drift ($\Delta M$).
+  - Daksh audits decision correctness and verification independence.
 - [ ] **Step 8: Dashboard & Report Integration (Rajdeep):**
-  - Verify web UI renders the experiment run state, candidate comparison, and verification verdict.
-  - Confirm exportable Markdown/JSON report compiles and saves to disk.
-- [ ] **Step 9: Demo Hardening (Rajdeep):**
+  - Standalone React + Vite command center delivered in PR #2 (`frontend/src/App.tsx`, 2553 lines, `DESIGN.md`, labeled **`DEMO DATA`**).
+  - Report artifact generator (`src/slokern/engine/reporting/report_builder.py`) pending implementation.
+- [ ] **Step 9: Demo Hardening & Rehearsal (Rajdeep):**
   - Run clean environment setup test.
-  - Validate demo script timing (3 minutes).
+  - Validate demo script timing ($\le 3$ minutes).
+
 
 ---
 

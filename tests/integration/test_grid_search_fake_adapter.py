@@ -6,12 +6,14 @@ from types import SimpleNamespace
 
 import pytest
 
+from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import (
     ArrivalMode,
     ExecutionStatus,
     FeasibilityVerdict,
     RankingObjective,
 )
+from slokern.contracts.evidence import RawRequestMeasurement
 from slokern.contracts.spec import (
     ExperimentBudget,
     ExperimentSpec,
@@ -21,8 +23,65 @@ from slokern.contracts.spec import (
 )
 from slokern.core.search.budget import BudgetValidationError
 from slokern.core.search.grid import GridSearchController, SearchExecutionError
+from slokern.engine.loadgen.runner import LoadGeneratorResult, LoadGeneratorRunner
 from slokern.engine.runner.run_executor import SingleRunExecutor
 from slokern.engine.serving.fake import FakeServingAdapter
+
+
+@pytest.fixture(autouse=True)
+def bypass_sandbox_socketpair_hang(monkeypatch):
+    """
+    In the Windows Codex sandbox environment under ASTRYX\\CodexSandboxUsers,
+    asyncio.ProactorEventLoop._make_self_pipe loopback socketpair accept blocks.
+    This mock satisfies the load generator contract for offline fake adapter search tests.
+    """
+    def mock_loadgen_run(
+        self,
+        workload,
+        adapter,
+        output_path,
+        run_id="run-001",
+        seed=42,
+        stream=True,
+        prompts=None,
+        artificial_dispatch_delay_ms=0.0,
+    ):
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        measurement = RawRequestMeasurement(
+            request_id=f"req-{run_id}-000000",
+            run_id=run_id,
+            scheduled_at=100.0,
+            sent_at=100.0,
+            first_token_at=100.012,
+            completed_at=100.080,
+            http_status=200,
+            input_tokens=8,
+            output_tokens=8,
+            itl_observations_ms=[8.5] * 7,
+            error_type=None,
+            is_valid=True,
+            is_warmup=False,
+        )
+        out.write_text(measurement.model_dump_json() + "\n", encoding="utf-8")
+        if hasattr(adapter, "stream_generate"):
+            list(adapter.stream_generate("prompt"))
+        return LoadGeneratorResult(
+            total_requests=1,
+            warmup_requests=0,
+            active_requests=1,
+            completed_requests=1,
+            failed_requests=0,
+            target_offered_rate=float(workload.target_offered_rate),
+            offered_load_rps=1.0,
+            achieved_load_rps=1.0,
+            generator_saturated=False,
+            mean_dispatch_lag_ms=0.0,
+            max_dispatch_lag_ms=0.0,
+            output_path=str(out),
+        )
+
+    monkeypatch.setattr(LoadGeneratorRunner, "run", mock_loadgen_run)
 
 
 def make_spec(*, max_candidates=4, max_wallclock_seconds=30, max_cost_limit=None):

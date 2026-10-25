@@ -94,7 +94,7 @@ We establish the following explicit taxonomy to separate architectural abstracti
 - **Duration Policy:** The original schedule of 60 seconds warm-up and 180 seconds measurement per benchmark run remains **labelled illustrative**. Proposed shorter durations remain **strictly unvalidated** until actual timing and measurement-quality evidence is collected during live runs.
 
 ### 5.4 Fixed 2×2 Search Space, Parameter Legality & Architectural Blocker
-- **Fixed 2×2 Design Requirement:** The candidate space is restricted to a fixed 2×2 matrix (4 candidates total). Its two specific dimensions and candidate values are **pending confirmation from the actual serving interface**.
+- **Fixed 2×2 Design Requirement:** The candidate space is restricted to four candidates. Current code generates `max_num_batched_tokens ∈ {1024, 2048}` and `max_num_seqs ∈ {16, 64}`; runtime acceptance and effective setting read-back remain unverified.
 - **Distinguishing Client/Workload vs. Serving-Engine Knobs:**
   - *Client/Workload Parameters (e.g., concurrency limit, max output tokens):* Control client traffic generation and request payload limits. **Changing workload parameters does not prove GPU-serving optimization.**
   - *Serving-Engine Parameters (e.g., batch concurrency, GPU memory utilization, max model length, KV-cache precision):* Directly configure the serving runtime and GPU execution on the host.
@@ -104,6 +104,7 @@ We establish the following explicit taxonomy to separate architectural abstracti
 ### 5.5 Implementation & Verification Status
 - The `Nemotron-3-Nano-30B-A3B` (FP8) deployment is marked `PENDING RUNTIME VERIFICATION` (blocked on live smoke test execution on Nebius).
 - All mock and synthetic runs are labeled `DEMO DATA`. No benchmark numbers will be asserted as real until physical run artifacts are captured in `artifacts/`.
+- **Profile reconciliation (2026-10-23):** The user's proposed Serverless/vLLM 0.12.0 profile and `{64, 256} × {2048, 16384}` corners around `(128, 8192)` remain unratified; current source still generates `{16, 64} × {1024, 2048}`. The 9B H100 VM recommendation in `docs/deployment-decision-2026-10-23.md` is an alternative study and does not amend this accepted model-family decision. See DEC-0013.
 
 ---
 
