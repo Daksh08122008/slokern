@@ -194,6 +194,10 @@ class BaseServingAdapter(ABC):
 
     async def astream_generate(self, request: Union[ServingRequest, str]) -> AsyncIterator[TokenChunk]:
         """Asynchronous streaming token generation."""
-        for chunk in self.stream_generate(request):
+        iterator = self.stream_generate(request)
+        sentinel = object()
+        while True:
+            chunk = await asyncio.to_thread(next, iterator, sentinel)
+            if chunk is sentinel:
+                break
             yield chunk
-            await asyncio.sleep(0)
