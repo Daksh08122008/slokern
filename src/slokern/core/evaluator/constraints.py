@@ -1,4 +1,4 @@
 """
 Purpose: Individual hard-constraint checks.
-Owner: Daksh
+Owner: Rajdeep (Historical design: Daksh)
 """

@@ -1,7 +1,7 @@
 {
   "_meta": {
     "purpose": "Hand-calculated percentile inputs and expected outputs.",
-    "owner": "Adriraj",
+    "owner": "Rajdeep",
     "description": "Golden fixtures for linear interpolation percentile verification matching 3 decimal places."
   },
   "raw_values": [

@@ -1,6 +1,6 @@
 """
 Purpose: Deterministic evaluation of evidence against an SLO into a verdict.
-Owner: Rajdeep (Architecture & Implementation); Decision Verification Audit: Daksh (active Oct 24)
+Owner: Rajdeep (Historical design: Daksh)
 Authority: docs/decision-policy.md, docs/metrics.md, AGENTS.md Section 5 & 13
 """
 

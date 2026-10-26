@@ -1,6 +1,6 @@
 """
 Purpose: Deterministic ranking of feasible candidates by the declared objective.
-Owner: Rohan
+Owner: Rajdeep (Historical design: Rohan)
 """
 
 import math

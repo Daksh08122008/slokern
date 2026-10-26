@@ -2,7 +2,7 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Status:** Active Specification (Metrics Version: 1.0.0)  
-> **Owner:** Rajdeep (Architecture, Benchmarking & Metrics; Benchmark Integrity Audit: Adriraj, active Oct 21; Historical design: Adriraj)  
+> **Owner:** Rajdeep (Architecture, Benchmarking & Metrics; Historical design: Adriraj)  
 > **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 ---

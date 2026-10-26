@@ -378,7 +378,7 @@ flowchart LR
 
 - **Phase A (Oct 19) — Audit and Scope Freeze:** `DONE`. Repository audit completed; working baseline established; core interfaces locked.
 - **Phase B (Oct 20–22) — Establish Real Execution:** `DONE`. Single-run execution pipeline operational via `SingleRunExecutor` integrating Fake and Nebius adapters, subprocess load generator, metrics engine, and feasibility evaluator. React+Vite frontend command center delivered (`frontend/src/App.tsx`, 2553 lines, `DEMO DATA` labeling).
-- **Phase C (Oct 23–25) — Validate Optimization:** `IN PROGRESS`. Bounded 2×2 grid search controller (`grid.py`), `SearchSpace`, `BudgetLimiter`, and `CandidateRanker` implemented with 26 unit tests (`TASK-10`). Independent verification runner (`TASK-11`) ready for Day 6 implementation with 16 contract tests verified in `test_verification_independence.py` (Daksh audit active Oct 24).
+- **Phase C (Oct 23–25) — Validate Optimization:** `IN PROGRESS`. Bounded 2×2 grid search controller (`grid.py`), `SearchSpace`, `BudgetLimiter`, and `CandidateRanker` implemented with 26 unit tests (`TASK-10`). Independent verification runner (`TASK-11`) ready for Day 6 implementation with 16 contract tests verified in `test_verification_independence.py` (16 contract tests verified in `test_verification_independence.py`).
 - **Phase D (Oct 26–27) — Independent Review & Reproducibility:** Execute independent verification rerun under fresh run ID; audit metric drift; complete test suites; compile report artifact.
 - **Phase E (Oct 28–29) — Defect Closure & Freeze:** Feature freeze; close critical defects; automated test suite validation; clean clone installation check; record demo video ($\le 3$ minutes).
 - **Phase F (Oct 30) — Submit:** Final repository audit; Devpost submission completed before 10:00 AM PDT (10:30 PM IST) with 4-hour buffer.
@@ -390,27 +390,26 @@ See **[ROADMAP.md](ROADMAP.md)** for complete daily task descriptions, deliverab
 
 ## 14. Subsystem Ownership & Execution Model
 
-SLOKern operates under a **single technical owner with bounded contributions from two collaborators** (a hybrid solo-core model):
+SLOKern operates under a **Strict Solo-Development and Solo-Execution Model**:
 
-- **Rajdeep:** Sole technical owner, architecture authority, critical-path implementer, integrator, and final submission owner.
-- **Adriraj:** Benchmark integrity and measurement credibility (active execution begins **October 21, 2026**).
-- **Daksh:** Independent correctness verification (active execution begins **October 24, 2026**).
+- **Rajdeep:** Sole technical owner, sole implementation owner, sole testing and verification owner, sole benchmarking and measurement owner, sole architecture and decision authority, sole integration and release authority, and sole documentation and hackathon submission owner.
+- **Execution Model:** Independent solo execution, with no active collaborator workstreams.
 
-Former team members (Aman on serving, Rohan on search) contributed early design work in Phase 1 (Oct 13–17, 2026). They are not participating in current execution, and no ongoing tasks are assigned to them.
+Former contributors (Aman on serving, Rohan on search, Adriraj on benchmarking exploration, Daksh on boundary test exploration) contributed early design work in Phase 1 and Phase 2. They are not participating in current execution, and no ongoing tasks, gates, reviews, or deliverables are assigned to them. Rajdeep independently executes and verifies the complete minimum viable product.
 
-| Area / Subsystem | Accountable Owner | Active Window | Historical Attribution |
+| Area / Subsystem | Accountable Owner | Status | Historical Attribution |
 |---|---|---|---|
-| **Architecture & Technical Direction** | **Rajdeep** | Full sprint | Rajdeep |
-| **Serving & Infrastructure** | **Rajdeep** | Full sprint | Aman |
-| **Loadgen Subprocess & Workload** | **Rajdeep** | Full sprint | Adriraj |
-| **Evaluator Core & Verification Runner** | **Rajdeep** | Full sprint | Daksh |
-| **Optimizer & Search Controller** | **Rajdeep** | Full sprint | Rohan |
-| **CI, API & End-to-End Integration** | **Rajdeep** | Full sprint | Cross-team |
-| **Documentation, Demo & Submission** | **Rajdeep** | Full sprint | Rajdeep |
-| **Benchmark Integrity & Credibility** | **Adriraj** | **Oct 21–30** | Adriraj |
-| **Independent Decision Verification** | **Daksh** | **Oct 24–30** | Daksh |
+| **Architecture & Technical Direction** | **Rajdeep** | ACTIVE (SOLO) | Rajdeep |
+| **Serving & Infrastructure** | **Rajdeep** | ACTIVE (SOLO) | Aman |
+| **Loadgen Subprocess & Workload** | **Rajdeep** | ACTIVE (SOLO) | Adriraj |
+| **Evaluator Core & Verification Runner** | **Rajdeep** | ACTIVE (SOLO) | Daksh |
+| **Optimizer & Search Controller** | **Rajdeep** | ACTIVE (SOLO) | Rohan |
+| **CI, API & End-to-End Integration** | **Rajdeep** | ACTIVE (SOLO) | Cross-team |
+| **Documentation, Demo & Submission** | **Rajdeep** | ACTIVE (SOLO) | Rajdeep |
+| **Benchmark Integrity & Credibility** | **Rajdeep** | ACTIVE (SOLO) | Adriraj |
+| **Independent Decision Verification** | **Rajdeep** | ACTIVE (SOLO) | Daksh |
 
-For the complete responsibility matrix, collaborator workstream boundaries, and daily rituals, see **[docs/ownership.md](docs/ownership.md)**.
+For the complete responsibility matrix, governance model, and daily rituals, see **[docs/ownership.md](docs/ownership.md)**.
 
 ---
 

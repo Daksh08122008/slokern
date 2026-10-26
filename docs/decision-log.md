@@ -139,15 +139,16 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 
 ---
 
-### DEC-0007: Benchmarking Owner Alignment (Adriraj)
+### DEC-0007: Benchmarking Owner Alignment (Historical: Adriraj)
 - **Date:** 2026-10-17
 - **Question:** Confirming the owner of the benchmarking and load generation workstream across documentation and codebases.
-- **Decision:** Adriraj is the designated and sole owner of the Benchmarking workstream (`src/slokern/engine/loadgen/`, `src/slokern/core/metrics/`, `docs/experiment-methodology.md`, `docs/metrics.md`).
-- **Reason:** Full alignment across `AGENTS.md`, `README.md`, `ROADMAP.md`, code docstrings, and documentation.
-- **Owner:** Rajdeep
+- **Decision:** Adriraj was designated as the early owner of the Benchmarking exploration (`src/slokern/engine/loadgen/`, `src/slokern/core/metrics/`, `docs/experiment-methodology.md`, `docs/metrics.md`).
+- **Reason:** Full alignment across `AGENTS.md`, `README.md`, `ROADMAP.md`, code docstrings, and documentation during Phase 1.
+- **Owner:** Rajdeep (Sole Implementation Owner; Historical design: Adriraj)
 - **Affected Contracts/Components:** All documentation files, tests, and core metric modules.
 - **Evidence:** Completed repository-wide owner reconciliation.
 - **Trade-offs:** None.
+- **Addendum (2026-10-26):** Superseded by DEC-0015. Under the Strict Solo-Development and Solo-Execution Model, active implementation, maintenance, and verification of the benchmarking pipeline and metrics engine are solely owned by Rajdeep. Adriraj's historical design contributions remain acknowledged.
 
 ---
 
@@ -232,7 +233,8 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 - **Affected Contracts/Components:** `ROADMAP.md`, `README.md`, `AGENTS.md`, `docs/ownership.md`, `docs/mvp-checklist.md`, `docs/integration-checklist.md`, `docs/architecture.md`
 - **Evidence:** Documented daily deliverables and acceptance criteria in `ROADMAP.md` covering every date from October 19 through October 30.
 - **Trade-offs:** Requires Rajdeep to package sample schemas and records for Adriraj by Oct 21, and stable contracts/fixtures for Daksh by Oct 23.
-- **Revisit Condition:** None; locked through final submission on October 30, 2026.
+- **Addendum (2026-10-26):** Superseded by DEC-0015. All active collaborator workstreams previously defined under DEC-0012 (Adriraj for benchmark integrity, Daksh for decision verification) have been consolidated under Rajdeep as sole technical, implementation, and verification owner. Measurement credibility and decision correctness are enforced through automated contract regression suites (`tests/contract/test_fixtures_validate.py` and `tests/contract/test_verification_independence.py`).
+- **Revisit Condition:** Locked through transition to strict solo execution (DEC-0015).
 
 ### DEC-0013: Reconcile the Controlled Deployment and Search Profile (OPEN)
 - **Date:** 2026-10-23
@@ -250,6 +252,51 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 - **Revisit Condition:** After the owner accepts an ADR addendum/profile and a bounded preflight confirms effective runtime settings and model readiness.
 
 ---
+
+### DEC-0014: Dual-Backend Architecture (Local Ollama Development & Gated Nebius Benchmark)
+- **Date:** 2026-10-26
+- **Question:** How should SLOKern structure its execution architecture to support both offline local engineering/verification without cloud dependencies and authoritative benchmark runs against live cloud GPUs?
+- **Options Considered:**
+  1. Cloud-only execution: require Nebius credentials and live cloud GPU allocation for all development, smoke testing, and test runs.
+  2. Mock-only execution: rely solely on `FakeServingAdapter` without validating real network request parsing, streaming, or external failure handling.
+  3. Dual-backend architecture:
+     - Local development backend (`local`): Ollama running locally on loopback (`http://127.0.0.1:11434`) serving exact model `qwen3:4b-instruct-2507-q4_K_M`.
+     - Live benchmark backend (`nebius`): Nebius Token Factory dedicated endpoint serving target model `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (FP8), gated by explicit opt-in with verified credentials.
+     - Deterministic fake backend (`fake`): standalone simulator for offline unit testing and CI, persistently labeled `DEMO DATA`.
+- **Decision:** Option 3. Implement dual-backend architecture with strict capability gating and security controls.
+- **Reason:**
+  1. Local engineering velocity: Engineers and automated test suites can execute end-to-end runs, verify response parsing, error handling, and artifact generation against a real local inference engine without incurring cloud spend or needing credentials.
+  2. Credibility & capability gating (`BLK-17`): Neither Ollama nor managed Token Factory endpoints dynamically apply or read back process startup parameters (`max_num_batched_tokens`, `max_num_seqs`). The search controller must preflight capabilities and halt immediately with `SearchConfigurationError` citing `BLK-17` when `slokern optimize` is invoked against `local` or `nebius`, preventing fraudulent optimization claims while allowing `slokern smoke-test` and `slokern verify` to execute under fixed defaults.
+  3. Security boundary: `OllamaServingAdapter` enforces strict loopback addressing, prohibits HTTP 3xx redirects to prevent loopback pivoting, and rejects URL user credentials (`user:pass@host`).
+  4. Client-observed timing authority: Monotonic `time.monotonic()` timing measures request-start-to-first-content chunk latency as TTFT, while server-reported eval durations are preserved in metadata, and chunk-gap intervals are recorded without conflating with token ITL.
+  5. Deterministic fallback elimination: Explicit backend resolution precedence (`--adapter` > `SLOKERN_ADAPTER` > `"local"`) with zero silent fallback.
+- **Owner:** Rajdeep (Sole Technical Owner & Integration Authority)
+- **Affected Contracts/Components:** `src/slokern/engine/serving/ollama.py`, `src/slokern/engine/serving/factory.py`, `src/slokern/core/search/grid.py`, `src/slokern/core/verification/`, `src/slokern/engine/reporting/`, `src/slokern/cli/`
+- **Evidence:** Passing unit, contract, and end-to-end integration test suites across local and fake adapters.
+- **Trade-offs:** Optimization campaigns on `local` and `nebius` halt until dynamic parameter read-back infrastructure is provisioned (`BLK-17`).
+- **Revisit Condition:** When a dedicated containerized runtime supporting dynamic flag read-back is deployed.
+
+---
+
+---
+
+### DEC-0015: Consolidation into Strict Solo-Development & Solo-Execution Model
+- **Date:** 2026-10-26
+- **Question:** How should project governance, engineering ownership, and verification workflows be structured following the conclusion of early design explorations and collaborator audit windows?
+- **Options Considered:**
+  1. Maintain the hybrid solo-core execution model with pending collaborator audit deliverables and manual sign-off gates.
+  2. Transition to a strict solo-development and solo-execution model with Rajdeep as the sole accountable owner across all 13 subsystems, converting manual collaborator audits into automated, repeatable contract test suites.
+- **Decision:** Option 2. Adopt the Strict Solo-Development and Solo-Execution Model across the entire repository.
+- **Reason:**
+  1. Complete operational clarity: Eliminates all multi-person review bottlenecks, ambiguous handoffs, and external schedule dependencies.
+  2. Test-driven verification rigor: Absorbs benchmark integrity and decision correctness auditing into automated, reproducible regression test suites (`tests/contract/test_fixtures_validate.py` and `tests/contract/test_verification_independence.py`) that run deterministically in CI.
+  3. Delivery safety: Focuses 100% of available engineering effort under Rajdeep onto the critical-path MVP verification pipeline before the October 30 deadline.
+  4. Historical integrity: Preserves the historical record of early contributions from Aman, Rohan, Adriraj, and Daksh without assigning active tasks to them.
+- **Owner:** Rajdeep (Sole Technical & Implementation Owner)
+- **Affected Contracts/Components:** `docs/ownership.md`, `AGENTS.md`, `README.md`, `ROADMAP.md`, `docs/implementation-status.md`, `docs/integration-checklist.md`, `docs/architecture.md`, `.github/CODEOWNERS`
+- **Evidence:** 371 deterministic tests passing in 2 seconds; 16/16 contract tests passing in `tests/contract/test_verification_independence.py`; clean repository hygiene.
+- **Trade-offs:** 100% concentration of execution effort on Rajdeep, mitigated by formal post-hackathon deferral of secondary features (FastAPI control plane, React UI live integration).
+- **Revisit Condition:** Locked through hackathon submission on October 30, 2026.
 
 ## 3. Pending Decisions to Finalize
 

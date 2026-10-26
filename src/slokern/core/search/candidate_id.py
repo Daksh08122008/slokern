@@ -1,6 +1,6 @@
 """
 Purpose: Canonical serialization and stable candidate IDs.
-Owner: Rohan
+Owner: Rajdeep (Historical design: Rohan)
 """
 
 import hashlib

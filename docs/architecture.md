@@ -392,20 +392,20 @@ SLOKern explicitly resolves cost accounting into a dual-mode model to prevent fa
 
 ## 7. Component Ownership & Consolidated Engineering Responsibilities
 
-Under the single-owner core execution model with bounded collaborators (updated October 19, 2026), **Rajdeep** assumes sole end-to-end accountability, critical-path implementation, and integration authority across all architectural subsystems, with bounded collaborator workstreams for **Adriraj** (Benchmark Integrity, active Oct 21) and **Daksh** (Independent Decision Verification, active Oct 24). The modular component boundaries originally designed for the distributed team remain strictly enforced to preserve architectural integrity:
+Under the **Strict Solo-Development and Solo-Execution Model** (updated October 26, 2026), **Rajdeep** assumes sole end-to-end accountability, critical-path implementation, benchmarking, and integration authority across all architectural subsystems. The modular component boundaries originally designed for the distributed team remain strictly enforced to preserve architectural integrity:
 
-| Subsystem Component | Accountable Owner | Active Window | Deliverable & Boundary |
+| Subsystem Component | Accountable Owner | Status | Deliverable & Boundary |
 |---|---|---|---|
-| **Architecture & Contracts** | **Rajdeep** | Full sprint | Canonical Pydantic v2 schemas (`src/slokern/contracts/`), API/dashboard contracts, stable interfaces. |
-| **Serving & Infrastructure** | **Rajdeep** *(Historical: Aman)* | Full sprint | Serving adapter (`src/slokern/engine/serving/`), model runtime deployment, parameter read-back, environment fingerprint. |
-| **Loadgen Subprocess & Workload** | **Rajdeep** *(Historical: Adriraj)* | Full sprint | Workload fixtures, subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture to JSONL (`RawRequestMeasurement`). |
-| **Evaluator Core & Feasibility** | **Rajdeep** *(Historical: Daksh)* | Full sprint | Feasibility evaluator (`src/slokern/core/evaluator/`), deterministic SLO logic, reason codes, verification runner. |
-| **Search & Optimizer** | **Rajdeep** *(Historical: Rohan)* | Full sprint | Bounded 2×2 parameter matrix, search controller (`src/slokern/core/search/`), candidate ranking, 6-run budget limit. |
-| **Control Plane & Presentation** | **Rajdeep** | Full sprint | FastAPI app (`src/slokern/api/`), CLI (`src/slokern/cli/`), report generator (`src/slokern/engine/reporting/`), demo command center. |
-| **Benchmark Integrity & Credibility** | **Adriraj** | **Oct 21–30** | Benchmark schema validation, required metadata checks, missing/inconsistent record detection, offered-vs-achieved load audits, comparison summaries (`docs/metrics.md`). |
-| **Independent Decision Verification** | **Daksh** | **Oct 24–30** | Independent verification test suite, hard SLO violation tests, feasibility boundary tests, missing/invalid measurement handling, reproducible defect reports (`docs/decision-policy.md`). |
+| **Architecture & Contracts** | **Rajdeep** | ACTIVE (SOLO) | Canonical Pydantic v2 schemas (`src/slokern/contracts/`), API/dashboard contracts, stable interfaces. |
+| **Serving & Infrastructure** | **Rajdeep** *(Historical: Aman)* | ACTIVE (SOLO) | Serving adapter (`src/slokern/engine/serving/`), model runtime deployment, parameter read-back, environment fingerprint. |
+| **Loadgen Subprocess & Workload** | **Rajdeep** *(Historical: Adriraj)* | ACTIVE (SOLO) | Workload fixtures, subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture to JSONL (`RawRequestMeasurement`). |
+| **Evaluator Core & Feasibility** | **Rajdeep** *(Historical: Daksh)* | ACTIVE (SOLO) | Feasibility evaluator (`src/slokern/core/evaluator/`), deterministic SLO logic, reason codes, verification runner. |
+| **Search & Optimizer** | **Rajdeep** *(Historical: Rohan)* | ACTIVE (SOLO) | Bounded 2×2 parameter matrix, search controller (`src/slokern/core/search/`), candidate ranking, 6-run budget limit. |
+| **Control Plane & Presentation** | **Rajdeep** | ACTIVE (SOLO) | FastAPI app (`src/slokern/api/`), CLI (`src/slokern/cli/`), report generator (`src/slokern/engine/reporting/`), demo command center. |
+| **Benchmark Integrity & Credibility** | **Rajdeep** *(Historical: Adriraj)* | ACTIVE (SOLO) | Automated benchmark schema validation, required metadata checks, missing/inconsistent record detection, offered-vs-achieved load audits, comparison summaries (`docs/metrics.md`, `tests/contract/test_fixtures_validate.py`). |
+| **Independent Decision Verification** | **Rajdeep** *(Historical: Daksh)* | ACTIVE (SOLO) | Automated independent verification test suite, hard SLO violation tests, feasibility boundary tests, missing/invalid measurement handling, reproducible defect reports (`docs/decision-policy.md`, `tests/contract/test_verification_independence.py`). |
 
-For the complete responsibility matrix, collaborator workstream boundaries, daily engineering rituals, and historical attribution, see [docs/ownership.md](ownership.md).
+For the complete responsibility matrix, governance model, daily engineering rituals, and historical attribution, see [docs/ownership.md](ownership.md).
 
 ---
 

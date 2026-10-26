@@ -31,5 +31,5 @@
 /tests/ @dev-paulrajdeep
 
 # Designated Decision Correctness / Verification Independence Test Scope
-# Daksh is assigned to this verification test file; Rajdeep retains final approval
-/tests/contract/test_verification_independence.py @dev-paulrajdeep @Daksh08122008
+# Sole technical and implementation owner: Rajdeep
+/tests/contract/test_verification_independence.py @dev-paulrajdeep

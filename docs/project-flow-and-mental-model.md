@@ -3,7 +3,7 @@
 
 > **Event:** Nebius × NVIDIA Global AI Hackathon  
 > **Canonical Pipeline:** `SPECIFY > VALIDATE > MEASURE > EVALUATE > OPTIMIZE > VERIFY > EXPLAIN`  
-> **Execution Model:** Single-Owner Core Execution led by Rajdeep with bounded collaborator workstreams for Adriraj (Benchmark Integrity, active Oct 21) and Daksh (Decision Verification, active Oct 24)  
+> **Execution Model:** Strict Solo Execution led solely by Rajdeep  
 > **Document Status:** Authoritative Presentation & Mental Model Source (Reconciled with Accepted Architecture & Hackathon Rules)  
 > **Rule:** *Illustrative values are examples only, not benchmark results. Mock fixtures must be labelled DEMO DATA.*
 

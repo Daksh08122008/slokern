@@ -1,4 +1,4 @@
 """
 Purpose: Optional adaptive search strategy.
-Owner: Rohan
+Owner: Rajdeep (Historical design: Rohan)
 """

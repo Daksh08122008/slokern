@@ -55,6 +55,44 @@ class GridSearchOutcome:
     run_results: List[Any]
 
 
+def validate_search_capabilities(
+    adapter: Optional[BaseServingAdapter],
+    search_space_params: Optional[Sequence[str]] = None,
+) -> None:
+    """
+    Preflights adapter capabilities against requested search parameters.
+    Halts immediately with SearchConfigurationError citing BLK-17 if the adapter
+    does not support dynamic per-request application and read-back of process startup flags.
+    """
+    if adapter is None:
+        return
+
+    params_to_check = list(search_space_params) if search_space_params else ["max_num_batched_tokens", "max_num_seqs"]
+    capabilities = adapter.get_capabilities()
+
+    for p in params_to_check:
+        if p not in capabilities.parameters:
+            raise SearchConfigurationError(
+                f"Search parameter {p!r} is not supported by runtime {capabilities.runtime_name!r}. "
+                f"Halting optimization campaign due to unverified engine capabilities (BLK-17)."
+            )
+
+    fp = adapter.get_environment_fingerprint() if hasattr(adapter, "get_environment_fingerprint") else {}
+    provider = str(fp.get("provider", "")).lower()
+    runtime = str(getattr(adapter, "runtime_name", "")).lower()
+    is_live_fixed_engine = (
+        provider in ("nebius", "ollama")
+        or "ollama" in runtime
+        or "nebius" in runtime
+    ) and not fp.get("is_simulated", False)
+
+    if is_live_fixed_engine:
+        raise SearchConfigurationError(
+            f"Adapter {adapter.runtime_name!r} does not dynamically apply or read back process startup flags "
+            f"({', '.join(params_to_check)}) per request. Halting optimization campaign (BLK-17)."
+        )
+
+
 def extract_ranking_metric(
     metric_set: Optional[MetricSet],
     objective: RankingObjective,
@@ -168,6 +206,10 @@ class GridSearchController:
 
         if self.adapter is None:
             raise SearchConfigurationError("Serving adapter must be configured on GridSearchController to call run()")
+
+        # Capability Preflight Gating (BLK-17 / DEC-0014)
+        search_params = list(spec.search_space.keys()) if spec.search_space else ["max_num_batched_tokens", "max_num_seqs"]
+        validate_search_capabilities(self.adapter, search_params)
 
         candidate_settings = self._candidate_settings(spec)
         capabilities = self.adapter.get_capabilities()
@@ -594,3 +636,80 @@ class GridSearchController:
         result_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
 
         return result
+
+    def run_grid_search(
+        self,
+        spec: Optional[ExperimentSpec] = None,
+        *,
+        baseline_config: Optional[CandidateConfig] = None,
+        workload: Optional[WorkloadSpec] = None,
+        slo: Optional[SLOSpec] = None,
+        experiment_id: str = "exp-default",
+        ranking_objective: Optional[RankingObjective] = None,
+        serving_adapter: Optional[BaseServingAdapter] = None,
+        cancellation_token: Optional[Any] = None,
+        budget_limiter: Optional[BudgetLimiter] = None,
+        output_dir: Optional[Union[str, Path]] = None,
+        seed: Optional[int] = 42,
+        stream: bool = True,
+        prompts: Optional[Union[List[str], str]] = None,
+        strict_config: bool = True,
+        **kwargs,
+    ) -> Any:
+        """
+        Executes bounded 2x2 grid search with mandatory capability preflight gating (BLK-17).
+        """
+        adapter_to_use = serving_adapter or self.adapter
+        validate_search_capabilities(adapter_to_use)
+
+        if spec is not None:
+            return self.run(
+                spec=spec,
+                ranking_objective=ranking_objective or RankingObjective.MAX_THROUGHPUT_UNDER_SLO,
+                cancellation_token=cancellation_token,
+                seed=seed,
+                prompts=[prompts] if isinstance(prompts, str) else prompts,
+            )
+
+        resolved_baseline = baseline_config
+        if resolved_baseline is None:
+            model_name = self.model_name or (adapter_to_use.model_name if adapter_to_use else "default-model")
+            runtime_name = adapter_to_use.runtime_name if adapter_to_use else "default-runtime"
+            from slokern.core.search.candidate_id import generate_candidate_id
+
+            resolved_baseline = CandidateConfig(
+                candidate_id=generate_candidate_id(model_name, runtime_name, {}),
+                model_name=model_name,
+                runtime_name=runtime_name,
+                requested_settings={},
+                effective_settings={},
+                parameter_status={},
+                environment_fingerprint={},
+            )
+
+        return self.execute(
+            baseline_config=resolved_baseline,
+            workload=workload,
+            slo=slo,
+            experiment_id=experiment_id,
+            ranking_objective=ranking_objective,
+            serving_adapter=adapter_to_use,
+            cancellation_token=cancellation_token,
+            budget_limiter=budget_limiter,
+            output_dir=output_dir,
+            seed=seed,
+            stream=stream,
+            prompts=prompts,
+            strict_config=strict_config,
+        )
+
+
+def run_grid_search(
+    adapter: Optional[BaseServingAdapter] = None,
+    spec: Optional[ExperimentSpec] = None,
+    controller: Optional[GridSearchController] = None,
+    **kwargs,
+) -> Any:
+    """Convenience entry point for running grid search with capability preflight gating (BLK-17)."""
+    ctrl = controller or GridSearchController(adapter=adapter)
+    return ctrl.run_grid_search(spec=spec, serving_adapter=adapter, **kwargs)

@@ -1,9 +1,8 @@
 # SLOKern MVP Scope & Acceptance Checklist
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
-> **Status:** Active Reference / Scope Boundary (Single-Owner Core Execution with Bounded Collaborators)  
-> **Sole Technical Owner & Integration Authority:** Rajdeep  
-> **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21), Daksh (Decision Verification, active Oct 24)  
+> **Status:** Active Reference / Scope Boundary (Strict Solo Execution)  
+> **Sole Accountable Owner:** Rajdeep  
 > **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 ---
@@ -55,7 +54,7 @@ Project advancement is governed by evidence, not elapsed calendar days. A gate i
 - [x] MVP scope, non-goals, and operating principles written and acknowledged.
 - [x] Shared schemas (`WorkloadSpec`, `SLOSpec`, `CandidateConfig`, `RunRecord`, `MetricSet`, `FeasibilityResult`, `SearchResult`, `VerificationRecord`, `ReportArtifact`) defined in `src/slokern/contracts/`.
 - [x] Experiment budget (strict 6 benchmark runs) and stopping limits defined.
-- [x] Consolidated single-owner technical execution with bounded collaborator workstreams established in `docs/ownership.md`.
+- [x] Consolidated strict solo-development and solo-execution model established in `docs/ownership.md`.
 
 ### Gate B — Serving Path & Baseline Measured (Target: End of Oct 22 — Offline Complete, Live Pending)
 - [ ] Dedicated model endpoint responds reliably to live preflight smoke inference request (`scripts/smoke.py`) (HTTP client in `nebius.py` implemented; live run pending credentials).
@@ -63,7 +62,7 @@ Project advancement is governed by evidence, not elapsed calendar days. A gate i
 - [ ] Mutable serving parameters documented and confirmed by runtime read-back tests (`BLK-17`).
 - [x] Single-run execution pipeline operational with deterministic fake adapter (`SingleRunExecutor` writes JSON metadata and JSONL raw traces).
 - [ ] Live empirical baseline run executed on Nebius GPU instance; raw JSONL stream and metrics captured.
-- [x] Adriraj's benchmark integrity validation suite operational on result records.
+- [x] Automated benchmark integrity validation suite operational on result records (`test_fixtures_validate.py`).
 - [x] Zero API keys, tokens, or private endpoint credentials committed to source control or logs.
 
 ### Gate C — Bounded Optimization Validated (Target: End of Oct 25 — Active / In Progress)
@@ -73,7 +72,7 @@ Project advancement is governed by evidence, not elapsed calendar days. A gate i
 - [x] Offered load and achieved load are reported separately; generator saturation is detected.
 - [x] Deterministic feasibility evaluator produces `FEASIBLE`, `INFEASIBLE`, and `INCONCLUSIVE` verdicts with structured reason codes.
 - [x] Lowest-cost feasible candidate selected under declared objective (`CandidateRanker`).
-- [ ] Daksh's independent decision-verification test suite operational on hard SLO boundaries (active Oct 24).
+- [x] Automated decision-verification contract test suite operational on hard SLO boundaries (16 passed tests in `tests/contract/test_verification_independence.py`).
 
 
 ### Gate D — Independent Evidence Reviewed (Target: End of Oct 27)

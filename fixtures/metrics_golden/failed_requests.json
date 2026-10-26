@@ -1,7 +1,7 @@
 {
   "_meta": {
     "purpose": "Hand-calculated metrics case that includes failed requests.",
-    "owner": "Adriraj",
+    "owner": "Rajdeep",
     "description": "Golden fixtures for error rate, sample count, and throughput calculations with failed requests."
   },
   "raw_measurements": [
