@@ -251,6 +251,31 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 
 ---
 
+### DEC-0014: Dual-Backend Architecture (Local Ollama Development & Gated Nebius Benchmark)
+- **Date:** 2026-10-26
+- **Question:** How should SLOKern structure its execution architecture to support both offline local engineering/verification without cloud dependencies and authoritative benchmark runs against live cloud GPUs?
+- **Options Considered:**
+  1. Cloud-only execution: require Nebius credentials and live cloud GPU allocation for all development, smoke testing, and test runs.
+  2. Mock-only execution: rely solely on `FakeServingAdapter` without validating real network request parsing, streaming, or external failure handling.
+  3. Dual-backend architecture:
+     - Local development backend (`local`): Ollama running locally on loopback (`http://127.0.0.1:11434`) serving exact model `qwen3:4b-instruct-2507-q4_K_M`.
+     - Live benchmark backend (`nebius`): Nebius Token Factory dedicated endpoint serving target model `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (FP8), gated by explicit opt-in with verified credentials.
+     - Deterministic fake backend (`fake`): standalone simulator for offline unit testing and CI, persistently labeled `DEMO DATA`.
+- **Decision:** Option 3. Implement dual-backend architecture with strict capability gating and security controls.
+- **Reason:**
+  1. Local engineering velocity: Engineers and automated test suites can execute end-to-end runs, verify response parsing, error handling, and artifact generation against a real local inference engine without incurring cloud spend or needing credentials.
+  2. Credibility & capability gating (`BLK-17`): Neither Ollama nor managed Token Factory endpoints dynamically apply or read back process startup parameters (`max_num_batched_tokens`, `max_num_seqs`). The search controller must preflight capabilities and halt immediately with `SearchConfigurationError` citing `BLK-17` when `slokern optimize` is invoked against `local` or `nebius`, preventing fraudulent optimization claims while allowing `slokern smoke-test` and `slokern verify` to execute under fixed defaults.
+  3. Security boundary: `OllamaServingAdapter` enforces strict loopback addressing, prohibits HTTP 3xx redirects to prevent loopback pivoting, and rejects URL user credentials (`user:pass@host`).
+  4. Client-observed timing authority: Monotonic `time.monotonic()` timing measures request-start-to-first-content chunk latency as TTFT, while server-reported eval durations are preserved in metadata, and chunk-gap intervals are recorded without conflating with token ITL.
+  5. Deterministic fallback elimination: Explicit backend resolution precedence (`--adapter` > `SLOKERN_ADAPTER` > `"local"`) with zero silent fallback.
+- **Owner:** Rajdeep (Sole Technical Owner & Integration Authority)
+- **Affected Contracts/Components:** `src/slokern/engine/serving/ollama.py`, `src/slokern/engine/serving/factory.py`, `src/slokern/core/search/grid.py`, `src/slokern/core/verification/`, `src/slokern/engine/reporting/`, `src/slokern/cli/`
+- **Evidence:** Passing unit, contract, and end-to-end integration test suites across local and fake adapters.
+- **Trade-offs:** Optimization campaigns on `local` and `nebius` halt until dynamic parameter read-back infrastructure is provisioned (`BLK-17`).
+- **Revisit Condition:** When a dedicated containerized runtime supporting dynamic flag read-back is deployed.
+
+---
+
 ## 3. Pending Decisions to Finalize
 
 The following technical decisions remain open and are assigned to Rajdeep for resolution during Phases A and B (October 19–22):

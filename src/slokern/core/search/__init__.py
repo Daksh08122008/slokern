@@ -21,7 +21,12 @@ from slokern.core.search.rank import (
 )
 from slokern.core.search.grid import (
     GridSearchController,
+    GridSearchOutcome,
+    SearchConfigurationError,
+    SearchExecutionError,
     extract_ranking_metric,
+    run_grid_search,
+    validate_search_capabilities,
 )
 
 __all__ = [
@@ -36,5 +41,10 @@ __all__ = [
     "EvaluatedCandidate",
     "rank_candidates",
     "GridSearchController",
+    "GridSearchOutcome",
+    "SearchConfigurationError",
+    "SearchExecutionError",
     "extract_ranking_metric",
+    "run_grid_search",
+    "validate_search_capabilities",
 ]

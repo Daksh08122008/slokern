@@ -112,7 +112,7 @@ class NebiusServingAdapter(BaseServingAdapter):
     """
 
     DEFAULT_BASE_URL = "https://api.studio.nebius.ai/v1"
-    DEFAULT_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct"
+    DEFAULT_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
 
     def __init__(
         self,

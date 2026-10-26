@@ -22,7 +22,12 @@ from slokern.contracts.spec import SLOConstraint, SLOSpec, WorkloadSpec
 from slokern.contracts.verdict import FeasibilityResult
 from slokern.core.search.budget import BudgetLimiter
 from slokern.core.search.candidate_id import generate_candidate_id
-from slokern.core.search.grid import GridSearchController, extract_ranking_metric
+from slokern.core.search.grid import (
+    GridSearchController,
+    SearchConfigurationError,
+    extract_ranking_metric,
+    run_grid_search,
+)
 from slokern.engine.runner.cancel import CancellationToken
 from slokern.engine.runner.run_executor import SingleRunResult
 
@@ -316,3 +321,79 @@ def test_grid_search_cancellation(
     assert mock_executor.call_count == 0
     assert result.stopping_reason == "cancelled"
     assert result.selected_candidate_id is None
+
+
+def test_grid_search_halts_on_unverified_capabilities(
+    tmp_path: Path,
+    mock_workload: WorkloadSpec,
+    mock_slo: SLOSpec,
+    baseline_candidate: CandidateConfig,
+):
+    """Invoking run_grid_search with Ollama raises SearchConfigurationError citing BLK-17."""
+    from slokern.engine.serving.ollama import OllamaServingAdapter
+
+    ollama_adapter = OllamaServingAdapter()
+    controller = GridSearchController(
+        adapter=ollama_adapter,
+        artifacts_root=tmp_path,
+    )
+
+    with pytest.raises(SearchConfigurationError) as exc_info:
+        controller.run_grid_search(
+            baseline_config=baseline_candidate,
+            workload=mock_workload,
+            slo=mock_slo,
+        )
+
+    assert "BLK-17" in str(exc_info.value)
+
+    # Standalone function invocation also halts citing BLK-17
+    with pytest.raises(SearchConfigurationError) as exc_info2:
+        run_grid_search(
+            adapter=ollama_adapter,
+            baseline_config=baseline_candidate,
+            workload=mock_workload,
+            slo=mock_slo,
+        )
+
+    assert "BLK-17" in str(exc_info2.value)
+
+
+def test_grid_search_controller_run_halts_on_ollama_and_nebius(tmp_path: Path):
+    """GridSearchController.run() halts immediately citing BLK-17 for both Ollama and Nebius."""
+    from slokern.contracts.enums import ArrivalMode
+    from slokern.contracts.spec import ExperimentBudget, ExperimentSpec, ExperimentVerificationPolicy
+    from slokern.engine.serving.nebius import NebiusServingAdapter
+    from slokern.engine.serving.ollama import OllamaServingAdapter
+
+    spec = ExperimentSpec(
+        experiment_id="exp-blk17-test",
+        workload=WorkloadSpec(
+            schema_version="1.0.0",
+            workload_name="w",
+            fixture_id="f",
+            arrival_mode=ArrivalMode.CONSTANT,
+            target_offered_rate=10,
+            concurrency_limit=2,
+            warmup_duration_s=1,
+            measurement_duration_s=1,
+            max_input_tokens=10,
+            max_output_tokens=10,
+        ),
+        slo=SLOSpec(slo_id="s", constraints=[], min_sample_count=1),
+        search_space={},
+        budget=ExperimentBudget(max_candidates=5, max_wallclock_seconds=60),
+        verification_policy=ExperimentVerificationPolicy(),
+    )
+
+    # Ollama halts citing BLK-17
+    ollama_ctrl = GridSearchController(adapter=OllamaServingAdapter(), artifacts_root=tmp_path)
+    with pytest.raises(SearchConfigurationError) as exc_info:
+        ollama_ctrl.run(spec, ranking_objective=RankingObjective.MAX_THROUGHPUT_UNDER_SLO)
+    assert "BLK-17" in str(exc_info.value)
+
+    # Nebius halts citing BLK-17
+    nebius_ctrl = GridSearchController(adapter=NebiusServingAdapter(api_key="test-key"), artifacts_root=tmp_path)
+    with pytest.raises(SearchConfigurationError) as exc_info2:
+        nebius_ctrl.run(spec, ranking_objective=RankingObjective.MAX_THROUGHPUT_UNDER_SLO)
+    assert "BLK-17" in str(exc_info2.value)

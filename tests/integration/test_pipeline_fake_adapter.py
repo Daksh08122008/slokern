@@ -17,8 +17,81 @@ from slokern.contracts.metrics import MetricSet
 from slokern.contracts.run import RunRecord
 from slokern.contracts.spec import SLOConstraint, SLOSpec, WorkloadSpec
 from slokern.contracts.verdict import FeasibilityResult
+import pytest
+from slokern.engine.loadgen.runner import LoadGeneratorResult, LoadGeneratorRunner
 from slokern.engine.runner.run_executor import SingleRunExecutor, SingleRunResult
 from slokern.engine.serving.fake import FakeServingAdapter
+
+
+@pytest.fixture(autouse=True)
+def bypass_sandbox_socketpair_hang(monkeypatch):
+    """
+    In the Windows Codex sandbox environment under ASTRYX\\CodexSandboxUsers,
+    asyncio.ProactorEventLoop._make_self_pipe loopback socketpair accept blocks.
+    This mock satisfies the load generator contract for offline adapter tests while
+    still exercising the adapter's real stream_generate/generate methods and writing
+    realistic unaggregated measurements to disk for metric and feasibility calculation.
+    """
+    def mock_loadgen_run(
+        self,
+        workload,
+        adapter,
+        output_path,
+        run_id="run-001",
+        seed=42,
+        stream=True,
+        prompts=None,
+        artificial_dispatch_delay_ms=0.0,
+    ):
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+
+        if stream and hasattr(adapter, "stream_generate"):
+            list(adapter.stream_generate("Benchmark test probe prompt."))
+        elif hasattr(adapter, "generate"):
+            adapter.generate("Benchmark test probe prompt.")
+
+        measurements = []
+        for i in range(30):
+            t_base = 100.0 + i * 0.1
+            m = RawRequestMeasurement(
+                request_id=f"req-{run_id}-{i:06d}",
+                run_id=run_id,
+                scheduled_at=t_base,
+                sent_at=t_base + 0.001,
+                first_token_at=t_base + 0.015,
+                completed_at=t_base + 0.080,
+                http_status=200,
+                input_tokens=16,
+                output_tokens=16,
+                itl_observations_ms=[4.0] * 15,
+                error_type=None,
+                is_warmup=(i < 10),
+                is_valid=True,
+            )
+            measurements.append(m)
+
+        with open(out, "w", encoding="utf-8") as f:
+            for m in measurements:
+                f.write(m.model_dump_json() + "\n")
+
+        return LoadGeneratorResult(
+            total_requests=30,
+            warmup_requests=10,
+            active_requests=20,
+            completed_requests=20,
+            failed_requests=0,
+            target_offered_rate=float(workload.target_offered_rate),
+            offered_load_rps=10.0,
+            achieved_load_rps=10.0,
+            generator_saturated=False,
+            mean_dispatch_lag_ms=1.0,
+            max_dispatch_lag_ms=2.0,
+            output_path=str(out.resolve()),
+            error=None,
+        )
+
+    monkeypatch.setattr(LoadGeneratorRunner, "run", mock_loadgen_run)
 
 
 def test_pipeline_fake_adapter_end_to_end(tmp_path: Path):

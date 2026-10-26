@@ -16,6 +16,9 @@ from .base import (
     ServingServerError,
 )
 from .fake import FakeServingAdapter, FailureInjectionConfig
+from .nebius import NebiusServingAdapter
+from .ollama import OllamaServingAdapter
+from .factory import create_serving_adapter
 
 __all__ = [
     "ParameterSpec",
@@ -31,4 +34,7 @@ __all__ = [
     "ServingServerError",
     "FakeServingAdapter",
     "FailureInjectionConfig",
+    "NebiusServingAdapter",
+    "OllamaServingAdapter",
+    "create_serving_adapter",
 ]
