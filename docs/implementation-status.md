@@ -169,19 +169,25 @@
 
 ### SUB-10: Report Artifact Generator
 - **Intended Behavior:** Generates a self-contained, immutable Markdown and JSON `ReportArtifact` linking headline numbers directly to raw measurement traces, environment fingerprints, cost disclosure, and verification records.
-- **Actual Behavior:** **ABSENT.** `src/slokern/engine/reporting/report_builder.py` and `templates/report.md.jinja` are empty docstrings.
-- **Evidence:** `src/slokern/engine/reporting/report_builder.py:L1-4@356c489`.
+- **Actual Behavior:** **IMPLEMENTED & VERIFIED (BLK-09 CLOSED).** `src/slokern/engine/reporting/report_builder.py` compiles canonical `ReportArtifact` contracts adhering to `schemas/ReportArtifact.json` and renders human-readable Markdown reports (`report.md`) disclosing specifications, baseline metrics, candidate comparison tables, drift comparisons, and verification verdicts with automated secret redaction.
+- **Evidence:** `src/slokern/engine/reporting/report_builder.py`, `tests/unit/engine/reporting/test_report_builder.py` passes cleanly; verified on `exp-audit-offline-campaign`.
 - **Dependencies:** `SUB-02` (Contracts), `SUB-08` (Run artifacts), `SUB-09` (Verification).
-- **Risks:** Inability to publish inspectable proof for hackathon submission (P1 Blocker BLK-09).
-- **Next Testable Step:** Implement a builder that formats a valid `ReportArtifact` instance into a human-readable Markdown summary. Acceptance: `tests/unit/engine/reporting/test_report_builder.py` passes.
+- **Risks:** None for offline reporting. Secret sanitization asserted.
+- **Status:** **RESOLVED (BLK-09 CLOSED).** Fully integrated into CLI `slokern report`.
 
 ### SUB-11: Control Plane API & CLI
-- **Intended Behavior:** FastAPI application with SSE streaming endpoints; CLI tool (`slokern verify`, `slokern optimize`, `slokern smoke-test`).
-- **Actual Behavior:** **STUBBED / FASTAPI DEFERRED.** `src/slokern/cli/main.py` exists as a stub entry point; command registration and `slokern verify` CLI implementation are scheduled for Phase D (`TASK-16`). FastAPI application (`src/slokern/api/app.py`) is formally deferred post-hackathon to keep the critical path lean.
-- **Evidence:** `src/slokern/cli/main.py`, `src/slokern/api/app.py`.
+- **Intended Behavior:** Minimal CLI runner (`slokern verify`, `slokern optimize`, `slokern smoke-test`, `slokern report`, `slokern validate`); FastAPI REST/SSE application deferred post-hackathon.
+- **Actual Behavior:** **IMPLEMENTED (CLI RUNNER) / API DEFERRED.** `src/slokern/cli/main.py` implements all 5 subcommands with standard library `argparse`:
+  - `slokern smoke-test`: preflight probe across `local`, `fake`, and `nebius`.
+  - `slokern optimize`: enforces capability gating (halts with `SearchConfigurationError` citing `BLK-17` on `local` and `nebius`; runs 6-run campaign on `fake` labeled `DEMO DATA`).
+  - `slokern verify`: independent single-run verification under compatible backend and invariant matching.
+  - `slokern report`: serializes immutable Markdown and JSON report artifacts.
+  - `slokern validate`: validates `ExperimentSpec` JSON against canonical Pydantic v2 schemas.
+  FastAPI application (`src/slokern/api/app.py`) is formally deferred post-hackathon per DEC-0015 to protect critical path delivery.
+- **Evidence:** `src/slokern/cli/main.py`, `src/slokern/cli/commands/`, `tests/unit/cli/` (27/27 unit tests pass).
 - **Dependencies:** `SUB-08` (Runner), `SUB-09` (Verification), `SUB-10` (Reporting).
-- **Risks:** Lack of user execution entry points.
-- **Next Testable Step:** Freeze FastAPI as DEFERRED; implement minimal CLI entry point for `slokern verify` using Python standard library (`argparse`). Acceptance: `slokern --help` executes and exits code 0.
+- **Risks:** None for CLI runner.
+- **Status:** **RESOLVED (TASK-13 COMPLETE).** CLI functional and fully verified.
 
 ### SUB-12: Frontend Command Center & Presentation
 - **Intended Behavior:** React + Vite cyber-technical command center visualizing specifications, live run progress, comparisons, and report badges.
@@ -292,7 +298,7 @@ flowchart LR
 | **BLK-06** | **P1** | Probe P-06: `-10.0 <= 200.0` returns `True`, yielding `FEASIBLE` with `HARD_CONSTRAINTS_PASSED`. | Physically impossible negative latency passes feasibility checks without rejection. | SUB-03 | Rajdeep | Added physical non-negative constraint assertion (`obs_val >= 0`) in `evaluate.py`. | **RESOLVED** (`2453f75`, 29 evaluator tests pass in `tests/unit/core/test_evaluator.py`) |
 | **BLK-07** | **P1** | `docs/ownership.md` lists Rajdeep as sole accountable owner for all 13 subsystems (100% concentration). | Potential delivery bottleneck on solo engineer. | SUB-01 through SUB-13 | Rajdeep | Freeze scope strictly to CLI + static Markdown report; defer API and Frontend; automate audit verification via contract suites. | Ratified `ROADMAP.md` with strict solo scope and DEC-0015. |
 | **BLK-08** | **P1** | `src/slokern/core/verification/compare.py` & `protocol.py` lacked end-to-end drift calculation and campaign verification rerun. | Cannot independently verify selected winning candidates or compute metric drift ($\Delta M$). Blocks Stage 6. | SUB-09 | Rajdeep | Implemented `compare_metrics`, `DriftPolicy` (+15% latency, -15% throughput, +0.01 error rate), and `verify_search_campaign`. | **RESOLVED** (`tests/unit/core/verification/` 22/22 passed; campaign rerun `run-verify-838c1aef` verified) |
-| **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py:L1-4@356c489` is an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. Blocks Stage 7. | SUB-10 | Rajdeep | Implement Markdown builder serializing `ReportArtifact` into an inspectable document. | `tests/unit/engine/reporting/test_report_builder.py` |
+| **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py:L1-4@356c489` was an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. Blocks Stage 7. | SUB-10 | Rajdeep | Implement Markdown builder serializing `ReportArtifact` into an inspectable document. | **RESOLVED** (`tests/unit/engine/reporting/test_report_builder.py` passed; report serializer verified) |
 | **BLK-10** | **P1** | `schemas/` contained only `.gitkeep`; `scripts/gen_contracts.py:L17@356c489` was a gap notice. | No emitted JSON Schemas exist in source control; cannot validate external tooling against contracts. | SUB-02 | Rajdeep | Implemented script exporting `model_json_schema()` for all 11 models into `schemas/`. | **RESOLVED** (16 schema tests pass in `tests/contract/`) |
 | **BLK-11** | **P2** | Probe P-12: `{"tensor_parallel_size": 1}` vs `1.0` produces different candidate IDs (`4fe93deaf8d0` vs `cd0ce0cb5b73`). | Inadvertent type coercion between float and integer changes candidate hash identity. | SUB-04 | Rajdeep | Enforced canonical integer/float normalization before hashing in `candidate_id.py`. | **RESOLVED** (`afac3a6`, 13 tests pass in `tests/unit/core/`) |
 | **BLK-12** | **P2** | Probe P-19: All 11 models accepted unrecognized fields silently (`extra='ignore'`). | Contracts did not strictly reject invalid or misspelled fields at system boundaries. | SUB-02 | Rajdeep | Added `model_config = ConfigDict(extra='forbid')` to all 11 contract classes. | **RESOLVED** (103 roundtrip tests pass in `tests/contract/`) |
@@ -300,7 +306,7 @@ flowchart LR
 | **BLK-14** | **P2** | Git preflight R-01: `README.md` was modified in the working tree. | Working tree baseline was not clean. | SUB-13 | Rajdeep | Committed baseline modifications on integration branch. | **RESOLVED** (Clean tree verified on branch) |
 | **BLK-15** | **P0** | `BudgetLimiter` constructor allowed configurable limits that could permit six search executions and zero verification runs. | A caller could violate the required 1 baseline + 4 candidate + 1 verification allocation. | SUB-04 | Rajdeep | Enforced strict campaign invariant via preflight `validate_budget` in `src/slokern/core/search/grid.py` (`max_total_runs <= 6`, `max_search_runs == 5`, `reserved_verification_runs == 1`). | **RESOLVED (Oct 24)** (15 tests pass in `tests/unit/core/search/`) |
 | **BLK-16** | **P1** | Ranking accepted FEASIBLE results with missing objective metrics; Mode A could substitute reciprocal throughput when monetary cost metadata was absent. | A candidate without declared objective evidence could win, or a non-monetary proxy could be represented as monetary cost. | SUB-04 | Rajdeep | Enforced strict finite check in `rank.py` and alphanumeric candidate-ID tie-breaking; unmeasured metrics rejected. | **RESOLVED (Oct 24)** (11 tests pass in `tests/unit/core/test_ranker*.py`) |
-| **BLK-17** | **P0** | `NebiusServingAdapter.apply_config()` updates local state but HTTP requests do not apply or read back searched vLLM engine knobs. | Search results cannot evidence that declared serving-engine configurations were applied on the remote runtime. | SUB-05 | Rajdeep | Resolve the endpoint control interface; use a runtime with observable engine settings or formally narrow optimization scope through the documented architecture process. | Live preflight demonstrates requested/effective setting read-back for each searched parameter. |
+| **BLK-17** | **P0** | Serving engine parameter application and read-back unavailable for optimization search space (`{max_num_batched_tokens: [1024, 2048]} × {max_num_seqs: [16, 64]}`). | Search results cannot evidence that declared configurations were applied on Ollama or Nebius Token Factory endpoints. | SUB-05 | Rajdeep | Halt `slokern optimize` immediately with `SearchConfigurationError (BLK-17)` on `local` and `nebius` before allocating benchmark runs. Offline campaign runs on `fake` labeled `DEMO DATA`. | **ACTIVE** (DEC-0014 capability preflight gating enforced in `validate_search_capabilities()` and CLI `optimize_command`) |
 | **BLK-18** | **P2** | Windows Codex sandbox environment loopback socket / multiprocessing restrictions stall runner subprocess integration tests. | Cannot execute multi-process loadgen integration tests synchronously inside the Windows Codex sandbox. | SUB-06, SUB-08 | Rajdeep | Run standalone unit test suites (`test_arrival.py`, `test_recorder.py`) which pass 100% deterministically; gate multi-process runner integration tests to unconstrained/Linux environments. | `tests/unit/engine/loadgen/` unit tests passing 38/38 |
 
 ---

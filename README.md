@@ -200,31 +200,50 @@ Naive benchmark harnesses collapse execution state, data quality, and SLO feasib
 
 ---
 
-## 7. Fake-Adapter-First vs. Live Infrastructure
+## 7. Execution Backends & Adapter Boundary
 
-To protect GPU credit budgets and allow rapid offline iteration, SLOKern implements two implementations of `BaseServingAdapter`:
+Per **DEC-0014**, SLOKern implements three distinct execution backends sharing the identical core evaluation, load generation, metrics, verification, and reporting pipeline:
 
 ```mermaid
 flowchart LR
-    ExpController[Experiment Runner] --> BaseAdapter[BaseServingAdapter]
-    BaseAdapter -->|Offline Dev & CI| FakeAdapter[FakeServingAdapter\nsrc/slokern/engine/serving/fake.py]
-    BaseAdapter -->|Live Benchmarks| NebiusAdapter[NebiusServingAdapter\nsrc/slokern/engine/serving/nebius.py]
+    ExpController[Core Pipeline / CLI] --> Factory[create_serving_adapter]
+    Factory -->|--adapter local (Default)| LocalAdapter[OllamaServingAdapter\nLoopback Ollama / Qwen3]
+    Factory -->|--adapter fake| FakeAdapter[FakeServingAdapter\nOffline Simulator / DEMO DATA]
+    Factory -->|--adapter nebius| NebiusAdapter[NebiusServingAdapter\nNebius Token Factory / Nemotron-30B]
     
-    FakeAdapter -->|Deterministic Synthetic Data| DemoData[Labeled: DEMO DATA]
-    NebiusAdapter -->|Real NVIDIA H100 Timings| LiveData[Live Evidence Artifacts]
+    LocalAdapter --> LocalData[Real Local Observations\nHost Provenance]
+    FakeAdapter --> DemoData[Synthetic Fixtures\nLabeled: DEMO DATA]
+    NebiusAdapter --> LiveData[Authoritative GPU Evidence\nNebius Provenance]
 ```
 
-1. **Deterministic Fake Adapter (`fake.py`):**
-   - Implements realistic synthetic latency distributions, simulated CUDA OOM failures, timeouts, and client saturation.
-   - Powers automated unit tests, contract validation, and offline dashboard development.
-   - **Mandatory Guardrail (AGENTS.md Section 8):** All synthetic runs, offline simulation outputs, test fixtures, and dashboard displays are persistently and unmistakably labeled **`DEMO DATA`**. Simulated measurements are never presented as live GPU results.
-2. **Real Nebius Adapter (`nebius.py`):**
-   - Connects to the live Nebius endpoint; captures `environment_fingerprint` (CUDA version, driver, hardware ID) and verifies effective parameter settings.
-   - Consumes GPU credits strictly for:
-     1. Preflight integration smoke test (1 request).
-     2. Empirical baseline measurement.
-     3. Bounded 4-candidate search.
-     4. Independent verification rerun.
+### Backend Summary & Capabilities
+
+1. **Local Development Backend (`local` ?" Default):**
+   - **Runtime:** Native Ollama instance running locally on loopback (`http://127.0.0.1:11434`).
+   - **Exact Model:** `qwen3:4b-instruct-2507-q4_K_M` over `/api/tags` and `/api/chat`.
+   - **Role:** Offline local engineering velocity, request/response streaming validation, error handling, single-run execution, artifact generation, and compatible verification testing.
+   - **Zero Cloud Spend:** Requires zero Nebius credentials, zero cloud credits, and zero external network access.
+   - **Security Boundary:** Strictly enforces loopback addressing, prohibits HTTP 3xx redirects to prevent loopback pivoting (SSRF), rejects URL user credentials (`user:pass@host`), and disables external proxy routing.
+   - **Timing Semantics:** Monotonic client clock (`time.monotonic()`) measures request-start-to-first-content latency; Ollama server-reported metadata (`prompt_eval_duration`, `eval_duration`) is preserved in milliseconds without conflation.
+   - **Scope Notice:** Local mode records real host observations; it does not validate the 2x2 serving-engine optimization matrix.
+
+2. **Deterministic Fake Backend (`fake`):**
+   - **Implementation:** `FakeServingAdapter` (`src/slokern/engine/serving/fake.py`).
+   - **Role:** Deterministic unit tests, failure injection (timeouts, CUDA OOM, client saturation), and reproducible synthetic campaign execution.
+   - **Mandatory Guardrail:** All synthetic runs and artifacts are unmistakably labeled **`DEMO DATA`** and never presented as live GPU evidence.
+
+3. **Live Nebius Benchmark Backend (`nebius`):**
+   - **Runtime & Model:** Nebius Token Factory dedicated endpoint serving `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (FP8).
+   - **Role:** Authoritative benchmark runs against NVIDIA GPU infrastructure.
+   - **Explicit Gating:** Requires explicit operator selection (`--adapter nebius`), verified credentials (`NEBIUS_API_KEY`), and manual execution authorization. No automated cloud instance provisioning or deletion.
+
+### Backend Selection Precedence & Zero Silent Fallback
+Resolution precedence across all CLI commands and runners:
+1. Explicit CLI argument: `--adapter <local|nebius|fake>`
+2. Environment variable: `SLOKERN_ADAPTER`
+3. Default: `"local"`
+
+**Zero Silent Fallback:** If the selected backend cannot be initialized (e.g., `NEBIUS_API_KEY` missing when `nebius` is selected, or local Ollama is down), SLOKern halts with an immediate configuration error. It never silently substitutes another backend.
 
 ---
 
@@ -271,71 +290,75 @@ SLOKern enforces strict cost accounting boundaries to prevent fabricated claims:
 
 ### Prerequisites
 - Python 3.11+ (virtual environment recommended).
-- Node.js 18+ (for frontend dashboard).
-- Nebius Cloud API token (for live serving benchmarks; optional for fake-adapter testing).
+- Local Ollama installed and running on loopback (`http://127.0.0.1:11434`) with model `qwen3:4b-instruct-2507-q4_K_M` (for local development).
+- Nebius Cloud API token (`NEBIUS_API_KEY`) (strictly for gated live benchmarks; never required for local dev or tests).
 
 ### 10.1 Environment Setup
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/slokern/slokern.git
 cd slokern
 
-# Create and activate Python virtual environment
+# Create and activate Python 3.11 virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\Activate.ps1
+source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
 
 # Install package in editable mode
 pip install -e .
 
-# Configure environment variables (copy example and add credentials)
-cp .env.example .env
+# Optional: Set up local Ollama model (no cloud keys needed)
+ollama pull qwen3:4b-instruct-2507-q4_K_M
 ```
 
-### 10.2 Run Offline Pipeline Validation (Fake Adapter)
-
-> **DEMO DATA Notice (AGENTS.md Section 8):** Offline experiments execute against `FakeServingAdapter`. All generated artifacts, metrics, and terminal outputs are explicitly labeled **`DEMO DATA`** and must never be treated as live GPU benchmark results.
+### 10.2 Local Development Commands (Ollama on Loopback)
 
 ```bash
-# Run contract and unit tests
-pytest tests/contract tests/unit
+# Preflight health check probe against local Ollama
+slokern smoke-test --adapter local
 
-# Validate an experiment specification
-slokern validate experiments/configs/default.yaml
+# Validate an ExperimentSpec JSON file against canonical contracts
+slokern validate fixtures/workloads/spec_reference.json
 
-# Execute an offline demonstration experiment (uses deterministic fake adapter, labeled DEMO DATA)
-slokern optimize --config experiments/configs/default.yaml --adapter fake
+# Notice: 'slokern optimize --adapter local' safely halts with BLK-17 because
+# Ollama does not support dynamic process-startup flag read-back per request:
+slokern optimize fixtures/workloads/spec_reference.json --adapter local
+# -> Halts with SearchConfigurationError (BLK-17)
 
-# Independently verify a candidate run
-slokern verify --run run-mock-001 --adapter fake
+# Independently verify a local single-run record
+slokern verify artifacts/experiments/exp-local-01/runs/run-001/run_record.json --adapter local
 ```
 
-### 10.3 Launch Frontend Command Center
+### 10.3 Deterministic Synthetic Execution (Fake Adapter ?" DEMO DATA)
 
 ```bash
-# Navigate to frontend directory and install dependencies
-cd frontend
-npm install
+# Preflight health probe against fake adapter
+slokern smoke-test --adapter fake
 
-# Start local Vite development server
-npm run dev
-# Dashboard opens at http://localhost:5173 (labeled DEMO DATA in offline mode)
+# Execute 6-run synthetic campaign (5 search runs + 1 independent verification run)
+slokern optimize fixtures/workloads/spec_reference.json --adapter fake --output-dir artifacts/demo --auto-verify
+
+# Compile inspectable Markdown and JSON report from experiment results
+slokern report artifacts/demo/experiments/exp-test/search_result.json artifacts/demo/experiments/exp-test/runs/run-baseline/run_record.json --verification-record artifacts/demo/experiments/exp-test/verification/verif-01/verification_record.json --output artifacts/demo/report.md
 ```
 
-### 10.4 Live Serving Execution (Once Preflight Smoke Test Passes)
+### 10.4 Live Nebius Benchmark Execution (Gated Live Mode)
+
+> **Authoritative Gating Notice:** Requires explicit operator selection, manual authorization, and valid `NEBIUS_API_KEY`. Live optimization halts under `BLK-17` until serving-engine parameter read-back is provisioned.
 
 ```bash
-# 1. Execute live endpoint preflight smoke test (1 request, health check, model string)
+# Set Nebius credentials in environment
+export NEBIUS_API_KEY="your-nebius-api-key"  # Windows: $env:NEBIUS_API_KEY="..."
+
+# 1. Execute live endpoint preflight smoke test (1 request, health check, model probe)
 slokern smoke-test --adapter nebius
 
-# 2. Run bounded 6-run optimization campaign
-slokern optimize --config experiments/configs/nebius_nemotron.yaml --adapter nebius
+# 2. Live optimization halts before allocating benchmark runs due to BLK-17:
+slokern optimize fixtures/workloads/spec_reference.json --adapter nebius
+# -> Halts with SearchConfigurationError (BLK-17) until dynamic flag read-back is evidenced
 
-# 3. Independently verify the winning candidate
-slokern verify --run <winning-run-id> --adapter nebius
-
-# 4. Generate self-contained report artifact
-slokern report --run <winning-run-id> --output artifacts/reports/
+# 3. Independently verify an authenticated live run record
+slokern verify artifacts/experiments/exp-nebius-01/runs/run-001/run_record.json --adapter nebius
 ```
 
 ---

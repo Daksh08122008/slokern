@@ -141,10 +141,34 @@ The current DEC-0010 six-run campaign is one baseline + four candidates + one ve
 
 ### 6.2 Run validity, failures, and independent verification
 
-- Proposed validity checks include requested/effective settings match, endpoint health before and after the window, generator capacity, no process restart/OOM, cache state captured where observable, and complete accounting for timeouts, dropped requests, partial streams, and cancellations. The numerical p99-lateness, CPU, and 0.98 load-ratio gates require approval and code support before they can determine verdicts.
-- A crashed process, failed health check, invalid load generator, configuration mismatch, or incomplete stream is not a valid SLO failure and must not be ranked as a successful candidate. The current evaluator receives only `MetricSet` and `SLOSpec`; it does not consume `RunRecord.execution_status` or per-request validity as a global run gate. This integration gap needs a separately approved code change before the full invariant can be claimed.
-- Verification needs a fresh run ID, fresh raw request evidence, the same frozen winner settings/SLO/workload, and a separately generated arrival schedule. ExperimentVerificationPolicy.repetitions governs the reserve. Drift policy is defined in DriftPolicy (+15% latency, -15% throughput, +0.01 error rate).
-- src/slokern/core/verification/protocol.py and compare.py implement independent verification and metric drift auditing (TASK-11, BLK-08 resolved). Verified via unit tests (	est_drift_boundary.py, 	est_verification_campaign.py) and offline Run 6 campaign rerun (exp-audit-offline-campaign).
+#### Canonical Verification Rules & Invariants (DEC-0014)
+1. **Fresh Run ID & Distinct Evidence:** Verification executes the winning candidate under a fresh, distinct run ID (`verification_run_id != original_run_id`) and writes a separate `raw_measurements.jsonl` trace. Reusing search-run metrics or aliasing search traces is strictly forbidden.
+2. **Verify-Run Compatibility Gating:** Prior to execution, the verification runner validates compatibility invariants between the search run and verification run:
+   - Serving backend must match (`local` can only verify `local`; `nebius` can only verify `nebius`; `fake` can only verify `fake`). A local Qwen3 run cannot verify a Nebius Nemotron result.
+   - Target model identifier, workload specification, SLO thresholds, and requested candidate configuration must match identically.
+3. **Metric Drift Auditing:** Metrics are recalculated from scratch using fresh verification trace evidence. Metric drift between search and verification runs is audited against explicit thresholds (+15% latency, -15% throughput, +0.01 error rate) per `DriftPolicy`.
+4. **Distinct Non-Collapsing States:** Execution failure, invalid evidence (e.g. generator saturation), SLO infeasibility, and verification failure remain distinct states. Missing required metrics produce `INCONCLUSIVE`, never a fabricated pass.
+5. **Implementation Reality:** `src/slokern/core/verification/protocol.py` and `compare.py` implement independent verification and metric drift auditing (TASK-11, BLK-08 resolved). Verified via unit tests (`test_drift_boundary.py`, `test_verification_campaign.py`) and offline Run 6 campaign rerun (`exp-audit-offline-campaign`).
+
+### 6.3 Timing, Provenance & Credential Security Rules
+
+#### Timing Measurement Rules
+- **Monotonic Clocks for Durations:** Elapsed durations are measured strictly using monotonic clocks (`time.monotonic()`) to prevent clock skew or NTP jumps from corrupting latency distributions.
+- **Client-Observed First-Content Metric:** TTFT is defined and collected as client-observed request-start-to-first-content latency, measured immediately before HTTP dispatch to receipt of the first non-empty response chunk. Socket-level wire transmission is not falsely claimed.
+- **Audit Correlation Clocks:** Wall-clock timestamps (`time.time()`) are retained solely for audit correlation and log alignment.
+- **Server Metadata Separation:** Ollama server-reported metadata (`prompt_eval_duration`, `eval_duration`) is preserved in separate metadata fields, converted from nanoseconds to milliseconds, without conflating with client-observed TTFT.
+- **Chunk-Gap Semantics:** Streaming chunk intervals are recorded as chunk-arrival gaps, not as individual token-level ITL, because server chunks may carry multiple tokens. Inventing token-level timestamps from multi-token chunks is prohibited.
+
+#### Provenance & Labeling Rules
+- **Explicit Provenance Isolation:** Local Ollama measurements are recorded as real local observations with explicit local environment metadata, never attributed to NVIDIA H100 or Nebius. Fake measurements carry **`DEMO DATA`**. Nebius measurements must carry verified hardware/cloud provenance.
+- **No Fabricated Evidence:** When physical evidence is absent (e.g. unverified GPU metrics, unconfirmed cloud pricing), fields are recorded as `unavailable`.
+
+#### Credential Isolation & Local Security
+- **No Cloud Keys for Local Dev:** Developing, testing, or running local and fake pipelines never requires a Nebius API key.
+- **Secret Redaction:** API keys, Bearer tokens, and secrets are sanitized from all log output, error messages, and persisted artifacts.
+- **Loopback Enforcement:** Local Ollama access defaults strictly to loopback (`127.0.0.1` / `::1`). Remote URLs require explicit opt-in (`allow_remote=True`).
+- **Redirect & Userinfo Prohibition:** HTTP 3xx redirects are unconditionally rejected to prevent loopback pivoting (SSRF). Embedded URL user credentials (`user:pass@host`) are rejected.
+- **Proxy Isolation:** External proxy routing is disabled for local loopback requests.
 
 ---
 

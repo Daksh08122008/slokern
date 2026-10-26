@@ -92,38 +92,41 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
 
 - [x] **Step 1: Serving Adapter & Preflight Infrastructure (Rajdeep):**
   - `FakeServingAdapter` implemented in `src/slokern/engine/serving/fake.py` generating deterministic synthetic runs labeled **`DEMO DATA`**.
+  - `OllamaServingAdapter` implemented in `src/slokern/engine/serving/ollama.py` on loopback (`http://127.0.0.1:11434`) targeting model `qwen3:4b-instruct-2507-q4_K_M` over `/api/tags` and `/api/chat` with strict loopback security, redirect prohibition, URL userinfo rejection, and monotonic duration timing (DEC-0014).
   - `NebiusServingAdapter` implemented in `src/slokern/engine/serving/nebius.py` with OpenAI-compatible HTTP client and health probe; live endpoint verification pending credentials (`BLK-04`, `BLK-17`).
+  - Adapter factory (`src/slokern/engine/serving/factory.py`) enforces strict three-tier precedence (`--adapter` > `SLOKERN_ADAPTER` > `"local"`) with zero silent fallback.
 - [x] **Step 2: Single-Run Measurement & Load Generation (Rajdeep; automated integrity audit):**
   - Subprocess load generator `LoadGeneratorRunner` (`runner.py`) dispatches Poisson and constant arrivals.
   - `RawRequestMeasurement` records written to JSONL with client-side timestamps.
-  - Metrics engine (`src/slokern/core/metrics/`) computes TTFT/ITL percentiles, throughput, error rate, and offered vs achieved load.
-  - Client dispatch skew and generator saturation detected (`generator_saturated = True`).
-- [x] **Step 3: Deterministic Evaluator (Rajdeep):**
-  - Implemented in `src/slokern/core/evaluator/evaluate.py`.
-  - Inclusive boundary checks, NaN misclassification guard, and negative latency guards active.
-  - Emits `FeasibilityResult` with structured reason codes.
-- [x] **Step 4: Single-Run Executor & Baseline Pipeline (Rajdeep):**
-  - Implemented in `src/slokern/engine/runner/run_executor.py` (`SingleRunExecutor`).
-  - Wires together serving adapter, load generator, metrics engine, and feasibility evaluator.
-  - Persists JSON metadata and unaggregated JSONL recordings.
-- [x] **Step 5: Bounded 2×2 Search Controller (Rajdeep):**
-  - Implemented in `src/slokern/core/search/grid.py` (`GridSearchController`), `space.py`, and `budget.py`.
-  - Evaluates 2×2 discrete search grid under `BudgetLimiter` (default 5 search runs, 1 verification reserve; caveat `BLK-15`).
-- [x] **Step 6: Deterministic Candidate Selection (Rajdeep):**
-  - Implemented in `src/slokern/core/search/rank.py` (`CandidateRanker`).
-  - Filters strictly on `FEASIBLE` candidates with deterministic candidate-ID tie-breaking.
-- [ ] **Step 7: Independent Verification & Automated Decision Verification (Rajdeep):**
-  - Pydantic contract `VerificationRecord` locked and round-trip tested.
-  - Verification runner in `src/slokern/core/verification/` ready for Phase C implementation (`TASK-11`).
-  - Confirms unique `verification_run_id`, re-evaluates candidate, and computes metric drift ($\Delta M$).
-  - Automated contract test suite (`test_verification_independence.py`) asserts decision correctness and verification independence.
-- [ ] **Step 8: Dashboard & Report Integration (Rajdeep):**
-  - Standalone React + Vite command center delivered in PR #2 (`frontend/src/App.tsx`, 2553 lines, `DESIGN.md`, labeled **`DEMO DATA`**).
-  - Report artifact generator (`src/slokern/engine/reporting/report_builder.py`) pending implementation.
+  - Metrics engine (`src/slokern/core/metrics/`) computes TTFT/ITL percentiles and throughput.
+  - Automated benchmark trace schema validation and fixture conformance active in `tests/contract/test_fixtures_validate.py`.
+- [x] **Step 3: Feasibility Evaluation & Hard SLOs (Rajdeep; automated decision verification):**
+  - Evaluator enforces hard constraint thresholds, reason codes, and boundary conditions (NaN, negative latency guarded).
+  - Automated verification of feasibility edge cases, inclusive boundaries, and missing metric handling in `tests/contract/test_verification_independence.py`.
+- [x] **Step 4: Baseline Establishment (Rajdeep):**
+  - Single-run executor (`SingleRunExecutor`) executes reference baseline run before candidate exploration.
+  - Persists `RunRecord`, raw JSONL traces, and `FeasibilityResult` on disk.
+- [x] **Step 5: Bounded Candidate Search & Budget Enforcement (Rajdeep):**
+  - 2x2 grid search controller (`src/slokern/core/search/grid.py`) explores `max_num_batched_tokens` in {1024, 2048} × `max_num_seqs` in {16, 64}.
+  - Capability preflight gating (`validate_search_capabilities()`): halts immediately on `local` and `nebius` citing `BLK-17` before allocating any benchmark runs. Offline campaign runs on `fake` labeled `DEMO DATA`.
+  - Strict budget enforcement (`validate_budget` + `BudgetLimiter`) guarantees the 6-run campaign invariant (5 search + 1 verification).
+- [x] **Step 6: Feasible Candidate Selection (Rajdeep):**
+  - Strict ranker (`src/slokern/core/search/rank.py`) selects winning candidate by declared objective (Mode A cost or Mode B throughput/proxy).
+  - Breaks ties deterministically by candidate ID; rejects missing objective values.
+- [x] **Step 7: Independent Verification Rerun (Rajdeep; automated decision verification):**
+  - Independent verification engine (`src/slokern/core/verification/protocol.py` and `compare.py`, resolving `BLK-08`) re-executes winning candidate under distinct `verification_run_id` (Run 6).
+  - Recomputes metrics from fresh verification trace evidence.
+  - Evaluates metric drift against explicit thresholds (+15% latency, -15% throughput, +0.01 error rate).
+  - Emits canonical `VerificationRecord` with definitive verdict (`VERIFIED`, `VERIFICATION_FAILED`, or `VERIFICATION_INCONCLUSIVE`).
+  - Automated contract tests asserting verification independence and distinct run IDs in `tests/contract/test_verification_independence.py` (17 passed).
+- [x] **Step 8: Artifacts, CLI & Reporting (Rajdeep):**
+  - Report generator (`report_builder.py`, resolving `BLK-09`) compiles immutable `ReportArtifact` and Markdown summary linking recommendation directly to raw trace paths.
+  - Minimal CLI runner (`src/slokern/cli/main.py`) provides `smoke-test`, `optimize`, `verify`, `report`, and `validate` commands.
+  - Automated secret scanner asserts zero secrets or private API tokens in generated report output.
+  - Frontend command center reflects backend state with persistent **`DEMO DATA`** labeling.
 - [ ] **Step 9: Demo Hardening & Rehearsal (Rajdeep):**
-  - Run clean environment setup test.
+  - Run clean environment setup test and offline synthetic walkthrough.
   - Validate demo script timing ($\le 3$ minutes).
-
 
 ---
 

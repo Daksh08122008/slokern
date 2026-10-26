@@ -1,4 +1,4 @@
 """
 Purpose: Runs a one-request smoke test against the serving path.
-Owner: Aman
+Owner: Rajdeep
 """

@@ -47,20 +47,59 @@ flowchart LR
 
 This diagram shows the intended adapter contract. Current `NebiusServingAdapter.apply_config()` evaluates settings against local capability declarations but does not send launch flags to a process or read effective values back from the endpoint (`BLK-17`).
 
-### 2.1 Fake-Adapter-First Development Workflow
+### 2.1 Three Canonical Execution Backends (DEC-0014)
 
-To protect hackathon GPU credit budgets and accelerate development:
-1. **Deterministic Fake Adapter (`fake.py`):** Offline components can be exercised with the fake adapter. This does not establish live serving behavior, and current search/budget and independent-verification gaps remain documented in `docs/implementation-status.md`.
-   - Generates schema-valid, deterministic synthetic measurements.
-   - Simulates edge-case failure modes (CUDA OOM, request timeouts, client generator saturation, threshold-adjacent breaches).
-   - **Persistent Labeling:** All synthetic outputs and simulated runs are strictly labeled **`DEMO DATA`**. Never presented as live GPU measurements.
-2. **Real Adapter (`nebius.py`):** Targets the live Nebius endpoint and records actual inference timings.
-   - Shares the identical adapter interface (`BaseServingAdapter`) as the fake adapter.
-   - The intended controller campaign allocates GPU time for:
-     1. Preflight integration smoke test (1 request).
-     2. Empirical baseline measurement.
-     3. Bounded 4-candidate search.
-     4. Independent verification rerun of the selected candidate.
+To balance rapid offline developer velocity, deterministic unit testing, and authoritative live cloud GPU measurements, SLOKern implements three distinct execution backends sharing the identical core pipeline:
+
+```mermaid
+flowchart TD
+    AdapterFactory["Serving Adapter Boundary
+create_serving_adapter()"]
+    AdapterFactory -->|--adapter local| Local["Local Ollama Backend (local)
+• Loopback: http://127.0.0.1:11434
+• Model: qwen3:4b-instruct-2507-q4_K_M
+• Native /api/tags & /api/chat
+• Monotonic client timing; zero cloud keys"]
+    AdapterFactory -->|--adapter fake| Fake["Deterministic Fake Backend (fake)
+• Standalone simulator for CI & unit tests
+• Simulates latency scaling, OOM, timeouts
+• Persistently labeled: DEMO DATA"]
+    AdapterFactory -->|--adapter nebius| Nebius["Live Nebius Backend (nebius)
+• Nebius Token Factory Dedicated Endpoint
+• Model: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B (FP8)
+• Live GPU measurements; explicit NEBIUS_API_KEY"]
+```
+
+#### A. Local Development Backend (`local` / `OllamaServingAdapter`)
+- **Runtime Host:** Ollama instance running locally on loopback (`http://127.0.0.1:11434`).
+- **Exact Model Target:** `qwen3:4b-instruct-2507-q4_K_M`. Pull command:
+  ```bash
+  ollama pull qwen3:4b-instruct-2507-q4_K_M
+  ```
+- **Native Ollama API:** Interacts directly with native Ollama endpoints:
+  - `/api/tags`: Validates model presence and readiness prior to execution without silently triggering model downloads.
+  - `/api/chat`: Issues streaming chat completion requests with JSON payload formatting.
+- **Loopback Security Boundary:**
+  - Enforces loopback IP addressing (`127.0.0.1` / `::1`) by default; remote connections require explicit opt-in (`allow_remote=True`).
+  - Unconditionally blocks HTTP 3xx redirects (`StrictLoopbackRedirectHandler`) to prevent loopback pivoting (SSRF).
+  - Strictly rejects embedded URL user credentials (`user:pass@host`).
+  - Disables proxy-based routing for local loopback requests.
+  - Requires zero Nebius API credentials or cloud compute allocation.
+- **Client-Observed Timing Authority:**
+  - Elapsed durations are measured strictly via monotonic clocks (`time.monotonic()`).
+  - Client-observed request-start-to-first-content latency is recorded as TTFT.
+  - Ollama server-reported metadata (`prompt_eval_duration`, `eval_duration`) is preserved in separate metadata fields, converted from nanoseconds to milliseconds, without conflation.
+  - Chunk arrivals are recorded as chunk-gap intervals, not individual token-level ITL.
+- **Scope & BLK-17 Limitation:** Local mode records real host system observations with explicit local environment metadata. It does not validate the 2x2 serving-engine optimization matrix because Ollama does not support dynamic process-startup flag read-back per request (`BLK-17`).
+
+#### B. Deterministic Fake Backend (`fake` / `FakeServingAdapter`)
+- **Role:** Offline deterministic unit testing, failure injection (timeouts, CUDA OOM, client saturation), and synthetic 6-run campaign testing.
+- **Mandatory Guardrail:** All synthetic runs and artifacts are unmistakably labeled **`DEMO DATA`** and never presented as live GPU evidence.
+
+#### C. Live Nebius Benchmark Backend (`nebius` / `NebiusServingAdapter`)
+- **Provider & Target:** Nebius Token Factory dedicated endpoint serving `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (FP8).
+- **Authentication & Gating:** Requires explicit operator selection (`--adapter nebius`), valid `NEBIUS_API_KEY`, and manual authorization. No automated provisioning, starting, stopping, or deletion of cloud instances.
+- **BLK-17 Gating:** Optimization campaigns halt with `SearchConfigurationError` citing `BLK-17` until dynamic serving-engine flag application and read-back are provisioned.
 
 ### 2.2 Intended Benchmark Budget (Six Controller Runs vs. Operational Runs)
 

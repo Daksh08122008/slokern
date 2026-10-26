@@ -89,13 +89,126 @@ flowchart TD
 - **Subprocess Load Generation:** The load generator runs in an isolated subprocess to guarantee that request scheduling, socket I/O, and microsecond-level timing timestamps are not warped by garbage collection or concurrent UI tasks.
 - **Filesystem Artifact Persistence:** Experiment data is written to structured JSON/JSONL files on disk (`artifacts/experiments/<experiment_id>/`). No external database is required for the MVP, ensuring maximum inspectability and zero deployment friction.
 
-### Current Implementation Boundary and Proposed Deployment Profile
+### 2.1 Canonical Dual-Backend Architecture & Three Execution Backends
 
-The architecture above describes intended boundaries; it is not evidence that all lifecycle stages are implemented. Current runtime integration is an OpenAI-compatible HTTP/SSE adapter. `NebiusServingAdapter.apply_config()` evaluates candidate settings against locally declared capabilities and updates its local configuration object; it does not launch/restart a vLLM process or read effective server flags from the provider. `BLK-17` remains active.
+Per **DEC-0014**, SLOKern locks in three distinct execution backends that share an identical deterministic core pipeline. Backend selection occurs strictly at the serving adapter boundary (`src/slokern/engine/serving/`), preventing pipeline duplication:
 
-The accepted model-family candidate is Nemotron-3-Nano-30B-A3B FP8 (exact checkpoint/revision and provider identifier pending). The current proposal is a Nebius Serverless AI custom container on H100 using vLLM 0.12.0, with a Docker GPU VM fallback. This remains unratified and unverified; see [DEC-0013](decision-log.md#dec-0013-reconcile-the-controlled-deployment-and-search-profile-open). The prior 9B VM memo is an alternative study, not a change to ADR 0001-B.
+```mermaid
+flowchart TD
+    subgraph SharedPipeline ["Deterministic Shared Pipeline"]
+        SpecVal["Specification & Budget Validator
+(Pydantic v2 Invariants)"]
+        LoadGen["Subprocess Load Generator
+(Arrival Models / JSONL Timestamps)"]
+        MetricsEng["Metrics Engine
+(Percentiles & Aggregations)"]
+        Evaluator["Feasibility Evaluator
+(Deterministic Hard SLO Rules)"]
+        SearchCtrl["Search Controller & Ranker
+(2x2 Grid / Objective Selection)"]
+        Verifier["Verification Runner
+(Fresh Run ID Protocol)"]
+        Reporter["Report Artifact Generator
+(Immutable JSON & Markdown)"]
+    end
 
-The proposed `(max_num_seqs, max_num_batched_tokens)` centre baseline `(128, 8192)` and four corners `{64,256} × {2048,16384}` are distinct from the current source grid `{16,64} × {1024,2048}`. Keep these profiles explicitly separate until the owner ratifies an implementation change. Restart/recreate requirements, Serverless argument forwarding, effective-setting read-back, image/model compatibility, and H100 availability require a physical preflight.
+    subgraph Factory ["Serving Adapter Boundary (factory.py)"]
+        AdapterFactory["create_serving_adapter()
+1. CLI --adapter
+2. SLOKERN_ADAPTER env
+3. Default: local
+(Zero Silent Fallback)"]
+    end
+
+    subgraph Backends ["Three Execution Backends"]
+        LocalBackend["Local Development Backend (local)
+• Ollama on Loopback (http://127.0.0.1:11434)
+• Locked Model: qwen3:4b-instruct-2507-q4_K_M
+• Native API: /api/tags & /api/chat
+• Local observations; no cloud key required"]
+        FakeBackend["Deterministic Fake Backend (fake)
+• Standalone simulator for CI & unit tests
+• Simulates streaming, latency scaling, errors
+• Persistently labeled: DEMO DATA"]
+        NebiusBackend["Live Nebius Benchmark Backend (nebius)
+• Nebius Token Factory Dedicated Endpoint
+• Target: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B FP8
+• Live execution; explicit credentials & opt-in"]
+    end
+
+    SharedPipeline --> AdapterFactory
+    AdapterFactory -->|--adapter local| LocalBackend
+    AdapterFactory -->|--adapter fake| FakeBackend
+    AdapterFactory -->|--adapter nebius| NebiusBackend
+```
+
+#### A. Local Development Backend (`local`)
+- **Backend Identifier:** `local`
+- **Runtime:** Native Ollama instance running locally on loopback (`http://127.0.0.1:11434`).
+- **Exact Model Target:** `qwen3:4b-instruct-2507-q4_K_M`.
+- **Native Ollama API Endpoints:** `/api/tags` (model tag and readiness inspection) and `/api/chat` (streaming token generation).
+- **Core Purpose:** Local developer velocity, integration testing, response streaming parsing, client error handling, report artifact generation, single-run execution, and compatible verification testing.
+- **Zero Cloud Footprint:** Requires zero Nebius API keys, zero cloud compute spend, and zero live external network requests.
+- **No Automatic Downloads:** Prohibits silent background model downloads during ordinary test or benchmark execution; requires model pre-existence on the local Ollama instance.
+- **Explicit Local Provenance:** Measurements are real physical observations of the local host system and are explicitly recorded with host environment metadata. They are never represented as NVIDIA H100 or Nebius measurements.
+- **Search Limitation:** Local mode does not claim to validate the 2x2 serving-engine optimization matrix.
+
+#### B. Deterministic Fake Backend (`fake`)
+- **Backend Identifier:** `fake`
+- **Implementation:** `FakeServingAdapter` (`src/slokern/engine/serving/fake.py`).
+- **Core Purpose:** Deterministic unit tests, failure injection (request timeouts, CUDA OOM simulation, client saturation), reproducible integration tests, and synthetic end-to-end campaign testing.
+- **Persistent Labeling:** All synthetic outputs, measurements, and generated report artifacts are unmistakably labeled **`DEMO DATA`**.
+- **Evidence Integrity:** Fake results must never be represented as real inference measurements or live benchmark evidence.
+
+#### C. Live Nebius Benchmark Backend (`nebius`)
+- **Backend Identifier:** `nebius`
+- **Provider & Target:** Nebius Token Factory dedicated endpoint serving `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (FP8).
+- **Endpoint Configuration:** Uses verified endpoint routing and model identifiers from repository configuration. Identifiers are never invented.
+- **Explicit Gating:** Requires explicit operator selection (`--adapter nebius`), valid credentials (`NEBIUS_API_KEY`), endpoint readiness checks, and manual authorization for live execution.
+- **No Automatic Cloud Lifecycle:** SLOKern does not provision, start, stop, or delete cloud instances automatically.
+- **Physical Evidence:** Live benchmark results are based strictly on actual physical execution and preserved unaggregated JSONL traces.
+
+#### D. Shared Core Pipeline
+Backend selection is isolated strictly at the serving adapter boundary. The following components are shared across all execution backends without duplication:
+1. **Configuration & Specification Validation:** Pydantic v2 schemas (`WorkloadSpec`, `SLOSpec`, `ExperimentSpec`) with `extra='forbid'`.
+2. **Serving Adapter Boundary:** `BaseServingAdapter` interface and `create_serving_adapter()` factory.
+3. **Single-Run Execution:** `SingleRunExecutor` orchestrating setup, warm-up, measurement window, and drain.
+4. **Workload Generation & Recording:** Subprocess-isolated load generator (`LoadgenRunner`) writing unaggregated `RawRequestMeasurement` event streams to JSONL.
+5. **Metrics Derivation:** Pure deterministic `MetricsEngine` computing linear-interpolated percentiles (p50, p90, p95, p99), throughput, and error rates.
+6. **Hard-SLO Feasibility Evaluation:** Deterministic rule engine (`FeasibilityEvaluator`) returning `FEASIBLE`, `INFEASIBLE`, or `INCONCLUSIVE` with explicit reason codes.
+7. **Candidate Search & Deterministic Ranking:** 2x2 bounded search controller and ranker selecting the lowest-cost feasible candidate.
+8. **Independent Decision Verification:** Verification runner executing fresh run ID reruns and auditing metric drift.
+9. **Report Generation & Artifact Persistence:** `ReportBuilder` generating canonical `ReportArtifact` JSON and self-contained Markdown reports.
+
+### 2.2 Backend Selection Precedence & Security Isolation
+
+#### Selection Precedence
+Adapter resolution follows a strict three-tier precedence with zero silent fallback:
+1. Explicit CLI argument: `--adapter <local|nebius|fake>`.
+2. Environment variable: `SLOKERN_ADAPTER`.
+3. Default: `"local"`.
+
+If the requested backend cannot be initialized (e.g. `nebius` selected without `NEBIUS_API_KEY`, or `local` selected with Ollama unreachable), execution halts immediately with `ConfigurationError`. Silent fallback to another backend is strictly forbidden.
+
+#### Security Boundary & Credential Isolation
+1. **Loopback Enforcement:** `OllamaServingAdapter` defaults to loopback addresses (`127.0.0.1` / `::1`). Remote URLs require explicit opt-in via `allow_remote=True`.
+2. **Redirect Prohibition:** Unconditionally rejects HTTP 3xx redirects to prevent loopback pivoting and SSRF attacks (`StrictLoopbackRedirectHandler`).
+3. **Credential Rejection in URLs:** Rejects embedded userinfo in URLs (`user:pass@host`).
+4. **Proxy Isolation:** Disables proxy routing for loopback requests to avoid leaking local requests through external HTTP proxies.
+5. **Secret Sanitization:** API keys, Bearer tokens, and secrets are sanitized from all log output, error messages, and persisted artifacts.
+
+### 2.3 Optimization Capability Gating (BLK-17)
+
+The canonical search space is a bounded 2x2 parameter matrix:
+$$\{	ext{max\_num\_batched\_tokens}: [1024, 2048]\} 	imes \{	ext{max\_num\_seqs}: [16, 64]\}$$
+
+Neither Ollama nor the managed Nebius Token Factory endpoint dynamically applies and reads back both serving-engine startup parameters per request. In accordance with SLOKern's evidence standard:
+- `slokern optimize --adapter local` and `slokern optimize --adapter nebius` must reject the search configuration before allocating benchmark runs, raising `SearchConfigurationError` citing `BLK-17`.
+- Candidates whose settings were not actively applied must never be ranked.
+- Relabeling workload controls as serving-engine parameters to bypass `BLK-17` is prohibited.
+- `slokern optimize --adapter fake` exercises the synthetic campaign with explicit `DEMO DATA` labeling.
+- Local and Nebius modes support smoke-test probes (`slokern smoke-test`) and single-run executions under fixed configurations.
+- Independent verification (`slokern verify`) requires compatible backend and configuration invariants.
 
 ---
 
