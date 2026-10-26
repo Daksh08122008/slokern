@@ -6,7 +6,7 @@
 > **Sole Technical Owner & Integration Authority:** Rajdeep  
 > **Execution Model:** Strict Solo Execution (Sole Owner: Rajdeep)  
 > **Submission Deadline:** October 30, 2026, 10:00 AM PDT (10:30 PM IST / 17:00:00 UTC)  
-> **Last Verified:** 2026-10-24 16:15:00 UTC (Sprint Day 5 / Active Milestone: Phase C: Search & Feasibility Optimization)
+> **Last Verified:** 2026-10-27 00:30:00 IST (Sprint Day 7 / Active Milestone: Phase D: Local Ollama Verification & Pipeline Execution)
 
 ---
 
@@ -27,7 +27,14 @@
    - Nebius Serving Adapter (`NebiusServingAdapter`) with OpenAI-compatible urllib transport, SSE streaming, and secret sanitization (`TASK-09`, `BLK-04` offline skip fallback).
    - 2×2 Bounded Grid Search Controller with canonical candidate hashing, 6-run budget limiter (`validate_budget` + `BudgetLimiter`), and strict ranking engine (`TASK-10`, closing `BLK-15` and `BLK-16`).
    - Numeric type canonicalization in candidate hashing (`BLK-11`).
-   - Independent verification contract test suite passing 16/16 tests (`tests/contract/test_verification_independence.py`).
+   - Independent verification engine (`protocol.py`, `compare.py`) and contract test suite passing 16/16 tests (`TASK-11`, closing `BLK-08`).
+   - Report generator (`report_builder.py`) serializing immutable Markdown and JSON artifacts (`TASK-12`, closing `BLK-09`).
+   - Unified terminal CLI runner (`slokern smoke-test`, `run`, `verify`, `optimize`, `report`) (`TASK-13`).
+   - Native Local Ollama Adapter (`OllamaServingAdapter`) targeting `qwen3:4b-instruct-2507-q4_K_M` with loopback security, no-redirect enforcement, and monotonic timing (`TASK-19`).
+   - Serving Adapter Factory (`create_serving_adapter`) with 3-tier precedence (`--adapter` > `SLOKERN_ADAPTER` > `"local"`) and preflight capability gating (`BLK-17`) preventing unverified parameter search (`TASK-20`).
+   - Dual-backend architecture alignment locked in under DEC-0014 across 11 canonical documentation files.
+   - Host environment inspection: Ollama v0.40.11 and physical presence of `qwen3:4b-instruct-2507-q4_K_M` manifest verified on disk.
+   - Local Ollama pipeline testing prerequisites and 8-stage verification plan defined in `local_ollama_pipeline_prerequisites_plan.md`.
 2. **What was verified?**
    - Current comprehensive audit collected **448 tests**. The complete repository test suite achieved **435 passed, 13 skipped in 15.91s** (0 failures).
    - Contract test suite passed **141/141 tests** 100% (`tests/contract/`), including 6 new tests in `test_fixtures_validate.py` and 16 tests in `test_verification_independence.py`.
@@ -36,29 +43,34 @@
    - CLI commands passed **26/26 tests** (`tests/unit/cli/`).
    - End-to-end offline search campaign (`exp-audit-offline-campaign`) executed 5 search runs + 1 independent verification run (`run-verify-97fea4c4`), producing verified `search_result.json`, `verification_record.json`, and Markdown report; all raw JSONL traces were independently recomputed with 100% metric match.
    - 1 live integration test cleanly skipped because `NEBIUS_API_KEY` was unset (`BLK-04` offline limitation).
+   - Codebase knowledge graph fully indexed into `codebase-memory-mcp` (7,315 nodes, 22,561 edges).
    - `compileall`, `pip check`, and `scripts/gen_contracts.py --check` passed cleanly; all 11 JSON schemas are current.
 3. **What is incomplete?**
-   - Live Nebius cloud verification with authenticated API credentials (`BLK-04` / `BLK-17`, fallback to offline `FakeServingAdapter` labeled **`DEMO DATA`**).
+   - Host Ollama daemon startup on port 11434 (`ollama serve`).
+   - Local workload fixture (`fixtures/workloads/local_qwen3_chat.json`) and benchmark spec (`experiments/configs/local_qwen3_benchmark.json`).
+   - Live local Ollama pipeline execution: preflight smoke probe (`slokern smoke-test --adapter local`), single-run trace capture, and independent verification rerun (`slokern verify`).
+   - Live Nebius cloud verification with authenticated API credentials (`BLK-04` / `BLK-17` / `TASK-21`).
    - Packaging, CI workflows (mypy/ruff/security scanning, `BLK-13`), and submission release bundle (`TASK-16`).
    - Control plane REST/SSE API (`TASK-17`) is formally deferred to post-hackathon; Frontend Command Center (`TASK-18`) UI is delivered in `frontend/src/App.tsx` operating with persistent **`DEMO DATA`** fixtures.
 4. **What is blocking the next task?**
-   - `BLK-04` / `BLK-17`: Live endpoint preflight requiring live GPU / Nebius credentials (offline simulation with `FakeServingAdapter` labeled **`DEMO DATA`** is fully operational).
-   - `BLK-08` (`compare.py`) and `BLK-09` (`report_builder.py`) are RESOLVED and verified.
+   - Starting host Ollama background daemon on `127.0.0.1:11434` outside sandbox.
+   - `BLK-04` / `BLK-17`: Live endpoint preflight requiring live GPU / Nebius credentials and verified dynamic serving parameters.
 5. **What should the next coding-agent run do?**
-   - Execute Day 6–7 engineering tasks: Hardening CI workflow (`BLK-13`), packaging verification (`pip install -e .`), and preparing demo walkthrough rehearsal.
+   - Once host Ollama is started, create local chat workload fixture, run `slokern smoke-test --adapter local`, execute single-run pipeline, independent verification rerun, and generate the final experiment report.
 
 ### 1.1 Sprint Snapshot & Milestone Window
-- **Current Milestone:** **Phase C: Search & Feasibility Optimization** (Window: October 23–25, 2026; TASK-10 completed offline on `DEMO DATA`, TASK-11 ready).
+- **Current Milestone:** **Phase D: Local Ollama Verification & Pipeline Execution** (Window: October 26–27, 2026; Day 7 of 10, ~88 hrs remaining).
 - **Execution Model:** Strict Solo Execution (Sole Owner: Rajdeep).
 - **Current Critical-Path Tasks:**
-   - [`TASK-09`](#task-09--implement-nebius-serving-adapter-and-execute-live-smoke-test): Nebius Serving Adapter & Live Smoke Probe (`src/slokern/engine/serving/nebius.py`) [**`DONE / OFFLINE FALLBACK (BLK-04)`**].
-   - [`TASK-10`](#task-10--implement-22-bounded-search-controller-and-history-store): 2×2 Bounded Search Controller & Budget Limiter (`src/slokern/core/search/`) [**`DONE`**].
-   - [`TASK-11`](#task-11--implement-independent-verification-engine): Independent Verification Engine (`src/slokern/core/verification/`) [**`DONE / VERIFIED`**].
+   - [`TASK-19`](#task-19--implement-native-local-ollama-adapter-phase-2): Native Local Ollama Adapter (`src/slokern/engine/serving/ollama.py`) [**`DONE / VERIFIED`**].
+   - [`TASK-20`](#task-20--implement-serving-adapter-factory--cli-precedence-wiring-phase-3): Serving Adapter Factory & Precedence Wiring (`src/slokern/engine/serving/factory.py`) [**`DONE / VERIFIED`**].
+   - [`TASK-21`](#task-21--live-benchmark-readiness-review-phase-6): Live Benchmark Readiness Review (`src/slokern/engine/serving/nebius.py`) [**`PLANNED / BLOCKED (BLK-04, BLK-17)`**].
+   - Local Pipeline Execution: Preflight Smoke -> Single Run -> Verification Rerun -> Report Artifact [**`READY (Awaiting host Ollama daemon)`**].
 
 ### 1.2 Immediate Next 1–3 Actions
-1. **Action 1 (Rajdeep — TASK-11):** Implement metric drift calculation in `compare.py` and orchestrate the independent verification rerun under fresh `verification_run_id`.
-2. **Action 2 (Rajdeep — TASK-15 Automated Suite):** Run automated independent verification contract tests in 	ests/contract/test_verification_independence.py (16 passed tests).
-3. **Action 3 (Rajdeep — TASK-12):** Implement `report_builder.py` compiling `ReportArtifact` JSON and inspectable `report.md`.
+1. **Action 1 (Rajdeep):** Start host Ollama background daemon on `127.0.0.1:11434` (`ollama serve`) and verify `qwen3:4b-instruct-2507-q4_K_M` via `/api/tags`.
+2. **Action 2 (Rajdeep):** Execute `slokern smoke-test --adapter local` to verify endpoint connectivity, response latency parsing, and environment fingerprinting.
+3. **Action 3 (Rajdeep):** Execute single-run benchmark with `qwen3:4b-instruct-2507-q4_K_M`, capture unaggregated JSONL traces, evaluate feasibility, and perform independent verification rerun (`slokern verify`).
 
 ### 1.3 Active Blockers & Responsible Owners
 | Blocker ID | Priority | Summary | Accountable Owner | Direct Remediation Action | Status / Closing Validation |
@@ -357,16 +369,20 @@ This day-by-day plan governs all development leading up to the submission deadli
 - **Dependencies & Fallback:** If live verification fails due to network jitter, record `VERIFICATION_FAILED` honestly; do not fudge numbers or suppress the run.
 - **Completion Evidence:** `VerificationRecord` emitted with status `VERIFIED` or `VERIFICATION_FAILED`; fresh verification `.jsonl` trace saved to disk.
 
-### Day 7: Tuesday, October 27, 2026 — Phase D: Immutable Report Generator & Minimal CLI Runner
-- **Intended Outcome:** Self-contained Markdown report generator published; terminal CLI runner operational (`slokern verify`, `slokern optimize`, `slokern smoke-test`).
+### Day 7: Tuesday, October 27, 2026 — Phase D: Immutable Report Generator, CLI Runner & Local Ollama Pipeline
+- **Intended Outcome:** Self-contained Markdown report generator published; terminal CLI runner operational (`slokern verify`, `slokern optimize`, `slokern smoke-test`); local Ollama adapter verified and pipeline preflight completed.
 - **Ordered Actions:**
-  - [ ] **Action 7.1 (Rajdeep):** Execute `TASK-12`: Implement `report_builder.py` in `src/slokern/engine/reporting/` compiling specs, candidate comparisons, verification records, and limitations into Markdown.
-  - [ ] **Action 7.2 (Rajdeep):** Add secret redaction filter asserting zero API keys, tokens, or private endpoint URLs in generated reports.
-  - [ ] **Action 7.3 (Rajdeep):** Execute `TASK-13`: Implement minimal CLI in `src/slokern/cli/main.py` using standard library `argparse`.
-  - [ ] **Action 7.4 (Rajdeep):** Review generated report artifact for honest disclosure of measurement limitations, client overhead, and cost accounting mode.
-- **Accountable Owner:** Rajdeep (Implementation & Report Disclosures Review).
-- **Dependencies & Fallback:** If CLI command parsing has edge cases, keep subcommands minimal: `smoke-test`, `optimize`, `verify`, `report`.
-- **Completion Evidence:** `slokern --help` exits code 0; `ReportArtifact` JSON and `report.md` generated cleanly and pass schema validation.
+  - [x] **Action 7.1 (Rajdeep):** Execute `TASK-12`: Implemented `report_builder.py` in `src/slokern/engine/reporting/` compiling specs, candidate comparisons, verification records, and limitations into Markdown (closing `BLK-09`).
+  - [x] **Action 7.2 (Rajdeep):** Added secret redaction filter asserting zero API keys, tokens, or private endpoint URLs in generated reports.
+  - [x] **Action 7.3 (Rajdeep):** Execute `TASK-13`: Implemented minimal CLI in `src/slokern/cli/main.py` using standard library `argparse` (`smoke-test`, `run`, `verify`, `optimize`, `report`).
+  - [x] **Action 7.4 (Rajdeep):** Review generated report artifact for honest disclosure of measurement limitations, client overhead, and cost accounting mode.
+  - [x] **Action 7.5 (Rajdeep):** Execute `TASK-19` & `TASK-20`: Implemented `OllamaServingAdapter` with loopback security, monotonic timing, and factory precedence wiring under `DEC-0014`.
+  - [x] **Action 7.6 (Rajdeep):** Host environment audit: verified Ollama v0.40.11 and local model `qwen3:4b-instruct-2507-q4_K_M` manifest on disk; published 8-stage verification plan in `local_ollama_pipeline_prerequisites_plan.md`.
+  - [ ] **Action 7.7 (Rajdeep):** Activate host daemon (`ollama serve`) and execute preflight smoke check (`slokern smoke-test --adapter local`).
+  - [ ] **Action 7.8 (Rajdeep):** Execute end-to-end single run and verification rerun against local Ollama model.
+- **Accountable Owner:** Rajdeep (Implementation, Verification & Report Review).
+- **Dependencies & Fallback:** Host daemon runs on loopback `127.0.0.1:11434`. If Ollama is not active, `smoke-test` fails fast with `EndpointUnavailableError`.
+- **Completion Evidence:** `slokern --help` exits code 0; `ReportArtifact` JSON and `report.md` generated cleanly; local Ollama preflight smoke test passes with valid latency and server metadata.
 
 ### Day 8: Wednesday, October 28, 2026 — Phase E: Automated Audit Verification, Regression Hardening & Feature Freeze (Owner: Rajdeep)
 - **Intended Outcome:** Full test suite execution across all modules; automated audit test suites verified; code freeze declared; zero unhandled regressions.
@@ -895,6 +911,27 @@ Every evening during active sprint execution (Oct 21–30):
 ```
 
 ### 10.3 Recorded Daily Engineering Updates
+
+#### Daily Engineering Update — 2026-10-27 (Sprint Day 7)
+- **Active Milestone:** Phase D: Local Ollama Verification & Pipeline Execution (Day 7 of 10, ~88 hrs remaining)
+- **Completed Work & Deliverables:**
+  - `TASK-19` / `SUB-05`: Implemented native `OllamaServingAdapter` (`src/slokern/engine/serving/ollama.py`) with strict loopback validation, SSRF redirect rejection, monotonic client timing, and server eval metadata parsing.
+  - `TASK-20` / `SUB-05` / `SUB-11`: Implemented `create_serving_adapter()` factory (`src/slokern/engine/serving/factory.py`) with 3-tier precedence (`--adapter` > `SLOKERN_ADAPTER` > `"local"`), and wired preflight capability gating (`BLK-17`) in `grid.py` and CLI commands.
+  - `DEC-0014`: Dual-backend architecture recorded in `docs/decision-log.md` with 13 non-negotiable invariants, locking in `qwen3:4b-instruct-2507-q4_K_M` on loopback and gating unverified search parameter allocation.
+  - Host Environment Audit: Discovered and verified local Ollama installation (v0.40.11) and physical existence of `qwen3:4b-instruct-2507-q4_K_M` manifest in `.ollama/models`.
+  - Prerequisite & Verification Plan: Formulated comprehensive 8-stage verification plan in `local_ollama_pipeline_prerequisites_plan.md` detailing host daemon activation, preflight probe, single-run execution, independent verification, and report generation.
+- **Validation Evidence:**
+  - Unit & Contract tests: 448 collected, 435 passed, 13 skipped in 15.91s (`pytest`).
+  - Serving Adapter tests: `tests/unit/engine/serving/` passes 100% offline.
+  - Codebase Knowledge Graph: Successfully indexed into `codebase-memory-mcp` (7,315 nodes, 22,561 edges).
+- **Active Blockers & Decisions Needed:**
+  - Host Daemon Activation: Ollama background server (`127.0.0.1:11434`) must be started outside sandbox via `ollama serve`.
+  - `BLK-17`: Serving engine dynamic parameter controls (`max_num_batched_tokens`, `max_num_seqs`) are unsupported on Ollama and unverified on Nebius; capability gating properly enforced.
+  - `BLK-04`: Nebius credentials unset (offline simulation uses `FakeServingAdapter` labeled `DEMO DATA`).
+- **Next Day Priorities (Top 3):**
+  1. Priority 1: Start host Ollama background daemon on `127.0.0.1:11434` and run `slokern smoke-test --adapter local`.
+  2. Priority 2: Execute single-run pipeline and independent verification rerun against local Ollama model.
+  3. Priority 3: Hardening CI workflow (`BLK-13`) with ruff, mypy, and secret scanning ahead of feature freeze.
 
 #### Daily Engineering Update — 2026-10-23 (Sprint Day 5)
 - **Active Milestone:** Phase C: Search & Feasibility Optimization (Day 5 of 10, ~161.5 hrs remaining)
