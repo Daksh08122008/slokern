@@ -1,4 +1,4 @@
 """
 Purpose: Declared pricing assumptions and their source.
-Owner: Rohan
+Owner: Rajdeep (Historical design: Rohan)
 """

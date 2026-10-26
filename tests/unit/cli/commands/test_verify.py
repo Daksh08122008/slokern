@@ -1,6 +1,6 @@
 """
 Purpose: Unit tests for verify CLI command.
-Owner: Rajdeep & Daksh
+Owner: Rajdeep (Historical design: Daksh)
 """
 
 from unittest.mock import MagicMock, patch

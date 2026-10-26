@@ -1,6 +1,6 @@
 """
 Purpose: Contract and boundary tests for decision correctness and verification independence.
-Owner: Daksh (Decision Verification Audit)
+Owner: Rajdeep (Historical design: Daksh)
 Authority: docs/decision-policy.md, docs/ownership.md, AGENTS.md Section 5 & 13
 
 This test suite independently audits:

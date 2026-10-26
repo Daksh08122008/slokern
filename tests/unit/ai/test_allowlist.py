@@ -1,4 +1,4 @@
 """
 Purpose: Unit tests for ai/allowlist.
-Owner: Aman
+Owner: Rajdeep (Historical design: Aman)
 """

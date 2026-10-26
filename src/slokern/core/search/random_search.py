@@ -1,4 +1,4 @@
 """
 Purpose: Seeded random search strategy.
-Owner: Rohan
+Owner: Rajdeep (Historical design: Rohan)
 """

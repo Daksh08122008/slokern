@@ -1,6 +1,6 @@
 """
 Purpose: Canonical derived metrics contract with explicit units and load-generator health indicators.
-Owner: Adriraj (Benchmarking) & Rajdeep (Architecture)
+Owner: Rajdeep (Historical design: Adriraj)
 Authority: Aligned with docs/metrics.md and docs/architecture.md Section 4
 """
 

@@ -1,6 +1,6 @@
 """
 Purpose: Independent verification protocol runner executing fresh rerun and drift audit.
-Owner: Rajdeep (Architecture & Implementation); Decision Verification Audit: Daksh (active Oct 24)
+Owner: Rajdeep (Historical design: Daksh)
 Authority: Aligned with AGENTS.md Section 5, 7 and DEC-0014
 """
 

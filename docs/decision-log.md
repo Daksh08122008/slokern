@@ -139,15 +139,16 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 
 ---
 
-### DEC-0007: Benchmarking Owner Alignment (Adriraj)
+### DEC-0007: Benchmarking Owner Alignment (Historical: Adriraj)
 - **Date:** 2026-10-17
 - **Question:** Confirming the owner of the benchmarking and load generation workstream across documentation and codebases.
-- **Decision:** Adriraj is the designated and sole owner of the Benchmarking workstream (`src/slokern/engine/loadgen/`, `src/slokern/core/metrics/`, `docs/experiment-methodology.md`, `docs/metrics.md`).
-- **Reason:** Full alignment across `AGENTS.md`, `README.md`, `ROADMAP.md`, code docstrings, and documentation.
-- **Owner:** Rajdeep
+- **Decision:** Adriraj was designated as the early owner of the Benchmarking exploration (`src/slokern/engine/loadgen/`, `src/slokern/core/metrics/`, `docs/experiment-methodology.md`, `docs/metrics.md`).
+- **Reason:** Full alignment across `AGENTS.md`, `README.md`, `ROADMAP.md`, code docstrings, and documentation during Phase 1.
+- **Owner:** Rajdeep (Sole Implementation Owner; Historical design: Adriraj)
 - **Affected Contracts/Components:** All documentation files, tests, and core metric modules.
 - **Evidence:** Completed repository-wide owner reconciliation.
 - **Trade-offs:** None.
+- **Addendum (2026-10-26):** Superseded by DEC-0015. Under the Strict Solo-Development and Solo-Execution Model, active implementation, maintenance, and verification of the benchmarking pipeline and metrics engine are solely owned by Rajdeep. Adriraj's historical design contributions remain acknowledged.
 
 ---
 
@@ -232,7 +233,8 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 - **Affected Contracts/Components:** `ROADMAP.md`, `README.md`, `AGENTS.md`, `docs/ownership.md`, `docs/mvp-checklist.md`, `docs/integration-checklist.md`, `docs/architecture.md`
 - **Evidence:** Documented daily deliverables and acceptance criteria in `ROADMAP.md` covering every date from October 19 through October 30.
 - **Trade-offs:** Requires Rajdeep to package sample schemas and records for Adriraj by Oct 21, and stable contracts/fixtures for Daksh by Oct 23.
-- **Revisit Condition:** None; locked through final submission on October 30, 2026.
+- **Addendum (2026-10-26):** Superseded by DEC-0015. All active collaborator workstreams previously defined under DEC-0012 (Adriraj for benchmark integrity, Daksh for decision verification) have been consolidated under Rajdeep as sole technical, implementation, and verification owner. Measurement credibility and decision correctness are enforced through automated contract regression suites (`tests/contract/test_fixtures_validate.py` and `tests/contract/test_verification_independence.py`).
+- **Revisit Condition:** Locked through transition to strict solo execution (DEC-0015).
 
 ### DEC-0013: Reconcile the Controlled Deployment and Search Profile (OPEN)
 - **Date:** 2026-10-23
@@ -275,6 +277,26 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 - **Revisit Condition:** When a dedicated containerized runtime supporting dynamic flag read-back is deployed.
 
 ---
+
+---
+
+### DEC-0015: Consolidation into Strict Solo-Development & Solo-Execution Model
+- **Date:** 2026-10-26
+- **Question:** How should project governance, engineering ownership, and verification workflows be structured following the conclusion of early design explorations and collaborator audit windows?
+- **Options Considered:**
+  1. Maintain the hybrid solo-core execution model with pending collaborator audit deliverables and manual sign-off gates.
+  2. Transition to a strict solo-development and solo-execution model with Rajdeep as the sole accountable owner across all 13 subsystems, converting manual collaborator audits into automated, repeatable contract test suites.
+- **Decision:** Option 2. Adopt the Strict Solo-Development and Solo-Execution Model across the entire repository.
+- **Reason:**
+  1. Complete operational clarity: Eliminates all multi-person review bottlenecks, ambiguous handoffs, and external schedule dependencies.
+  2. Test-driven verification rigor: Absorbs benchmark integrity and decision correctness auditing into automated, reproducible regression test suites (`tests/contract/test_fixtures_validate.py` and `tests/contract/test_verification_independence.py`) that run deterministically in CI.
+  3. Delivery safety: Focuses 100% of available engineering effort under Rajdeep onto the critical-path MVP verification pipeline before the October 30 deadline.
+  4. Historical integrity: Preserves the historical record of early contributions from Aman, Rohan, Adriraj, and Daksh without assigning active tasks to them.
+- **Owner:** Rajdeep (Sole Technical & Implementation Owner)
+- **Affected Contracts/Components:** `docs/ownership.md`, `AGENTS.md`, `README.md`, `ROADMAP.md`, `docs/implementation-status.md`, `docs/integration-checklist.md`, `docs/architecture.md`, `.github/CODEOWNERS`
+- **Evidence:** 371 deterministic tests passing in 2 seconds; 16/16 contract tests passing in `tests/contract/test_verification_independence.py`; clean repository hygiene.
+- **Trade-offs:** 100% concentration of execution effort on Rajdeep, mitigated by formal post-hackathon deferral of secondary features (FastAPI control plane, React UI live integration).
+- **Revisit Condition:** Locked through hackathon submission on October 30, 2026.
 
 ## 3. Pending Decisions to Finalize
 

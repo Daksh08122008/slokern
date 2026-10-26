@@ -82,7 +82,7 @@ We establish the following explicit taxonomy to separate architectural abstracti
 
 4. **Runtime-Verified Model & Endpoint:** *Pending Runtime Verification*
    - *Exact Nebius API Identifier:* The exact API string in Nebius Token Factory or container runtime (e.g., `nvidia/Nemotron-3-Nano-30B-A3B` or endpoint-specific identifier) is **pending runtime verification via smoke test**.
-   - *Verification Protocol:* Prior to executing any benchmark run, Aman will execute a single-request live smoke test to confirm endpoint reachability, exact model ID read-back, streaming headers, and initial TTFT. This smoke test is a separate preliminary health check and is **not counted among the six benchmark runs**.
+   - *Verification Protocol:* Prior to executing any benchmark run, a single-request live smoke test will be executed by Rajdeep (historically assigned to Aman) to confirm endpoint reachability, exact model ID read-back, streaming headers, and initial TTFT. This smoke test is a separate preliminary health check and is **not counted among the six benchmark runs**.
    - *Status:* Permitted status is `Selected candidate`, `Planned deployment target`, or `Pending runtime verification`. Claims of `Successfully deployed`, `Verified model access`, or `Benchmark completed` are strictly forbidden until physical execution artifacts exist.
 
 5. **Optional Secondary Comparison Target:** `nvidia/Llama-3.1-Nemotron-70B-Instruct`
@@ -99,7 +99,7 @@ We establish the following explicit taxonomy to separate architectural abstracti
   - *Client/Workload Parameters (e.g., concurrency limit, max output tokens):* Control client traffic generation and request payload limits. **Changing workload parameters does not prove GPU-serving optimization.**
   - *Serving-Engine Parameters (e.g., batch concurrency, GPU memory utilization, max model length, KV-cache precision):* Directly configure the serving runtime and GPU execution on the host.
   - Neither parameter set is confirmed supported until verified by runtime read-back on the live Nebius endpoint.
-- **Architectural Blocker Notice:** If the endpoint interface exposes only client request parameters and lacks serving-engine controls, this constitutes an architectural blocker. Resolving this blocker requires an explicit architecture decision by Rajdeep and Aman (such as deploying containerized vLLM on a dedicated Nebius Compute GPU instance).
+- **Architectural Blocker Notice:** If the endpoint interface exposes only client request parameters and lacks serving-engine controls, this constitutes an architectural blocker. Resolving this blocker requires an explicit architecture decision by Rajdeep (such as deploying containerized vLLM on a dedicated Nebius Compute GPU instance; historical design: Aman).
 
 ### 5.5 Implementation & Verification Status
 - The `Nemotron-3-Nano-30B-A3B` (FP8) deployment is marked `PENDING RUNTIME VERIFICATION` (blocked on live smoke test execution on Nebius).

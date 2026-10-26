@@ -1,6 +1,6 @@
 """
 Purpose: Unit tests for core/verification/compare: drift analysis, epsilon math, and threshold crossovers.
-Owner: Rajdeep & Daksh
+Owner: Rajdeep (Historical design: Daksh)
 Authority: Aligned with AGENTS.md Section 5, 7, 10
 """
 

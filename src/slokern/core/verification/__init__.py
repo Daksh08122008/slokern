@@ -1,6 +1,6 @@
 """
 Purpose: Verification package exports.
-Owner: Rajdeep & Daksh
+Owner: Rajdeep (Historical design: Daksh)
 """
 
 from slokern.core.verification.compare import compare_metrics

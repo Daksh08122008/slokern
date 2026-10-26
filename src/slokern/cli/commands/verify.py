@@ -1,6 +1,6 @@
 """
 Purpose: `slokern verify`: independently rerun and audit the winning candidate under a fresh run ID.
-Owner: Rajdeep & Daksh
+Owner: Rajdeep (Historical design: Daksh)
 Authority: Aligned with AGENTS.md Section 1, 5, 7 and DEC-0014
 """
 

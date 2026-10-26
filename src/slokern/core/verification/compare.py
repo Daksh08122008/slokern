@@ -1,6 +1,6 @@
 """
 Purpose: Compares search evidence with verification evidence, implementing epsilon near-zero math.
-Owner: Rajdeep (Architecture & Implementation); Decision Verification Audit: Daksh (active Oct 24)
+Owner: Rajdeep (Historical design: Daksh)
 Authority: Aligned with AGENTS.md Section 5, 7 and DEC-0014
 """
 

@@ -1,4 +1,4 @@
 """
 Purpose: Evaluator package exports.
-Owner: Daksh
+Owner: Rajdeep (Historical design: Daksh)
 """

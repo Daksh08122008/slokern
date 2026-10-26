@@ -1,4 +1,4 @@
 """
 Purpose: Unit tests for core/search/rank.
-Owner: Rohan
+Owner: Rajdeep (Historical design: Rohan)
 """

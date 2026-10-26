@@ -1,6 +1,6 @@
 """
 Purpose: Unit tests for core/verification/protocol: verification protocol outcomes and error handling.
-Owner: Rajdeep & Daksh
+Owner: Rajdeep (Historical design: Daksh)
 Authority: Aligned with AGENTS.md Section 5, 7, 10
 """
 

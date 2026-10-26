@@ -1,4 +1,4 @@
 """
 Purpose: Allowlist of operations and parameters the AI layer may propose.
-Owner: Aman
+Owner: Rajdeep (Historical design: Aman)
 """

@@ -2,7 +2,7 @@
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Purpose:** Repository-wide instructions for human contributors and coding agents.  
-> **Authority:** Follow this file together with `README.md`, `ROADMAP.md`, and any more-specific `AGENTS.md` files in subdirectories.
+> **Authority:** Follow this file together with README.md, ROADMAP.md, and any more-specific AGENTS.md files in subdirectories.
 
 ## 1. Mission and non-negotiable principles
 
@@ -20,14 +20,14 @@ SLOKern is an SLO-aware LLM inference optimization system. Given a declared work
 
 ## 2. Before making changes
 
-1. Read the relevant sections of `README.md` and `ROADMAP.md`.
+1. Read the relevant sections of README.md and ROADMAP.md.
 2. Inspect the actual repository, existing conventions, dependencies, and test commands before choosing an implementation.
-3. Check for more-specific `AGENTS.md` files and obey the closest applicable instructions.
+3. Check for more-specific AGENTS.md files and obey the closest applicable instructions.
 4. Identify the owning workstream and its contract before changing shared interfaces.
 5. State assumptions explicitly. If a decision materially affects metrics, correctness, security, or reproducibility, document it rather than silently guessing.
 6. Keep changes scoped to the task. Do not introduce a framework, service, abstraction, or dependency without a concrete need.
 
-The layout in `README.md` is a proposed structure, not proof that those directories or modules already exist. Adapt to the repository as it actually stands.
+The layout in README.md is a proposed structure, not proof that those directories or modules already exist. Adapt to the repository as it actually stands.
 
 ## 3. Architecture boundaries
 
@@ -57,7 +57,7 @@ Keep dashboard/API activity out of the measured request-generation path where pr
 - Distinguish **offered load** from **achieved load**; do not imply the target rate was delivered if it was not.
 - Use unique run and verification IDs. A verification run must not be a renamed or copied search result.
 - Record candidate configuration values that were requested and those actually applied. Fail or mark the run invalid when required settings cannot be applied.
-- Make units explicit in code, schemas, UI labels, logs, and reports. Avoid ambiguous fields such as `latency` when a specific metric is meant.
+- Make units explicit in code, schemas, UI labels, logs, and reports. Avoid ambiguous fields such as latency when a specific metric is meant.
 - Version decision policies and metric definitions when changes could alter results.
 - Never silently drop failed requests, warm-up observations, outliers, or invalid samples. Define and document exclusions in the protocol.
 - Keep secrets, tokens, private endpoints, and credentials out of source control, logs, screenshots, fixtures, and reports.
@@ -179,7 +179,7 @@ Never claim tests passed unless they were actually run. Never claim real-GPU per
 
 ## 11. CLI and API behavior
 
-The intended CLI concept includes `slokern verify`; this is not evidence that the command is already implemented.
+The intended CLI concept includes slokern verify; this is not evidence that the command is already implemented.
 
 - Inspect existing CLI structure before adding commands.
 - Provide clear help text, validated arguments, actionable errors, and nonzero exit codes for failures.
@@ -191,7 +191,7 @@ The intended CLI concept includes `slokern verify`; this is not evidence that th
 
 ## 12. Security and operational safety
 
-- Never commit `.env` files, credentials, access tokens, private keys, or secret-bearing logs.
+- Never commit .env files, credentials, access tokens, private keys, or secret-bearing logs.
 - Use environment variables or the approved secret store; provide safe example configuration with placeholders.
 - Validate external inputs and avoid shell interpolation of untrusted values.
 - Apply request, runtime, retry, concurrency, and experiment-budget limits.
@@ -202,63 +202,41 @@ The intended CLI concept includes `slokern verify`; this is not evidence that th
 
 ## 13. Engineering ownership and execution model
 
-Starting October 19, 2026, SLOKern operates under a **single technical owner with bounded contributions from two collaborators** (a hybrid solo-core model):
+Starting October 26, 2026, SLOKern operates under a **Strict Solo-Development and Solo-Execution Model**:
 
-- **Rajdeep:** Sole technical owner, architecture authority, critical-path implementer, integrator, and final submission owner.
-- **Adriraj:** Benchmark integrity and measurement credibility, with active execution beginning **October 21, 2026**.
-- **Daksh:** Independent correctness verification, with active execution beginning **October 24, 2026**.
+- **Rajdeep:** Sole technical owner, sole implementation owner, sole testing and verification owner, sole benchmarking and measurement owner, sole architecture and decision authority, sole integration and release authority, and sole documentation and hackathon submission owner.
+- **Execution Model:** Independent solo execution, with no active collaborator workstreams.
 
-Former contributors (Aman on serving, Rohan on search) contributed early design work in Phase 1 (Oct 13–17, 2026). They are not participating in current execution, and no ongoing tasks are assigned to them. Neither Daksh nor Adriraj is available for substantive execution before their respective start dates. Rajdeep remains capable of executing the complete minimum viable product without waiting for either collaborator.
+Former contributors (Aman on serving, Rohan on search, Adriraj on benchmarking exploration, Daksh on boundary test exploration) contributed early design work in Phase 1 and Phase 2. They are not participating in current execution, and no ongoing tasks, gates, reviews, or deliverables are assigned to them. Rajdeep independently executes and verifies the complete minimum viable product.
 
 ### Subsystem Ownership Matrix
 
-| Area | Accountable Owner | Active Window | Scope and Responsibilities |
+| Area | Accountable Owner | Status | Scope and Responsibilities |
 |---|---|---|---|
-| **Architecture & Technical Direction** | **Rajdeep** | Full sprint | Scope boundaries, modular monolith design, system contracts (`src/slokern/contracts/`), and adherence to non-negotiable principles. |
-| **Optimizer & Candidate Selection** | **Rajdeep** | Full sprint | Bounded search space definition (2×2 matrix), canonical candidate hashing, search controller (`src/slokern/core/search/`), deterministic ranking logic, and selection rationale. |
-| **Serving Integration & Runtime** | **Rajdeep** | Full sprint | Serving runtime setup (vLLM / Nebius Cloud), serving adapter (`src/slokern/engine/serving/`), parameter read-back, preflight smoke testing, and environment fingerprinting. |
-| **Benchmark Pipeline & Loadgen** | **Rajdeep** | Full sprint | Workload fixtures, arrival models, subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture (`RawRequestMeasurement`), and metric engine (`src/slokern/core/metrics/`). |
-| **Verification & Evaluator Policy** | **Rajdeep** | Full sprint | Deterministic feasibility evaluator (`src/slokern/core/evaluator/`), reason code taxonomy, independent verification runner (`src/slokern/core/verification/`), and evidence audits. |
-| **CI, API & End-to-End Validation** | **Rajdeep** | Full sprint | FastAPI control plane (`src/slokern/api/`), CLI (`src/slokern/cli/`), contract testing, integration tests, and secret redaction. |
-| **Documentation, Demo & Submission** | **Rajdeep** | Full sprint | Living documentation, report generator (`src/slokern/engine/reporting/`), demo script, presentation rehearsal, and official hackathon submission package. |
-| **Benchmark Integrity & Credibility** | **Adriraj** | **Oct 21–30** | Benchmark schema validation, required metadata checks, missing/inconsistent record detection, offered-vs-achieved load audits, comparison summaries, failed-run test fixtures, measurement limitations documentation. |
-| **Independent Decision Verification** | **Daksh** | **Oct 24–30** | Independent verification test suite, hard SLO violation tests, feasibility boundary tests, missing/invalid measurement handling, failed experiment tests, candidate selection verification under documented objective semantics, reproducible defect reports. |
+| **Architecture & Technical Direction** | **Rajdeep** | ACTIVE (SOLO) | Scope boundaries, modular monolith design, system contracts (`src/slokern/contracts/`), and adherence to non-negotiable principles. |
+| **Optimizer & Candidate Selection** | **Rajdeep** | ACTIVE (SOLO) | Bounded search space definition (2×2 matrix), canonical candidate hashing, search controller (`src/slokern/core/search/`), deterministic ranking logic, and selection rationale. |
+| **Serving Integration & Runtime** | **Rajdeep** | ACTIVE (SOLO) | Serving runtime setup (vLLM / Nebius Cloud / Ollama local), serving adapters (`src/slokern/engine/serving/`), parameter read-back, preflight smoke testing, and environment fingerprinting. |
+| **Benchmark Pipeline & Loadgen** | **Rajdeep** | ACTIVE (SOLO) | Workload fixtures, arrival models, subprocess load generator (`src/slokern/engine/loadgen/`), raw event capture (`RawRequestMeasurement`), and metric engine (`src/slokern/core/metrics/`). |
+| **Verification & Evaluator Policy** | **Rajdeep** | ACTIVE (SOLO) | Deterministic feasibility evaluator (`src/slokern/core/evaluator/`), reason code taxonomy, independent verification runner (`src/slokern/core/verification/`), and automated decision verification test suites (`tests/contract/test_verification_independence.py`). |
+| **CI, API & End-to-End Validation** | **Rajdeep** | ACTIVE (SOLO) | FastAPI control plane (deferred), CLI (`src/slokern/cli/`), contract testing, integration tests, and secret redaction. |
+| **Documentation, Demo & Submission** | **Rajdeep** | ACTIVE (SOLO) | Living documentation, report generator (`src/slokern/engine/reporting/`), demo script, presentation rehearsal, and official hackathon submission package. |
+| **Benchmark Integrity & Credibility** | **Rajdeep** | ACTIVE (SOLO) | Automated benchmark schema validation, required metadata checks, missing/inconsistent record detection, offered-vs-achieved load audits, comparison summaries, and automated test fixtures (`tests/contract/test_fixtures_validate.py`). |
+| **Independent Decision Verification** | **Rajdeep** | ACTIVE (SOLO) | Automated independent verification test suite, hard SLO violation tests, feasibility boundary tests, missing/invalid measurement handling, failed experiment tests, and candidate selection verification. |
 
-### Shared Ownership & Integration Rules
+### Solo Execution & Verification Invariants
 
-1. **Single Accountable Owner:** Every subsystem has exactly one directly accountable owner.
-2. **Architecture Authority:** Rajdeep is the final integration, architecture, and submission authority.
-3. **Credibility & Correctness:** Adriraj owns measurement credibility; Daksh owns decision correctness. Neither collaborator owns architecture or final release.
-4. **Daksh's Scope Isolation & Permission Boundaries:**
-   - **Role:** Independent Decision Correctness and Verdict Audit Engineer (adversarial audit, not production implementation).
-   - **Exclusive Responsibilities:** (1) Decision correctness, (2) Verification independence, (3) Verdict audit.
-   - **Permitted Routine Edit Allowlist:** Daksh is permitted to modify ONLY `tests/contract/test_verification_independence.py` (and approved audit reports under `artifacts/audits/` or `docs/audits/` when explicitly authorized).
-   - **Forbidden Implementation Surfaces:** Daksh must NOT directly modify:
-     - `src/slokern/contracts/**`
-     - `src/slokern/engine/**` (serving, loadgen, runner, reporting)
-     - `src/slokern/core/evaluator/**`
-     - `src/slokern/core/verification/**`
-     - `src/slokern/core/search/**` (optimizer)
-     - `src/slokern/core/metrics/**`
-     - `scripts/gen_contracts.py` or contract-generation tools
-     - `pyproject.toml`
-     - `.github/workflows/**`
-     - `frontend/**`
-     - `AGENTS.md`, `docs/architecture.md`, `docs/decision-policy.md`, `docs/ownership.md`, or general roadmap architecture/dependency definitions
-     - Any other collaborator's assigned subsystem
-   - **No Parallel Architectures:** Daksh must never introduce root-level prototype packages (e.g. `evaluator/`, `verification/`), parallel data models, or alternate verification runners.
-   - **Defect Escalation Procedure:** Production defects discovered by Daksh must be reported to Rajdeep via documented issue or pull request proposing a minimal fix, never pushed directly to production implementation files.
-   - **Review Gate:** Daksh's PRs must contain only allowlisted files, must pass CI, and require mandatory review from `@dev-paulrajdeep`.
-5. **Contract Discipline:** Shared interfaces (`src/slokern/contracts/`) are altered only with Rajdeep's explicit approval. Collaborators document schema gaps or ambiguities rather than unilaterally changing shared data models.
-6. **Autonomous Critical Path:** Critical-path functionality must remain executable without pending collaborator contributions.
-7. **Physical Evidence Standard:** All technical claims must be grounded in physical artifacts (unaggregated JSONL traces, environment fingerprints); no mock success or simulated benchmarks may be presented as live evidence.
-8. **Daily Delivery Alignment:** Follow `ROADMAP.md` for daily engineering objectives, deliverables, acceptance criteria, and fallbacks leading to the October 30, 2026, 10:00 AM PDT (10:30 PM IST) submission deadline. For the complete operational model, see `docs/ownership.md`.
+1. **Sole Accountable Owner:** Every subsystem is directly owned and implemented by Rajdeep.
+2. **Autonomous Critical Path:** Critical-path functionality is fully executable and verifiable without external dependencies or human handoffs.
+3. **Automated Verification:** Measurement credibility and decision correctness are enforced through automated tests (`tests/contract/test_fixtures_validate.py` and `tests/contract/test_verification_independence.py`), deterministic evaluator rules, and reproducible physical traces.
+4. **Contract Discipline:** Shared interfaces (`src/slokern/contracts/`) are strictly maintained with Pydantic v2 schemas and committed JSON schemas.
+5. **Physical Evidence Standard:** All technical claims must be grounded in physical artifacts (unaggregated JSONL traces, environment fingerprints); no mock success or simulated benchmarks may be presented as live evidence.
+6. **Daily Delivery Alignment:** Follow `ROADMAP.md` for daily engineering objectives, deliverables, acceptance criteria, and fallbacks leading to the October 30, 2026, 10:00 AM PDT (10:30 PM IST) submission deadline. For the complete operational model, see `docs/ownership.md`.
 
 ## 14. Documentation and experiment artifacts
 
 Update documentation when behavior, contracts, metrics, policy, setup, or workflow changes.
 
-Relevant docs may include `README.md`, `ROADMAP.md`, architecture notes, experiment methodology, metric definitions, decision policy, deployment instructions, and demo script. Do not create every proposed document unless it is useful to the implementation.
+Relevant docs may include README.md, ROADMAP.md, architecture notes, experiment methodology, metric definitions, decision policy, deployment instructions, and demo script. Do not create every proposed document unless it is useful to the implementation.
 
 Each completed experiment should retain enough metadata to interpret or reproduce it, including:
 
@@ -298,7 +276,7 @@ Coding agents working in this repository must adhere to the following protocol:
 1. **Inspect Before Implementation:** Inspect existing code, schemas, and interfaces before proposing or writing code. Do not assume or extrapolate APIs without reading source files.
 2. **Work on Bounded Tasks:** Focus on explicit, bounded tasks with defined acceptance criteria. Avoid sprawling, multi-component refactors.
 3. **Prefer Minimal, Reversible Changes:** Write the smallest coherent change that accomplishes the task. Preserve established architecture boundaries and subsystem contracts.
-4. **Preserve Established Contracts:** Never alter Pydantic models in `src/slokern/contracts/` or existing enum values without an explicit requirement and synchronized updates across all consumers.
+4. **Preserve Established Contracts:** Never alter Pydantic models in src/slokern/contracts/ or existing enum values without an explicit requirement and synchronized updates across all consumers.
 5. **Add or Update Tests:** When authorized to implement or modify code, add or update corresponding unit or contract tests.
 6. **Run Validation & Report Honestly:** Execute the narrowest relevant checks first, followed by broader checks where tools exist. Distinguish between passed, failed, skipped, not run, or blocked by environment. Never claim checks passed if they were not run or failed.
 7. **Disclose Uncertainty & Blockers:** Identify uncertainty, missing dependencies, or missing hardware credentials immediately instead of inventing synthetic solutions or masking gaps.
@@ -312,11 +290,11 @@ If a required dependency or environment is unavailable, implement only what can 
 When instructions conflict, use this order:
 
 1. System, platform, and security requirements.
-2. More-specific `AGENTS.md` instructions in the relevant directory.
-3. This repository-wide `AGENTS.md`.
+2. More-specific AGENTS.md instructions in the relevant directory.
+3. This repository-wide AGENTS.md.
 4. Current, agreed architecture/contracts and decision-policy documentation.
-5. `ROADMAP.md` for execution sequencing and ownership.
-6. `README.md` for the public-facing overview.
+5. ROADMAP.md for execution sequencing and ownership.
+6. README.md for the public-facing overview.
 7. Local conventions and reasonable engineering judgment.
 
 If a conflict changes correctness, measurement validity, cost, or scope, raise it and document the decision rather than silently choosing a convenient interpretation.
@@ -335,13 +313,13 @@ This rule is non-negotiable and applies across all run outcomes:
 
 Before concluding an execution turn, the agent must perform the following ten reconciliation steps in sequence:
 
-1. **Inspect final Git state:** Run `git status --short --branch --untracked-files=all` and `git diff --check`. Inspect all modified and untracked files.
-2. **Identify affected task IDs:** Map changes to exact roadmap tasks (`TASK-xx`) and blockers (`BLK-xx`).
-3. **Record files and implementation reality:** Detail added, modified, deleted, or investigated files along with actual implementation state (`ABSENT`, `PARTIAL`, `IMPLEMENTED`).
+1. **Inspect final Git state:** Run git status --short --branch --untracked-files=all and git diff --check. Inspect all modified and untracked files.
+2. **Identify affected task IDs:** Map changes to exact roadmap tasks (TASK-xx) and blockers (BLK-xx).
+3. **Record files and implementation reality:** Detail added, modified, deleted, or investigated files along with actual implementation state (ABSENT, PARTIAL, IMPLEMENTED).
 4. **Record actual test execution:** Capture exact commands executed and actual outcomes.
-5. **Distinguish status outcomes accurately:** Differentiate `PASS`, `FAIL`, `BLOCKED`, `NOT RUN`, and `PARTIAL`. Never assume unrun checks pass.
-6. **Update `ROADMAP.md`:** Update task progress records, executive summary tables, blocker states, and next actions backed by verified evidence.
-7. **Update `docs/implementation-status.md`:** Reconcile subsystem reality, resolve or register blockers, or update implementation ratings whenever changes warrant.
+5. **Distinguish status outcomes accurately:** Differentiate PASS, FAIL, BLOCKED, NOT RUN, and PARTIAL. Never assume unrun checks pass.
+6. **Update ROADMAP.md:** Update task progress records, executive summary tables, blocker states, and next actions backed by verified evidence.
+7. **Update docs/implementation-status.md:** Reconcile subsystem reality, resolve or register blockers, or update implementation ratings whenever changes warrant.
 8. **Justify status transitions:** Promote task status, validation levels, or exit criteria only when justified by current physical evidence.
 9. **Record unresolved risks and blockers:** Explicitly state known defects, environment blockers, contract ambiguities, and risks.
 10. **Emit standardized handoff summary:** Conclude the final response using the mandatory run handoff schema in Section 19.
@@ -350,25 +328,25 @@ Before concluding an execution turn, the agent must perform the following ten re
 
 - **Code existence is not completion:** A task is not complete merely because files or functions were written. It is complete only when its documented Definition of Done is fully satisfied.
 - **Tests must be executed:** A test is not passing unless it was actually executed and its output verified in the current environment during the run.
-- **Distinguish implementation from validation:** A component may be `IMPLEMENTED` while its validation level remains `NONE`, `STATIC`, `UNIT`, `INTEGRATION`, or `LIVE`.
+- **Distinguish implementation from validation:** A component may be IMPLEMENTED while its validation level remains NONE, STATIC, UNIT, INTEGRATION, or LIVE.
 - **Validation hierarchy:**
-  - `STATIC`: compilation (`compileall`), linters (`ruff`), schema checks.
-  - `UNIT`: isolated unit tests (`pytest tests/unit`).
-  - `INTEGRATION`: multi-component tests (e.g., `FakeServingAdapter` pipeline).
-  - `LIVE`: verified against external live infrastructure (e.g., Nebius Cloud GPU).
+  - STATIC: compilation (compileall), linters (ruff), schema checks.
+  - UNIT: isolated unit tests (pytest tests/unit).
+  - INTEGRATION: multi-component tests (e.g., FakeServingAdapter pipeline).
+  - LIVE: verified against external live infrastructure (e.g., Nebius Cloud GPU).
 - **Task-specific acceptance required:** A general test suite pass does not substitute for task-specific acceptance tests and edge-case verification.
-- **Unrun tests are `NOT RUN`:** Never infer or report that a test passed if it was skipped or omitted.
-- **Persistent defect visibility:** Failing tests or broken invariants must remain visible as blockers (`BLK-xx`) until physically resolved or ratified as documented limitations.
+- **Unrun tests are NOT RUN:** Never infer or report that a test passed if it was skipped or omitted.
+- **Persistent defect visibility:** Failing tests or broken invariants must remain visible as blockers (BLK-xx) until physically resolved or ratified as documented limitations.
 - **Never fabricate evidence:** Never fabricate commit IDs, test counts, benchmark measurements, hardware fingerprints, or environment credentials.
 - **Preserve evidence history:** Do not erase historical audit trails; update them with new verified timestamps and commits.
-- **Persistent `DEMO DATA` labeling:** All synthetic fixtures, simulated latencies, and offline fake adapters must remain conspicuously labeled **`DEMO DATA`** and never reported as live benchmark measurements.
+- **Persistent DEMO DATA labeling:** All synthetic fixtures, simulated latencies, and offline fake adapters must remain conspicuously labeled **DEMO DATA** and never reported as live benchmark measurements.
 
 ### 18.3 Scope & Git Safety Rules
 
 - **Preserve unrelated work:** Never alter, overwrite, or discard unrelated user modifications or untracked files.
-- **No destructive Git commands:** Do not run `git reset --hard`, `git clean -fd`, `git checkout -- .`, `git stash`, or similar destructive commands without explicit user instruction.
-- **No unauthorized commits/pushes:** Do not run `git commit` or `git push` unless explicitly instructed by the user or required by the approved task scope.
-- **Truth in working tree status:** Never claim a clean working tree unless `git status --short` returns zero modified or untracked files.
+- **No destructive Git commands:** Do not run git reset --hard, git clean -fd, git checkout -- ., git stash, or similar destructive commands without explicit user instruction.
+- **No unauthorized commits/pushes:** Do not run git commit or git push unless explicitly instructed by the user or required by the approved task scope.
+- **Truth in working tree status:** Never claim a clean working tree unless git status --short returns zero modified or untracked files.
 - **Minimal, bounded edits:** Keep documentation and code edits strictly scoped to the assigned task.
 
 ### 18.4 Failure & Interruption Protocol
@@ -378,7 +356,7 @@ If an agent run is interrupted, encounters unexpected errors, or fails to comple
 - Record exactly what was completed.
 - Record what was attempted and remains incomplete.
 - Document the exact failure, error traceback, or blocker preventing progress.
-- Explicitly state which validation checks were run and which were `NOT RUN`.
+- Explicitly state which validation checks were run and which were NOT RUN.
 - Disclose whether the repository was left in a partial, inconsistent, or broken state.
 - State the single most effective next action to resume or recover work.
 - Never conceal partial or failed work to present a false impression of success.
@@ -389,7 +367,7 @@ If an agent run is interrupted, encounters unexpected errors, or fails to comple
 
 Every agent response concluding an execution block must conclude with a structured handoff formatted under the following schema:
 
-```markdown
+markdown
 ### Run summary
 - **Objective & Tasks:** [Primary goal and roadmap task IDs addressed (e.g. TASK-06)]
 - **Run Outcome:** [COMPLETED | PARTIAL | BLOCKED | NO CHANGE]
@@ -416,4 +394,4 @@ Every agent response concluding an execution block must conclude with a structur
 
 ### Next action
 - **Immediate Next Step:** [One specific, actionable next task with Task ID, target files, and primary deliverable]
-```
+

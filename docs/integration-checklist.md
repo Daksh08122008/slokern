@@ -3,7 +3,7 @@
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Status:** Active Operational Guide  
 > **Sole Technical Owner & Integration Authority:** Rajdeep  
-> **Collaborator Workstreams:** Adriraj (Benchmark Integrity, active Oct 21), Daksh (Decision Verification, active Oct 24)  
+> **Execution Model:** Strict Solo Execution (Sole Owner: Rajdeep)  
 > **Authority:** Aligned with [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [docs/ownership.md](ownership.md)
 
 > **Guide status:** This is an acceptance checklist, not proof that its CLI commands or live controls currently exist. `slokern smoke-test/optimize/verify`, provider preflight artifacts, vLLM flag application/read-back, and independent verification must be treated as planned until implemented and executed. Current gaps are tracked in TASK-09–TASK-11 and BLK-04/08/15/16/17.
@@ -32,7 +32,7 @@ Log progress, test output, and remaining risks in the project records:
 #### Daily Progress Log Template
 ```text
 Date: YYYY-MM-DD
-Contributor: [ Rajdeep | Adriraj | Daksh ]
+Contributor: Rajdeep (Solo Execution)
 Phase: [ Phase A | Phase B | Phase C | Phase D | Phase E | Phase F ]
 Status: [ TODO | IN PROGRESS | BLOCKED | DONE ]
 
@@ -71,7 +71,7 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
 ```text
 [1. Serving Smoke Test (Rajdeep)]
          ↓
-[2. Valid Single-Run Measurements (Rajdeep) & Integrity Audit (Adriraj, Oct 21)]
+[2. Valid Single-Run Measurements (Rajdeep) & Automated Integrity Audit]
          ↓
 [3. Deterministic Evaluator (Rajdeep)]
          ↓
@@ -81,7 +81,7 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
          ↓
 [6. Feasible Candidate Selection (Rajdeep)]
          ↓
-[7. Independent Verification (Rajdeep) & Decision Audit (Daksh, Oct 24)]
+[7. Independent Verification (Rajdeep) & Automated Decision Verification]
          ↓
 [8. Dashboard & Report Integration (Rajdeep)]
          ↓
@@ -93,7 +93,7 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
 - [x] **Step 1: Serving Adapter & Preflight Infrastructure (Rajdeep):**
   - `FakeServingAdapter` implemented in `src/slokern/engine/serving/fake.py` generating deterministic synthetic runs labeled **`DEMO DATA`**.
   - `NebiusServingAdapter` implemented in `src/slokern/engine/serving/nebius.py` with OpenAI-compatible HTTP client and health probe; live endpoint verification pending credentials (`BLK-04`, `BLK-17`).
-- [x] **Step 2: Single-Run Measurement & Load Generation (Rajdeep; Adriraj audit from Oct 21):**
+- [x] **Step 2: Single-Run Measurement & Load Generation (Rajdeep; automated integrity audit):**
   - Subprocess load generator `LoadGeneratorRunner` (`runner.py`) dispatches Poisson and constant arrivals.
   - `RawRequestMeasurement` records written to JSONL with client-side timestamps.
   - Metrics engine (`src/slokern/core/metrics/`) computes TTFT/ITL percentiles, throughput, error rate, and offered vs achieved load.
@@ -112,11 +112,11 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
 - [x] **Step 6: Deterministic Candidate Selection (Rajdeep):**
   - Implemented in `src/slokern/core/search/rank.py` (`CandidateRanker`).
   - Filters strictly on `FEASIBLE` candidates with deterministic candidate-ID tie-breaking.
-- [ ] **Step 7: Independent Verification (Rajdeep) & Decision Verification Audit (Daksh, from Oct 24):**
+- [ ] **Step 7: Independent Verification & Automated Decision Verification (Rajdeep):**
   - Pydantic contract `VerificationRecord` locked and round-trip tested.
   - Verification runner in `src/slokern/core/verification/` ready for Phase C implementation (`TASK-11`).
   - Confirms unique `verification_run_id`, re-evaluates candidate, and computes metric drift ($\Delta M$).
-  - Daksh audits decision correctness and verification independence.
+  - Automated contract test suite (`test_verification_independence.py`) asserts decision correctness and verification independence.
 - [ ] **Step 8: Dashboard & Report Integration (Rajdeep):**
   - Standalone React + Vite command center delivered in PR #2 (`frontend/src/App.tsx`, 2553 lines, `DESIGN.md`, labeled **`DEMO DATA`**).
   - Report artifact generator (`src/slokern/engine/reporting/report_builder.py`) pending implementation.
