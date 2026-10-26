@@ -634,10 +634,12 @@ export default function App() {
     return records;
   }, [demoRunCreated, builder.workload, builder.model, evidenceStale, winner, verificationState]);
 
-  const visibleExperiments = experimentRecords.filter(record =>
-    `${record.id} ${record.run} ${record.work} ${record.model}`.toLowerCase().includes(search.toLowerCase()) &&
-    (statusFilter === 'All statuses' || (statusFilter === 'Needs review' ? record.state === 'Needs review' : record.state === statusFilter))
-  );
+  const visibleExperiments = useMemo(() => {
+    return experimentRecords.filter(record =>
+      `${record.id} ${record.run} ${record.work} ${record.model}`.toLowerCase().includes(search.toLowerCase()) &&
+      (statusFilter === 'All statuses' || (statusFilter === 'Needs review' ? record.state === 'Needs review' : record.state === statusFilter))
+    );
+  }, [experimentRecords, search, statusFilter]);
 
   const navigate = (next: Page) => { setPage(next); setShowReview(false); };
   const notify = (message: string) => setToast(message);
