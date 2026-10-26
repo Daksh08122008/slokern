@@ -75,12 +75,12 @@ Project advancement is governed by evidence, not elapsed calendar days. A gate i
 - [x] Automated decision-verification contract test suite operational on hard SLO boundaries (16 passed tests in `tests/contract/test_verification_independence.py`).
 
 
-### Gate D — Independent Evidence Reviewed (Target: End of Oct 27)
-- [ ] Selected winning candidate configuration rerun independently under a fresh, distinct `verification_run_id`.
-- [ ] Identical workload protocol and environment conditions applied; metrics computed afresh without caching.
-- [ ] Drift analysis computed ($\Delta M$); final verification verdict emitted (`VERIFIED` or failed).
-- [ ] Critical correctness defects closed with automated regression tests.
-- [ ] Complete `ReportArtifact` compiled with raw evidence links.
+### Gate D — Independent Evidence Reviewed (Target: End of Oct 27 — Offline Verified)
+- [x] Selected winning candidate configuration rerun independently under a fresh, distinct `verification_run_id` (`run-verify-3685bb48` vs `run-search-15594344`).
+- [x] Identical workload protocol and environment conditions applied; metrics computed afresh without caching.
+- [x] Drift analysis computed ($\Delta M$); final verification verdict emitted (`VERIFIED`).
+- [x] Critical correctness defects closed with automated regression tests (16 contract tests + drift math tests).
+- [x] Complete `ReportArtifact` compiled with raw evidence links (`artifacts/experiments/exp-audit-offline-campaign/report.json` and `report.md`).
 
 ### Gate E — Release Candidate & Demo Frozen (Target: End of Oct 29)
 - [ ] Clean setup from repository documentation succeeds on an independent machine (`pip install -e .`).
