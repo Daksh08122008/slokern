@@ -1,6 +1,23 @@
 {
   "_meta": {
     "purpose": "Valid evidence that passes every hard constraint.",
-    "owner": "Rajdeep"
+    "owner": "Rajdeep",
+    "label": "DEMO DATA",
+    "provenance": "synthetic-fixture"
+  },
+  "measurement": {
+    "request_id": "req-evidence-pass-001",
+    "run_id": "run-evidence-pass",
+    "scheduled_at": 1000.0,
+    "sent_at": 1000.002,
+    "first_token_at": 1000.015,
+    "completed_at": 1000.080,
+    "http_status": 200,
+    "input_tokens": 64,
+    "output_tokens": 16,
+    "itl_observations_ms": [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0],
+    "error_type": null,
+    "is_warmup": false,
+    "is_valid": true
   }
 }

@@ -1,6 +1,23 @@
 {
   "_meta": {
     "purpose": "Invalid or contaminated measurement evidence.",
-    "owner": "Rajdeep"
+    "owner": "Rajdeep",
+    "label": "DEMO DATA",
+    "provenance": "synthetic-fixture"
+  },
+  "measurement": {
+    "request_id": "req-evidence-invalid-001",
+    "run_id": "run-evidence-invalid",
+    "scheduled_at": 1000.0,
+    "sent_at": 999.0,
+    "first_token_at": 998.0,
+    "completed_at": 997.0,
+    "http_status": 200,
+    "input_tokens": 64,
+    "output_tokens": 16,
+    "itl_observations_ms": [-5.0],
+    "error_type": null,
+    "is_warmup": false,
+    "is_valid": false
   }
 }

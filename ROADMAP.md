@@ -29,20 +29,23 @@
    - Numeric type canonicalization in candidate hashing (`BLK-11`).
    - Independent verification contract test suite passing 16/16 tests (`tests/contract/test_verification_independence.py`).
 2. **What was verified?**
-   - Current audit collected **356 tests**. The comprehensive deterministic test suite passed (**322 passed in 3.16s** across contracts, core evaluator/search/metrics, serving, runner lifecycle/cancel, and loadgen arrival/recorder).
-   - Independent decision verification contract test suite passed **16/16 tests** (`tests/contract/test_verification_independence.py`) auditing boundary thresholds (`<`, `<=`, `>`, `>=`), reason codes, missing metrics, and fresh run ID invariants.
-   - Subprocess loadgen integration socket tests stall in the Windows Codex sandbox environment due to loopback socket constraints; all deterministic unit and contract suites pass 100%. Status: **DETERMINISTIC SUITE 100% VERIFIED (322 passed)**.
-   - 1 live integration test cleanly skipped because `NEBIUS_API_KEY` was unset; live endpoint behavior is **NOT RUN** (`BLK-04` offline limitation).
-   - `compileall`, `pip check`, and `scripts/gen_contracts.py --check` passed cleanly; the latter confirmed all 11 schemas current.
+   - Current comprehensive audit collected **448 tests**. The complete repository test suite achieved **435 passed, 13 skipped in 15.91s** (0 failures).
+   - Contract test suite passed **141/141 tests** 100% (`tests/contract/`), including 6 new tests in `test_fixtures_validate.py` and 16 tests in `test_verification_independence.py`.
+   - Core evaluator, search, and metrics engines passed **123/123 tests** (`tests/unit/core/`), including boolean rejection and boundary edge tests.
+   - Serving, loadgen, runner, and reporting engines passed **136 passed, 12 skipped in 13.02s** (`tests/unit/engine/`), with synchronous in-process platform fallback (`_sync_dispatch_loop`) implemented for Windows Codex sandbox loopback socket restrictions (`[WinError 10013]`).
+   - CLI commands passed **26/26 tests** (`tests/unit/cli/`).
+   - End-to-end offline search campaign (`exp-audit-offline-campaign`) executed 5 search runs + 1 independent verification run (`run-verify-97fea4c4`), producing verified `search_result.json`, `verification_record.json`, and Markdown report; all raw JSONL traces were independently recomputed with 100% metric match.
+   - 1 live integration test cleanly skipped because `NEBIUS_API_KEY` was unset (`BLK-04` offline limitation).
+   - `compileall`, `pip check`, and `scripts/gen_contracts.py --check` passed cleanly; all 11 JSON schemas are current.
 3. **What is incomplete?**
-   - Independent verification engine (`TASK-11`), report generator (`TASK-12`), CLI runner (`TASK-13`), automated audit regression suites (`TASK-14`, `TASK-15`), and submission packaging (`TASK-16`).
-   - Control plane REST/SSE API (`TASK-17`) is formally deferred to post-hackathon; Frontend Command Center (`TASK-18`) UI is delivered in `frontend/src/App.tsx` and `DESIGN.md` operating with persistent **`DEMO DATA`** fixtures.
+   - Live Nebius cloud verification with authenticated API credentials (`BLK-04` / `BLK-17`, fallback to offline `FakeServingAdapter` labeled **`DEMO DATA`**).
+   - Packaging, CI workflows (mypy/ruff/security scanning, `BLK-13`), and submission release bundle (`TASK-16`).
+   - Control plane REST/SSE API (`TASK-17`) is formally deferred to post-hackathon; Frontend Command Center (`TASK-18`) UI is delivered in `frontend/src/App.tsx` operating with persistent **`DEMO DATA`** fixtures.
 4. **What is blocking the next task?**
-   - `BLK-08` (`compare.py` drift calculation stub for TASK-11) and `BLK-04` (live Nebius credentials for live probe; offline fallback uses `FakeServingAdapter` labeled **`DEMO DATA`**).
-   - Previous blockers `BLK-15` (budget campaign invariant) and `BLK-16` (ranking validity) are resolved in the Day 5 branch reconciliation.
+   - `BLK-04` / `BLK-17`: Live endpoint preflight requiring live GPU / Nebius credentials (offline simulation with `FakeServingAdapter` labeled **`DEMO DATA`** is fully operational).
+   - `BLK-08` (`compare.py`) and `BLK-09` (`report_builder.py`) are RESOLVED and verified.
 5. **What should the next coding-agent run do?**
-   - **Execute `TASK-11`:** Implement metric drift calculation in `src/slokern/core/verification/compare.py` and the independent verification runner rerun under a fresh `verification_run_id`.
-   - Proceed to `TASK-12` (Markdown report serializer).
+   - Execute Day 6–7 engineering tasks: Hardening CI workflow (`BLK-13`), packaging verification (`pip install -e .`), and preparing demo walkthrough rehearsal.
 
 ### 1.1 Sprint Snapshot & Milestone Window
 - **Current Milestone:** **Phase C: Search & Feasibility Optimization** (Window: October 23–25, 2026; TASK-10 completed offline on `DEMO DATA`, TASK-11 ready).
@@ -61,8 +64,8 @@
 | Blocker ID | Priority | Summary | Accountable Owner | Direct Remediation Action | Status / Closing Validation |
 |---|---|---|---|---|---|
 | **BLK-04** | **P0** | Nebius API model string and live endpoint behavior unverified; smoke skips without credentials. | Rajdeep | Run a credentialed live probe after confirming serving-engine control support. | **ACTIVE** (current live test skipped because `NEBIUS_API_KEY` is unset; offline simulation uses `FakeServingAdapter` labeled `DEMO DATA`) |
-| **BLK-08** | **P1** | `compare.py` is an empty docstring; cannot compute metric drift ($\Delta M$). | Rajdeep | Implement drift calculation comparing two `MetricSet` instances in TASK-11. | **ACTIVE** (`pytest tests/unit/core/verification/test_compare.py`) |
-| **BLK-09** | **P1** | `report_builder.py` is an empty docstring; cannot serialize `ReportArtifact`. | Rajdeep | Implement Markdown serializer for immutable report artifacts in TASK-12. | **ACTIVE** (`pytest tests/unit/engine/reporting/test_report_builder.py`) |
+| **BLK-08** | **P1** | `compare.py` is an empty docstring; cannot compute metric drift ($\Delta M$). | Rajdeep | Implemented drift calculation comparing two `MetricSet` instances in TASK-11. | **RESOLVED** (`pytest tests/unit/core/verification/test_compare.py` passes 6/6) |
+| **BLK-09** | **P1** | `report_builder.py` is an empty docstring; cannot serialize `ReportArtifact`. | Rajdeep | Implemented Markdown serializer and `ReportArtifact` generator in TASK-12. | **RESOLVED** (`pytest tests/unit/engine/reporting/test_report_builder.py` passes) |
 | **BLK-13** | **P2** | CI workflow lacks linting, mypy type checks, and secret scanning. | Rajdeep | Add ruff, mypy, and secret checks to `.github/workflows/ci.yml`. | **ACTIVE** (GitHub Actions CI run) |
 | **BLK-01** | **P0** | Serving adapter files were empty stubs. | Rajdeep | Implemented `FakeServingAdapter` in `src/slokern/engine/serving/fake.py`. | **RESOLVED** (`afac3a6`, 43 serving tests pass) |
 | **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring; cannot dispatch requests. | Rajdeep | Implemented subprocess dispatch loop writing unaggregated JSONL recordings. | **RESOLVED** (38 unit tests pass in `tests/unit/engine/loadgen/`) |

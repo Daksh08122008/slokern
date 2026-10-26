@@ -1,6 +1,23 @@
 {
   "_meta": {
-    "purpose": "Valid evidence that fails a hard constraint.",
-    "owner": "Rajdeep"
+    "purpose": "Valid evidence that violates declared hard latency constraints.",
+    "owner": "Rajdeep",
+    "label": "DEMO DATA",
+    "provenance": "synthetic-fixture"
+  },
+  "measurement": {
+    "request_id": "req-evidence-fail-001",
+    "run_id": "run-evidence-fail",
+    "scheduled_at": 1000.0,
+    "sent_at": 1000.005,
+    "first_token_at": 1002.500,
+    "completed_at": 1008.000,
+    "http_status": 200,
+    "input_tokens": 64,
+    "output_tokens": 16,
+    "itl_observations_ms": [350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0],
+    "error_type": null,
+    "is_warmup": false,
+    "is_valid": true
   }
 }

@@ -616,6 +616,28 @@ def test_secret_redaction_in_errors():
     assert "secret-key-99999999" not in sanitized
 
 
+def _can_bind_and_connect_loopback() -> bool:
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+        s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s2.settimeout(0.1)
+        s2.connect(('127.0.0.1', port))
+        s2.close()
+        s.close()
+        return True
+    except OSError:
+        return False
+
+requires_subprocess_socket = pytest.mark.skipif(
+    not _can_bind_and_connect_loopback(),
+    reason='Windows Codex sandbox forbids loopback socket connections ([WinError 10013]), blocking ProactorEventLoop and multiprocessing pipe IPC.',
+)
+
+@requires_subprocess_socket
 def test_subprocess_isolated_run(tmp_path: Path):
     """
     Subprocess-isolated run: tests true multiprocessing dispatch with isolate_process=True.

@@ -353,6 +353,9 @@ class GridSearchController:
                 selection_rationale=rationale,
                 stopping_reason=stopping_reason,
             )
+            search_dir = self.artifacts_root / "experiments" / spec.experiment_id
+            search_dir.mkdir(parents=True, exist_ok=True)
+            (search_dir / "search_result.json").write_text(search_result.model_dump_json(indent=2), encoding="utf-8")
             return GridSearchOutcome(search_result=search_result, run_results=run_results)
         finally:
             timeout.cancel()

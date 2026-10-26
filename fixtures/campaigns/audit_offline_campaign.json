@@ -1,0 +1,56 @@
+{
+  "experiment_id": "exp-audit-offline-campaign",
+  "workload": {
+    "schema_version": "1.0.0",
+    "workload_name": "audit-offline-workload",
+    "fixture_id": "fix-audit-01",
+    "arrival_mode": "constant",
+    "target_offered_rate": 10.0,
+    "concurrency_limit": 16,
+    "warmup_duration_s": 1,
+    "measurement_duration_s": 2,
+    "max_input_tokens": 128,
+    "max_output_tokens": 16
+  },
+  "slo": {
+    "slo_id": "slo-audit-01",
+    "constraints": [
+      {
+        "metric_name": "ttft_ms",
+        "statistic": "p95",
+        "threshold": 2500.0,
+        "unit": "ms",
+        "operator": "<="
+      },
+      {
+        "metric_name": "itl_ms",
+        "statistic": "p50",
+        "threshold": 30.0,
+        "unit": "ms",
+        "operator": "<="
+      },
+      {
+        "metric_name": "error_rate",
+        "statistic": "mean",
+        "threshold": 0.05,
+        "unit": "fraction",
+        "operator": "<="
+      }
+    ],
+    "min_sample_count": 10
+  },
+  "search_space": {
+    "max_num_batched_tokens": [1024, 2048],
+    "max_num_seqs": [16, 64]
+  },
+  "budget": {
+    "max_candidates": 5,
+    "max_wallclock_seconds": 300,
+    "max_cost_limit": null
+  },
+  "verification_policy": {
+    "repetitions": 1,
+    "duration_multiplier": 1.0
+  }
+}
+

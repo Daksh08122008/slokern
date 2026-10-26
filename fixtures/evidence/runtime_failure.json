@@ -1,6 +1,23 @@
 {
   "_meta": {
-    "purpose": "Evidence from a run that failed to execute.",
-    "owner": "Rajdeep"
+    "purpose": "Simulated runtime crash / OOM failure record.",
+    "owner": "Rajdeep",
+    "label": "DEMO DATA",
+    "provenance": "synthetic-fixture"
+  },
+  "measurement": {
+    "request_id": "req-evidence-oom-001",
+    "run_id": "run-evidence-oom",
+    "scheduled_at": 1000.0,
+    "sent_at": 1000.003,
+    "first_token_at": null,
+    "completed_at": 1000.010,
+    "http_status": 500,
+    "input_tokens": 64,
+    "output_tokens": 0,
+    "itl_observations_ms": null,
+    "error_type": "cuda_out_of_memory",
+    "is_warmup": false,
+    "is_valid": false
   }
 }
