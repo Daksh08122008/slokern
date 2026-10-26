@@ -64,9 +64,9 @@
 | Blocker ID | Priority | Summary | Accountable Owner | Direct Remediation Action | Status / Closing Validation |
 |---|---|---|---|---|---|
 | **BLK-04** | **P0** | Nebius API model string and live endpoint behavior unverified; smoke skips without credentials. | Rajdeep | Run a credentialed live probe after confirming serving-engine control support. | **ACTIVE** (current live test skipped because `NEBIUS_API_KEY` is unset; offline simulation uses `FakeServingAdapter` labeled `DEMO DATA`) |
-| **BLK-08** | **P1** | `compare.py` is an empty docstring; cannot compute metric drift ($\Delta M$). | Rajdeep | Implemented drift calculation comparing two `MetricSet` instances in TASK-11. | **RESOLVED** (`pytest tests/unit/core/verification/test_compare.py` passes 6/6) |
-| **BLK-09** | **P1** | `report_builder.py` is an empty docstring; cannot serialize `ReportArtifact`. | Rajdeep | Implemented Markdown serializer and `ReportArtifact` generator in TASK-12. | **RESOLVED** (`pytest tests/unit/engine/reporting/test_report_builder.py` passes) |
-| **BLK-13** | **P2** | CI workflow lacks linting, mypy type checks, and secret scanning. | Rajdeep | Add ruff, mypy, and secret checks to `.github/workflows/ci.yml`. | **ACTIVE** (GitHub Actions CI run) |
+| **BLK-08** | **P1** | `compare.py` & `protocol.py` lacked end-to-end drift calculation. | Rajdeep | Implemented metric drift comparator (+15% latency, -15% throughput, +0.01 error rate) in TASK-11. | **RESOLVED** (`tests/unit/core/verification/` 22/22 passed; commit `ef3d830`) |
+| **BLK-09** | **P1** | `report_builder.py` was an empty docstring; cannot serialize `ReportArtifact`. | Rajdeep | Implemented Markdown serializer and `ReportArtifact` generator in TASK-12. | **RESOLVED** (`tests/unit/engine/reporting/test_report_builder.py` passed) |
+| **BLK-13** | **P2** | CI workflow lacks linting, mypy type checks, and secret scanning. | Rajdeep | Add ruff, mypy, and secret checks to `.github/workflows/ci.yml`. | **ACTIVE** (GitHub Actions CI hardening) |
 | **BLK-01** | **P0** | Serving adapter files were empty stubs. | Rajdeep | Implemented `FakeServingAdapter` in `src/slokern/engine/serving/fake.py`. | **RESOLVED** (`afac3a6`, 43 serving tests pass) |
 | **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring; cannot dispatch requests. | Rajdeep | Implemented subprocess dispatch loop writing unaggregated JSONL recordings. | **RESOLVED** (38 unit tests pass in `tests/unit/engine/loadgen/`) |
 | **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring; cannot calculate percentiles. | Rajdeep | Implemented standard library percentile and throughput calculators. | **RESOLVED** (42 unit tests pass in `tests/unit/core/metrics/`) |
@@ -77,7 +77,7 @@
 | **BLK-12** | **P2** | Contracts accepted unrecognized fields silently. | Rajdeep | Added `ConfigDict(extra='forbid')` to all 11 contracts. | **RESOLVED** (103 roundtrip tests pass) |
 | **BLK-15** | **P0** | `BudgetLimiter` constructor accepts limits that permit six search runs and zero verification runs. | Rajdeep | Enforce preflight `validate_budget` and runtime 6-run campaign invariant (5 search + 1 verification). | **RESOLVED** (`validate_budget` + `BudgetLimiter`, 15 search tests pass) |
 | **BLK-16** | **P1** | Missing objective metrics remain rankable; Mode A can use throughput when monetary cost metadata is absent. | Rajdeep | Reject candidates without valid finite positive numeric objective evidence; tie-break by `candidate_id`. | **RESOLVED** (strict `rank.py`, 11 ranker tests pass) |
-| **BLK-17** | **P0** | Nebius adapter does not apply or read back searched serving-engine settings. | Rajdeep | Resolve endpoint control interface or formally narrow optimization scope. | **ACTIVE** (source audit; live read-back not demonstrated; offline simulation uses `FakeServingAdapter` labeled `DEMO DATA`) |
+| **BLK-17** | **P0** | Serving engine parameter application and read-back unavailable for optimization search space (`{max_num_batched_tokens: [1024, 2048]} × {max_num_seqs: [16, 64]}`). | Rajdeep | Neither Ollama nor managed Token Factory endpoints dynamically apply and verify both process startup flags per request. `slokern optimize` halts with `SearchConfigurationError` on `local` and `nebius` before allocating benchmark runs. Offline campaign runs on `fake` labeled `DEMO DATA`. | **ACTIVE** (DEC-0014 capability gating enforced in `src/slokern/core/search/grid.py` & `src/slokern/cli/commands/optimize.py`) |
 
 ### 1.4 Most Recent Validation Evidence
 - **Test Suite Status:** `.venv\Scripts\python.exe -m pytest --collect-only -q` collected **356 tests**. `.venv\Scripts\python.exe -m pytest tests/contract tests/unit/core tests/unit/engine/serving tests/unit/engine/runner/test_cancel.py tests/unit/engine/runner/test_lifecycle.py tests/unit/engine/loadgen/test_arrival.py tests/unit/engine/loadgen/test_recorder.py` passed **322 tests in 3.16s**.
@@ -256,19 +256,21 @@ Every blocker is bound to an accountable owner, an explicit impact, an unblockin
 | **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring. | Cannot dispatch requests or record raw `RawRequestMeasurement` event traces. | Implement minimal dispatch loop writing unaggregated JSONL recordings. | Rajdeep | **RESOLVED** (38 unit tests pass in `tests/unit/engine/loadgen/`) |
 | **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring. | Cannot calculate `MetricSet` from raw event traces. | Implement standard library percentile and throughput calculators. | Rajdeep | **RESOLVED** (42 unit tests pass in `tests/unit/core/metrics/`) |
 | **BLK-04** | **P0** | `test_smoke_live.py` skips without credentials; exact Nebius API model string unverified. | Cannot run live compliance benchmark on Nebius Cloud. | Execute live preflight probe using `curl` or single-request script with valid API key. | Rajdeep | **ACTIVE** (current test skipped; fallback is FakeServingAdapter with `DEMO DATA`) |
-| **BLK-08** | **P1** | `src/slokern/core/verification/compare.py` is an empty docstring. | Cannot independently verify selected winning candidates or compute drift ($\Delta M$). | Implement deterministic drift calculation and pass/fail evaluation comparing two `MetricSet`s. | Rajdeep | **ACTIVE** (Implement drift calculation; verified by automated contract tests) |
-| **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py` is an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. | Implement Markdown builder serializing `ReportArtifact` into an inspectable document. | Rajdeep | **ACTIVE** (Direct target of TASK-12) |
+| **BLK-08** | **P1** | `src/slokern/core/verification/compare.py` lacked end-to-end drift calculation. | Cannot independently verify selected winning candidates or compute drift ($\Delta M$). | Implemented deterministic drift calculation and pass/fail evaluation in `compare.py` and `protocol.py`. | Rajdeep | **RESOLVED** (commit `ef3d830`, 22 unit tests and 17 contract tests pass) |
+| **BLK-09** | **P1** | `src/slokern/engine/reporting/report_builder.py` was an empty docstring. | Cannot publish immutable `ReportArtifact` for hackathon submission evidence. | Implemented Markdown builder serializing `ReportArtifact` into an inspectable document. | Rajdeep | **RESOLVED** (`tests/unit/engine/reporting/test_report_builder.py` passes) |
 | **BLK-13** | **P2** | `ci.yml` lacks linting, type checks, schema drift, and secret scanning steps. | Code regressions, typing errors, or secret leaks can bypass CI unnoticed. | Add `ruff check`, `mypy --strict src/slokern`, and secret scanning checks to `ci.yml`. | Rajdeep | **ACTIVE** (Target of CI hardening) |
-| **BLK-07** | **P1** | Rajdeep accountable for 9 of 13 subsystems (69% concentration). | Delivery bottleneck on critical path; risk of exhaustion before deadline. | Formally freeze API (`SUB-11`) and Frontend (`SUB-12`) as `DEFERRED`. | Rajdeep | **ACTIVE (CONTROLLED)** (Frozen to CLI + ReportArtifact) |
+| **BLK-07** | **P1** | Rajdeep accountable for all 13 subsystems (100% concentration under DEC-0015). | Potential bottleneck on single engineer. | Formally freeze API (`SUB-11`) and Frontend (`SUB-12`) as `DEFERRED`; absorb collaborator audits into automated contract test suites. | Rajdeep | **RESOLVED / CONTROLLED** (DEC-0015 strict solo model ratified) |
 | **BLK-01** | **P0** | Serving adapter files were empty stubs. | Cannot execute inference requests locally or live. | Implemented `FakeServingAdapter` in `src/slokern/engine/serving/fake.py`. | Rajdeep | **RESOLVED** (`afac3a6`, 43 serving tests pass) |
+| **BLK-02** | **P0** | `src/slokern/engine/loadgen/runner.py` is an empty docstring. | Cannot dispatch requests or record raw `RawRequestMeasurement` event traces. | Implemented minimal dispatch loop writing unaggregated JSONL recordings. | Rajdeep | **RESOLVED** (38 unit tests pass in `tests/unit/engine/loadgen/`) |
+| **BLK-03** | **P0** | `src/slokern/core/metrics/percentiles.py` is an empty docstring. | Cannot calculate `MetricSet` from raw event traces. | Implemented standard library percentile and throughput calculators. | Rajdeep | **RESOLVED** (42 unit tests pass in `tests/unit/core/metrics/`) |
 | **BLK-05** | **P1** | Evaluator routed `float('nan')` to `INFEASIBLE`. | Corrupted evidence misclassified as SLO failure. | Added `math.isnan(obs_val)` check in `evaluate.py`. | Rajdeep | **RESOLVED** (`2453f75`, 29 evaluator tests pass) |
 | **BLK-06** | **P1** | Evaluator accepted negative latencies as `FEASIBLE`. | Impossible negative latency passed without rejection. | Added physical non-negative constraint (`obs_val >= 0`). | Rajdeep | **RESOLVED** (`2453f75`, 29 evaluator tests pass) |
 | **BLK-10** | **P1** | `schemas/` contained only `.gitkeep`. | No emitted JSON Schemas in source control. | Implemented `scripts/gen_contracts.py` exporting 11 `.json` schemas. | Rajdeep | **RESOLVED** (16 schema tests pass) |
 | **BLK-11** | **P2** | Numeric types (`1` vs `1.0`) produced differing hashes. | Inadvertent float/int conversion changed candidate hash identity. | Enforced canonical numeric normalization in `candidate_id.py`. | Rajdeep | **RESOLVED** (`afac3a6`, ranker tests pass) |
 | **BLK-12** | **P2** | Contracts accepted unrecognized fields silently. | Contracts did not reject invalid fields at system boundaries. | Added `model_config = ConfigDict(extra='forbid')` to all 11 contracts. | Rajdeep | **RESOLVED** (103 roundtrip tests pass) |
-| **BLK-15** | **P0** | `BudgetLimiter` constructor accepts configurable limits that allow six search executions and zero verification runs. | A caller can violate the required 1 baseline + 4 candidate + 1 verification allocation. | Enforce the campaign invariant for every accepted configuration and reject invalid limits. | Rajdeep | **ACTIVE** (reproduced with `max_total_runs=6, max_search_runs=6, max_verification_runs=0`) |
-| **BLK-16** | **P1** | Ranking accepts FEASIBLE results with missing objective metrics; Mode A may substitute reciprocal throughput when monetary cost metadata is absent. | A candidate without declared objective evidence can win, or a proxy can be represented as monetary cost. | Reject missing objective values and align fallback with documented cost policy; add focused rank tests. | Rajdeep | **ACTIVE** (reproduced in current audit) |
-| **BLK-17** | **P0** | Nebius `apply_config()` does not transmit or read back searched serving-engine settings. | Search results cannot evidence that declared configurations were applied remotely. | Resolve the endpoint control interface or formally narrow the optimization scope through the architecture decision process. | Rajdeep | **ACTIVE** (source audit; live setting read-back not demonstrated) |
+| **BLK-15** | **P0** | `BudgetLimiter` constructor accepted configurable limits that could violate 6-run campaign invariant. | A caller could violate the required 1 baseline + 4 candidate + 1 verification allocation. | Enforced strict campaign invariant via preflight `validate_budget` in `src/slokern/core/search/grid.py`. | Rajdeep | **RESOLVED** (15 tests pass in `tests/unit/core/search/`) |
+| **BLK-16** | **P1** | Ranking accepted FEASIBLE results with missing objective metrics. | A candidate without declared objective evidence could win. | Enforced strict finite check in `rank.py` and alphanumeric candidate-ID tie-breaking. | Rajdeep | **RESOLVED** (11 tests pass in `tests/unit/core/test_ranker*.py`) |
+| **BLK-17** | **P0** | Serving engine parameter application and read-back unavailable for optimization search space (`{max_num_batched_tokens: [1024, 2048]} × {max_num_seqs: [16, 64]}`). | Search results cannot evidence that declared configurations were applied on Ollama or Nebius Token Factory endpoints. | Halt `slokern optimize` immediately with `SearchConfigurationError (BLK-17)` on `local` and `nebius` before allocating benchmark runs. Offline campaign runs on `fake` labeled `DEMO DATA`. | Rajdeep | **ACTIVE** (Capability preflight gating enforced in `validate_search_capabilities()`; DEC-0014) |
 | **BLK-14** | **P2** | Working tree baseline had uncommitted edits. | Working tree baseline not clean. | Committed baseline modifications on integration branch. | Rajdeep | **RESOLVED** (Clean tree verified on branch) |
 
 ### 6.2 Architectural Decisions Register (DEC-xx)
@@ -280,6 +282,8 @@ Every blocker is bound to an accountable owner, an explicit impact, an unblockin
 | **DEC-04** | Integration branch & baseline hygiene. | **Option A:** Commit baseline documentation updates to integration branch; maintain clean working tree. | Rajdeep | Blocks clean-clone reproducible installation check. |
 | **DEC-05** | Frontend and API scope deferral. | **Option A:** Formally freeze FastAPI and React UI as `DEFERRED`; submit CLI + Markdown `ReportArtifact`. | Rajdeep | Eliminates concentration risk (BLK-07). |
 | **DEC-0013** | Reconcile accepted model family, deployment profile, and bounded search space. | Keep ADR 0001-B's Nemotron-3-Nano-30B-A3B FP8 family as accepted; decide separately whether the proposed Serverless/vLLM 0.12.0 profile and five-point space are ratified. | Rajdeep | Blocks claims that a deployment or search profile is approved, available, or currently applied. |
+| **DEC-0014** | Dual-Backend Architecture (Local Ollama Development & Gated Nebius Benchmark). | Lock in 3 execution backends (`local`, `fake`, `nebius`) sharing identical core pipeline; resolution precedence (`--adapter` > `SLOKERN_ADAPTER` > `"local"`); zero silent fallback; loopback security; monotonic timing; BLK-17 optimization capability gating. | Rajdeep | Enables offline local velocity and independent verification without cloud dependencies; prevents fraudulent optimization claims. |
+| **DEC-0015** | Consolidation into Strict Solo-Development & Solo-Execution Model. | Transition repository governance to strict solo execution under Rajdeep across all 13 subsystems; absorb manual collaborator audits into automated regression test suites. | Rajdeep | Eliminates multi-person review bottlenecks, ambiguous handoffs, and external schedule dependencies. |
 
 ---
 
@@ -655,24 +659,24 @@ This day-by-day plan governs all development leading up to the submission deadli
 
 ---
 
-### TASK-11 — Implement Independent Verification Engine
-- **Owner:** Rajdeep (CONFIRMED) · **Subsystem:** `SUB-09` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `READY / CRITICAL PATH` (by BLK-08) · **Validation Level:** `CONTRACT`
+### TASK-11 — Implement Independent Verification Engine (Phase 4)
+- **Owner:** Rajdeep (CONFIRMED) • **Subsystem:** `SUB-09` • **Priority:** P0 (DEMO-CRITICAL) • **Status:** `DONE / VERIFIED` • **Validation Level:** `UNIT & CONTRACT`
 - **Objective:** Orchestrate fresh verification rerun under new run ID, compute metric drift ($\Delta M$), and render `VERIFIED` verdict.
 - **Needs:** `TASK-10`, `BLK-08`.
 - **Boundary & Isolation:** Confined to `src/slokern/core/verification/` and `tests/unit/core/verification/`. Verification run must use a fresh run ID; cannot copy or alias search evidence.
-- **Deliverables:** `src/slokern/core/verification/protocol.py`, `compare.py`, and automated drift comparison logic.
+- **Deliverables:** `src/slokern/core/verification/protocol.py`, `compare.py`, and automated drift comparison logic (+15% latency, -15% throughput, +0.01 error rate).
 - **Definition of Done:**
   1. Re-executes the winning candidate configuration under a fresh, distinct `verification_run_id` (Run 6).
   2. Recomputes derived metrics from scratch using raw verification trace evidence.
-  3. Evaluates metric drift ($\Delta \text{TTFT}$, $\Delta \text{Throughput}$) between search and verification runs against an explicitly approved threshold (`compare.py`, `BLK-08`).
+  3. Evaluates metric drift ($\Delta 	ext{TTFT}$, $\Delta 	ext{Throughput}$, $\Delta 	ext{ErrorRate}$) against explicit thresholds (`compare.py`, resolving `BLK-08`).
   4. Emits canonical `VerificationRecord` with definitive enum: `VERIFIED`, `VERIFICATION_FAILED`, or `VERIFICATION_INCONCLUSIVE`.
-- **Verify:** `pytest tests/contract/test_verification_independence.py` passes (16 passed in 0.38s).
-- **Completion Evidence:** 16 independent verification contract tests passing in `tests/contract/test_verification_independence.py` auditing fresh run ID invariants, drift failure detection, and hard constraint boundary safety. Critical-path implementation deliverable for Day 6 (`compare.py` drift calculation).
+- **Verify:** `pytest tests/unit/core/verification/ tests/contract/test_verification_independence.py` passes (22 unit tests + 17 contract tests passing).
+- **Completion Evidence:** Commit `ef3d830` implemented drift comparator and campaign rerun integration; formal closure of `BLK-08`.
 
 ---
 
-### TASK-12 — Implement Report Artifact Generator and Markdown Publisher
-- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-10` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by TASK-11, BLK-09) · **Validation Level:** `UNIT`
+### TASK-12 — Implement Report Artifact Generator and Markdown Publisher (Phase 4)
+- **Owner:** Rajdeep (CONFIRMED) • **Subsystem:** `SUB-10` • **Priority:** P0 (DEMO-CRITICAL) • **Status:** `DONE / VERIFIED` • **Validation Level:** `UNIT`
 - **Objective:** Serialize complete optimization history, fingerprints, drift, and verdict into an immutable Markdown and JSON report.
 - **Needs:** `TASK-11`, `BLK-09`.
 - **Boundary & Isolation:** Confined to `src/slokern/engine/reporting/` and `tests/unit/engine/reporting/`. Output report must redact all secrets, API tokens, and private URLs.
@@ -682,24 +686,76 @@ This day-by-day plan governs all development leading up to the submission deadli
   2. Emits valid `ReportArtifact` JSON and self-contained human-readable `report.md`.
   3. Discloses all declared limitations, measurement bounds, and cost accounting mode (Mode A vs Mode B).
   4. Automated secret scanner asserts zero API keys, tokens, or private endpoint URLs in generated output.
-- **Verify:** `pytest tests/unit/engine/reporting/` passes; generated report validates against `ReportArtifact` schema.
-- **Completion Evidence:** Self-contained report artifact is published and passes schema validation and secret audit.
+- **Verify:** `pytest tests/unit/engine/reporting/` passes; generated report validates against `ReportArtifact` schema (resolving `BLK-09`).
+- **Completion Evidence:** `report_builder.py` compiles immutable artifacts; passes unit testing.
 
 ---
 
-### TASK-13 — Implement Minimal CLI Runner (`slokern verify / optimize / smoke-test`)
-- **Owner:** Rajdeep (INTERIM) · **Subsystem:** `SUB-11` · **Priority:** P0 (DEMO-CRITICAL) · **Status:** `BLOCKED` (by TASK-12) · **Validation Level:** `UNIT`
-- **Objective:** Build command-line interface allowing users to run preflight smoke tests, 2×2 optimization, and verification.
-- **Needs:** `TASK-12`.
+### TASK-13 — Implement Minimal CLI Runner (Phase 3 & Phase 4)
+- **Owner:** Rajdeep (CONFIRMED) • **Subsystem:** `SUB-11` • **Priority:** P0 (DEMO-CRITICAL) • **Status:** `DONE / VERIFIED` • **Validation Level:** `UNIT`
+- **Objective:** Build command-line interface allowing users to run preflight smoke tests, 2x2 optimization, verification, reporting, and specification validation.
+- **Needs:** `TASK-12`, `TASK-20`.
 - **Boundary & Isolation:** Confined to `src/slokern/cli/` and entry points in `pyproject.toml`. Standard library `argparse` only; no large external CLI frameworks.
-- **Deliverables:** `src/slokern/cli/main.py` implementing `smoke-test`, `optimize`, `verify`, and `report` subcommands.
+- **Deliverables:** `src/slokern/cli/main.py` implementing `smoke-test`, `optimize`, `verify`, `report`, and `validate` subcommands.
 - **Definition of Done:**
   1. `slokern --help` displays clean, documented commands and exits with code 0.
-  2. `slokern smoke-test` runs preflight check and prints environment fingerprint.
-  3. `slokern optimize --spec <path>` executes baseline + 4-candidate search, selects winner, and runs verification.
-  4. Machine-readable JSON output supported via `--json` flag; human-readable summaries formatted in terminal tables.
-- **Verify:** `pytest tests/unit/cli/` passes.
-- **Completion Evidence:** An end-to-end experiment can be launched and audited purely from the terminal.
+  2. `slokern smoke-test` runs preflight check and prints environment fingerprint across `local`, `fake`, and `nebius`.
+  3. `slokern optimize <spec>` enforces capability gating: halts with `SearchConfigurationError (BLK-17)` on `local` and `nebius`; executes 6-run campaign on `fake` labeled `DEMO DATA`.
+  4. `slokern verify <run_record.json>` re-executes single-run verification under compatible backend and invariants.
+  5. `slokern report` serializes immutable Markdown and JSON report artifacts.
+- **Verify:** `pytest tests/unit/cli/` passes (27 passed in 0.92s).
+- **Completion Evidence:** All subcommands pass unit tests and enforce capability gating.
+
+---
+
+### TASK-19 — Implement Native Local Ollama Adapter (Phase 2)
+- **Owner:** Rajdeep (CONFIRMED) • **Subsystem:** `SUB-05` • **Priority:** P0 (DEMO-CRITICAL) • **Status:** `DONE / VERIFIED` • **Validation Level:** `UNIT`
+- **Objective:** Implement local serving adapter targeting native Ollama instance on loopback (`http://127.0.0.1:11434`) serving `qwen3:4b-instruct-2507-q4_K_M`.
+- **Needs:** `TASK-08`, `DEC-0014`.
+- **Boundary & Isolation:** Confined to `src/slokern/engine/serving/ollama.py`. Prohibits cloud keys or external network dependencies.
+- **Deliverables:** `OllamaServingAdapter` with `/api/tags` and `/api/chat` endpoints, `StrictLoopbackRedirectHandler`, and secret redaction.
+- **Definition of Done:**
+  1. Enforces loopback addressing (`127.0.0.1` / `::1`) by default; requires explicit `allow_remote=True` for non-loopback hosts.
+  2. Unconditionally rejects HTTP 3xx redirects to prevent loopback pivoting (SSRF).
+  3. Strictly rejects embedded URL user credentials (`user:pass@host`).
+  4. Disables proxy-based routing for local loopback requests.
+  5. Uses monotonic timing (`time.monotonic()`) for client-observed request-start-to-first-content latency; preserves Ollama server timings (`prompt_eval_duration`, `eval_duration`) in milliseconds in metadata without conflation.
+  6. Accurately reports unsupported search parameters (`max_num_batched_tokens`, `max_num_seqs`).
+- **Verify:** `pytest tests/unit/engine/serving/` passes without live cloud calls or internet.
+- **Completion Evidence:** `src/slokern/engine/serving/ollama.py` passes all unit tests and security boundary assertions.
+
+---
+
+### TASK-20 — Implement Serving Adapter Factory & CLI Precedence Wiring (Phase 3)
+- **Owner:** Rajdeep (CONFIRMED) • **Subsystem:** `SUB-05 / SUB-11` • **Priority:** P0 (DEMO-CRITICAL) • **Status:** `DONE / VERIFIED` • **Validation Level:** `UNIT`
+- **Objective:** Implement adapter factory enforcing strict three-tier precedence and integrate capability preflight gating (`BLK-17`).
+- **Needs:** `TASK-05`, `TASK-09`, `TASK-19`, `DEC-0014`.
+- **Boundary & Isolation:** Confined to `src/slokern/engine/serving/factory.py`, `src/slokern/core/search/grid.py`, and `src/slokern/cli/`.
+- **Deliverables:** `create_serving_adapter()` factory, `validate_search_capabilities()` gating function, and CLI wiring in `main.py`.
+- **Definition of Done:**
+  1. Precedence enforced: `--adapter` > `SLOKERN_ADAPTER` > `"local"`.
+  2. Enforces zero silent fallback: missing credentials or unreachable services raise `ConfigurationError` immediately.
+  3. `validate_search_capabilities()` halts `slokern optimize` immediately on `local` and `nebius` with `SearchConfigurationError` citing `BLK-17` before allocating any benchmark runs.
+  4. Wire `smoke-test`, `optimize`, `verify`, `report`, and `validate` CLI commands through factory.
+- **Verify:** `pytest tests/unit/cli/ tests/unit/engine/serving/test_factory.py` passes.
+- **Completion Evidence:** Backend selection and capability gating verified across CLI and core runners.
+
+---
+
+### TASK-21 — Live Benchmark Readiness Review (Phase 6)
+- **Owner:** Rajdeep (CONFIRMED) • **Subsystem:** `SUB-05` • **Priority:** P1 (DEMO-CRITICAL) • **Status:** `PLANNED / BLOCKED (BLK-04, BLK-17)` • **Validation Level:** `MANUAL / RUNTIME AUDIT`
+- **Objective:** Establish authoritative live benchmark readiness on Nebius Token Factory (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`) without prematurely running unverified campaigns.
+- **Needs:** `TASK-09`, `TASK-16`, `DEC-0013`, `DEC-0014`, `BLK-04`, `BLK-17`.
+- **Boundary & Isolation:** `src/slokern/engine/serving/nebius.py`, `tests/live/test_smoke_live.py`.
+- **Deliverables:** Live endpoint readiness audit, credential validation check, verified environment fingerprint, and documented owner decision on serving-engine control support.
+- **Definition of Done:**
+  1. Verify official Nebius request and routing contract against live endpoint.
+  2. Review credentials isolation and live preflight probe procedures (`slokern smoke-test --adapter nebius` with `NEBIUS_API_KEY`).
+  3. Confirm whether two valid serving-engine search dimensions (`max_num_batched_tokens`, `max_num_seqs`) are actively supported and verifiable on the endpoint; if not, keep `BLK-17` active and prevent optimization execution.
+  4. Confirm budget enforcement (5 search runs + 1 verification run) and evidence persistence for live execution.
+  5. Record unresolved external dependencies and exact owner decision required from Rajdeep.
+- **Verify:** Live single-request preflight probe (`slokern smoke-test --adapter nebius`) returns valid completion when credentials provided.
+- **Completion Evidence:** Formal readiness audit published in project documentation before live campaign execution.
 
 ---
 

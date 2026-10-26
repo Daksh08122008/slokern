@@ -255,26 +255,52 @@ Revisit Condition: [Trigger under which this decision should be re-evaluated]
 
 ### DEC-0014: Dual-Backend Architecture (Local Ollama Development & Gated Nebius Benchmark)
 - **Date:** 2026-10-26
-- **Question:** How should SLOKern structure its execution architecture to support both offline local engineering/verification without cloud dependencies and authoritative benchmark runs against live cloud GPUs?
+- **Question:** How should SLOKern structure its execution architecture to support offline local engineering, verification, and testing without cloud dependencies while preserving an authoritative, gated benchmark pipeline against live cloud GPUs?
 - **Options Considered:**
-  1. Cloud-only execution: require Nebius credentials and live cloud GPU allocation for all development, smoke testing, and test runs.
+  1. Cloud-only execution: require Nebius credentials and live cloud GPU allocation for all development, smoke testing, CI, and test runs.
   2. Mock-only execution: rely solely on `FakeServingAdapter` without validating real network request parsing, streaming, or external failure handling.
-  3. Dual-backend architecture:
-     - Local development backend (`local`): Ollama running locally on loopback (`http://127.0.0.1:11434`) serving exact model `qwen3:4b-instruct-2507-q4_K_M`.
+  3. Dual-backend architecture with deterministic fake backend:
+     - Local development backend (`local`): Ollama running locally on loopback (`http://127.0.0.1:11434`) serving exact model `qwen3:4b-instruct-2507-q4_K_M` over native Ollama endpoints (`/api/tags` and `/api/chat`).
      - Live benchmark backend (`nebius`): Nebius Token Factory dedicated endpoint serving target model `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (FP8), gated by explicit opt-in with verified credentials.
-     - Deterministic fake backend (`fake`): standalone simulator for offline unit testing and CI, persistently labeled `DEMO DATA`.
-- **Decision:** Option 3. Implement dual-backend architecture with strict capability gating and security controls.
-- **Reason:**
-  1. Local engineering velocity: Engineers and automated test suites can execute end-to-end runs, verify response parsing, error handling, and artifact generation against a real local inference engine without incurring cloud spend or needing credentials.
-  2. Credibility & capability gating (`BLK-17`): Neither Ollama nor managed Token Factory endpoints dynamically apply or read back process startup parameters (`max_num_batched_tokens`, `max_num_seqs`). The search controller must preflight capabilities and halt immediately with `SearchConfigurationError` citing `BLK-17` when `slokern optimize` is invoked against `local` or `nebius`, preventing fraudulent optimization claims while allowing `slokern smoke-test` and `slokern verify` to execute under fixed defaults.
-  3. Security boundary: `OllamaServingAdapter` enforces strict loopback addressing, prohibits HTTP 3xx redirects to prevent loopback pivoting, and rejects URL user credentials (`user:pass@host`).
-  4. Client-observed timing authority: Monotonic `time.monotonic()` timing measures request-start-to-first-content chunk latency as TTFT, while server-reported eval durations are preserved in metadata, and chunk-gap intervals are recorded without conflating with token ITL.
-  5. Deterministic fallback elimination: Explicit backend resolution precedence (`--adapter` > `SLOKERN_ADAPTER` > `"local"`) with zero silent fallback.
+     - Deterministic fake backend (`fake`): standalone simulator for offline unit testing, failure injection, and CI, persistently labeled `DEMO DATA`.
+- **Decision:** Option 3. Implement dual-backend architecture sharing the core pipeline with strict capability gating and security controls.
+- **Architectural Rules & Invariants:**
+  1. **Three Distinct Backends:**
+     - `local`: Native Ollama integration for local development, integration testing, response parsing, error handling, artifact generation, single-run execution, and compatible verification testing. Requires no Nebius key or cloud resources.
+     - `fake`: Standalone simulator for deterministic unit tests, failure injection, and synthetic 6-run campaign testing. Output is unmistakably labeled `DEMO DATA` and never presented as real inference evidence.
+     - `nebius`: Live benchmark backend on Nebius Token Factory dedicated endpoint (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`, FP8). Requires explicit operator selection, valid credentials, readiness checks, and manual authorization.
+  2. **Locked Local Model & API:** Local backend strictly targets `qwen3:4b-instruct-2507-q4_K_M` using native Ollama endpoints (`/api/tags` for model inspection, `/api/chat` for streaming generation). Prohibits automatic background model downloads during ordinary tests or benchmark execution.
+  3. **Backend Selection Precedence:**
+     - 1st: Explicit CLI `--adapter` (`local`, `nebius`, `fake`).
+     - 2nd: `SLOKERN_ADAPTER` environment variable.
+     - 3rd: Default `"local"`.
+  4. **Zero Silent Fallback:** If the selected backend cannot be initialized (e.g. missing `NEBIUS_API_KEY` for `nebius`, unreachable loopback for `local`), execution fails immediately with an actionable error (`ConfigurationError`). Never silently fall back between backends.
+  5. **Client-Observed Latency Semantics:** Elapsed durations are measured strictly using monotonic clocks (`time.monotonic()`). Start timestamps reflect the client-observed dispatch moment immediately prior to HTTP dispatch; socket-level wire transmission is not falsely claimed. Wall-clock timestamps (`time.time()`) are retained solely for audit correlation.
+  6. **Timing Metadata Separation:** The local first-content metric is recorded as client-observed request-start-to-first-content latency. Server-reported Ollama timing metadata (`prompt_eval_duration`, `eval_duration`) is preserved in separate metadata fields, converted from nanoseconds to milliseconds, and never conflated with client-observed TTFT.
+  7. **Chunk-Gap Semantics:** Streaming chunk intervals are recorded as chunk-arrival gaps, not as individual token-level ITL, because server chunks may carry multiple tokens. Inventing token-level timestamps from multi-token chunks is prohibited.
+  8. **Provenance Separation:** Local Ollama measurements are recorded as real local observations with explicit local environment metadata, never attributed to NVIDIA H100 or Nebius. Fake measurements carry `DEMO DATA`. Nebius measurements must have verified cloud/hardware provenance. When physical evidence is absent, fields are explicitly recorded as `unavailable`.
+  9. **Loopback Security & Credential Isolation:**
+     - `OllamaServingAdapter` defaults to loopback (`127.0.0.1` / `::1`). Remote access requires explicit `allow_remote=True`.
+     - HTTP 3xx redirects are unconditionally rejected to prevent loopback pivoting (SSRF).
+     - URL user credentials (`user:pass@host`) are strictly rejected.
+     - Protections against proxy-based routing of loopback traffic are enforced.
+     - No Nebius API key is required for local development or CI. API keys are sanitized from logs, reports, and error messages.
+  10. **Honest Parameter Reporting:** Serving-engine parameters that cannot be actively applied and verified by the adapter are reported as unsupported or unverified, never claimed as applied optimizations.
+  11. **Optimization Capability Gating (BLK-17):**
+      - The 2x2 search space (`{max_num_batched_tokens: [1024, 2048]} × {max_num_seqs: [16, 64]}`) requires dynamic serving-engine parameter control.
+      - Neither Ollama nor the managed Nebius Token Factory endpoint dynamically applies and reads back both parameters per request.
+      - `slokern optimize --adapter local` and `slokern optimize --adapter nebius` must reject the search configuration before allocating benchmark runs, raising `SearchConfigurationError` citing `BLK-17`.
+      - Candidate configurations whose settings were not applied must never be ranked.
+      - Relabeling workload controls as serving-engine parameters to bypass `BLK-17` is prohibited.
+      - `slokern optimize --adapter fake` may exercise the synthetic campaign with `DEMO DATA` labeling.
+      - Local and Nebius backends support smoke tests and single-run execution under fixed configurations.
+  12. **Fixed Six-Run Campaign Budget:** The live optimization campaign enforces exactly six runs: 1 baseline anchor run + 4 candidate runs + 1 independent verification rerun. A single preflight probe request is executed separately as an operational health check.
+  13. **No Automatic Cloud Lifecycle Operations:** SLOKern does not provision, start, stop, or delete cloud instances automatically. Live cloud execution requires explicit operator initiation and manual credential provisioning.
 - **Owner:** Rajdeep (Sole Technical Owner & Integration Authority)
-- **Affected Contracts/Components:** `src/slokern/engine/serving/ollama.py`, `src/slokern/engine/serving/factory.py`, `src/slokern/core/search/grid.py`, `src/slokern/core/verification/`, `src/slokern/engine/reporting/`, `src/slokern/cli/`
-- **Evidence:** Passing unit, contract, and end-to-end integration test suites across local and fake adapters.
-- **Trade-offs:** Optimization campaigns on `local` and `nebius` halt until dynamic parameter read-back infrastructure is provisioned (`BLK-17`).
-- **Revisit Condition:** When a dedicated containerized runtime supporting dynamic flag read-back is deployed.
+- **Affected Contracts/Components:** `src/slokern/engine/serving/ollama.py`, `src/slokern/engine/serving/factory.py`, `src/slokern/engine/serving/nebius.py`, `src/slokern/core/search/grid.py`, `src/slokern/core/verification/`, `src/slokern/engine/reporting/`, `src/slokern/cli/`
+- **Evidence:** Passing unit, contract, and end-to-end integration test suites across local and fake adapters (`tests/unit/engine/serving/`, `tests/contract/`, `tests/unit/cli/`).
+- **Trade-offs:** Optimization campaigns on `local` and `nebius` halt before allocating runs until dynamic parameter read-back infrastructure is provisioned (`BLK-17`). Local mode validates pipeline behavior and single-run verification, not the 2x2 serving-engine optimization matrix.
+- **Revisit Condition:** When a dedicated containerized runtime supporting dynamic flag application and read-back is deployed.
 
 ---
 

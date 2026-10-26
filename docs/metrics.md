@@ -18,24 +18,27 @@ Every metric reported by SLOKern should be traceable to unaggregated raw request
 3. **Warm-Up Exclusion:** Requests initiated during the warm-up window (`warmup_duration_s`) are recorded but strictly excluded from all final metric aggregations.
 4. **Offered vs. Achieved Separation:** Intended dispatch rate (`offered_load`) must never be conflated with the server's delivered completion rate (`achieved_load`).
 5. **No Fabricated Precision:** Percentiles must not imply precision beyond the statistical power of the sample size.
+6. **Monotonic Clocks for Elapsed Durations:** All duration measurements (TTFT, chunk gaps, E2E latency) must use monotonic clocks (`time.monotonic()`) to prevent NTP clock jumps. Wall-clock timestamps (`time.time()`) are retained solely for audit correlation.
+7. **Provenance Separation & Honest Disclosure:** Local observations carry host metadata (never attributed to NVIDIA H100 or Nebius); fake data carry **`DEMO DATA`**; Nebius measurements require verified cloud provenance. Where evidence is missing, fields must be marked `unavailable` rather than fabricated.
 
 ---
 
 ## 2. Core Metric Specifications
 
-### 2.1 Time to First Token (TTFT)
-- **Definition:** The current collector measures from client request dispatch until the first non-empty streamed content chunk it observes. A server chunk may contain more than one token, so this is first-content-chunk latency and only approximates first-token latency unless the adapter establishes token granularity.
-- **Start Event:** Socket dispatch start timestamp (`sent_at`).
+### 2.1 Time to First Token (TTFT) & First-Content Latency
+- **Definition:** Defined and measured as client-observed request-start-to-first-content latency using monotonic duration clocks (`time.monotonic()`). Because streaming chunks from serving runtimes may contain more than one token, this measures first-content-chunk receipt.
+- **Start Event:** Timestamp recorded immediately prior to HTTP dispatch (`sent_at`). Socket-level wire transmission is not falsely claimed.
 - **End Event:** Receipt timestamp of the first non-empty content chunk (`first_token_at`).
 - **Units:** Milliseconds (`ms`).
+- **Server Metadata Disambiguation:** Server-reported Ollama timing metadata (`prompt_eval_duration`, `eval_duration`) is preserved in separate metadata fields, converted from nanoseconds to milliseconds, without conflating with client-observed TTFT.
 - **Population:** Valid, non-error, non-warmup records with `first_token_at` present and `output_tokens >= 1`.
 - **Aggregations:** Median (`p50`), 90th percentile (`p90`), 95th percentile (`p95`), 99th percentile (`p99`), and arithmetic mean.
 - **Missing Data Handling:** If a request aborts, times out, or fails before emitting a token, TTFT is recorded as `null` and the request increments the error count.
 
-### 2.2 Inter-Token Latency (ITL)
-- **Definition:** The current metric is a per-request average of recorded stream chunk gaps, not guaranteed per-token ITL. A chunk can carry multiple tokens; chunk gaps therefore must not be described as true per-token intervals without token-level evidence.
-- **Source:** Mean of `itl_observations_ms` recorded for the request when present; otherwise `(completed_at - first_token_at) * 1000 / (output_tokens - 1)`.
-- **Units:** Milliseconds per token (`ms/tok`).
+### 2.2 Inter-Token Latency (ITL) & Chunk-Gap Intervals
+- **Definition:** Streaming chunk intervals are recorded as chunk-arrival gaps, not as guaranteed individual token-level ITL, because server chunks may carry multiple tokens. Inventing token-level timestamps from multi-token chunks is prohibited.
+- **Source:** Mean of recorded chunk intervals (`itl_observations_ms`) for the request when present; otherwise `(completed_at - first_token_at) * 1000 / (output_tokens - 1)`.
+- **Units:** Milliseconds per token (`ms/tok`) when token granularity is proven; otherwise milliseconds per chunk gap (`ms/chunk`).
 - **Population:** One average per valid, non-error, non-warmup request with at least two output tokens.
 - **Aggregations:** Percentiles are calculated across those per-request averages, not across every chunk interval globally.
 - **Missing Data Handling:** Non-streaming runs or single-token responses omit ITL (`null`).
