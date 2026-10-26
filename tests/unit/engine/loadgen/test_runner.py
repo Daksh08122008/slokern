@@ -14,6 +14,27 @@ from slokern.engine.loadgen.recorder import JSONLRecorder
 from slokern.engine.loadgen.runner import LoadGeneratorRunner, LoadGeneratorResult
 from slokern.engine.serving.fake import FakeServingAdapter
 
+def _can_bind_and_connect_loopback() -> bool:
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+        s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s2.settimeout(0.1)
+        s2.connect(('127.0.0.1', port))
+        s2.close()
+        s.close()
+        return True
+    except OSError:
+        return False
+
+requires_subprocess_socket = pytest.mark.skipif(
+    not _can_bind_and_connect_loopback(),
+    reason='Windows Codex sandbox loopback socket constraint ([WinError 10013]) blocks ProactorEventLoop and subprocess IPC.',
+)
+
 
 def _build_test_workload(
     arrival_mode: ArrivalMode = ArrivalMode.CONSTANT,
@@ -37,6 +58,7 @@ def _build_test_workload(
     )
 
 
+@requires_subprocess_socket
 def test_runner_subprocess_dispatch_streaming(tmp_path: Path):
     """Verifies subprocess-isolated execution with streaming tokens against FakeServingAdapter."""
     workload = _build_test_workload(
@@ -111,6 +133,7 @@ def test_runner_in_process_non_streaming(tmp_path: Path):
         assert rec.scheduled_at <= rec.sent_at <= rec.completed_at
 
 
+@requires_subprocess_socket
 def test_runner_handles_injected_server_errors(tmp_path: Path):
     """Verifies runner records errors into JSONL when adapter fails, without crashing."""
     workload = _build_test_workload(
@@ -195,6 +218,7 @@ def test_saturation_healthy_run(tmp_path: Path):
     assert result.generator_saturated is False
 
 
+@requires_subprocess_socket
 def test_runner_poisson_arrival_execution(tmp_path: Path):
     """Verifies execution under Poisson arrival distribution."""
     workload = _build_test_workload(
@@ -222,6 +246,7 @@ def test_runner_poisson_arrival_execution(tmp_path: Path):
         assert rec.scheduled_at <= rec.sent_at <= rec.first_token_at <= rec.completed_at
 
 
+@requires_subprocess_socket
 def test_runner_arun_async_wrapper(tmp_path: Path):
     """Verifies arun() asynchronous dispatch wrapper."""
     workload = _build_test_workload(
@@ -258,6 +283,7 @@ class _PartialFailureServingAdapter(FakeServingAdapter):
         )
 
 
+@requires_subprocess_socket
 def test_runner_streaming_partial_failure(tmp_path: Path):
     """Verifies streaming handles mid-stream failures, preserving tokens generated prior to error."""
     workload = _build_test_workload(
@@ -325,6 +351,7 @@ class _CrashingServingAdapter(FakeServingAdapter):
         yield from []
 
 
+@requires_subprocess_socket
 def test_runner_subprocess_abrupt_crash_handling(tmp_path: Path):
     """Verifies that an abrupt crash (e.g. exit code 42) in the child process is caught and cleaned up."""
     workload = _build_test_workload(
@@ -345,6 +372,7 @@ def test_runner_subprocess_abrupt_crash_handling(tmp_path: Path):
         )
 
 
+@requires_subprocess_socket
 def test_runner_subprocess_timeout(tmp_path: Path):
     """Verifies that a subprocess exceeding spawn_timeout_s is cleanly terminated and raises TimeoutError."""
     workload = _build_test_workload(
@@ -440,6 +468,7 @@ def test_runner_zero_duration_workload(tmp_path: Path):
     assert JSONLRecorder.read_records(trace_path) == []
 
 
+@requires_subprocess_socket
 def test_runner_arun_cancellation(tmp_path: Path):
     """Verifies cancelling arun() triggers cancel() and raises CancelledError cleanly."""
     workload = _build_test_workload(
@@ -470,6 +499,7 @@ def test_runner_arun_cancellation(tmp_path: Path):
     asyncio.run(_run_and_cancel())
 
 
+@requires_subprocess_socket
 def test_runner_arun_cancellation_in_process(tmp_path: Path):
     """Verifies cancelling arun() in in-process mode (isolate_process=False) raises CancelledError cleanly."""
     workload = _build_test_workload(
@@ -498,6 +528,7 @@ def test_runner_arun_cancellation_in_process(tmp_path: Path):
     asyncio.run(_run_and_cancel_in_process())
 
 
+@requires_subprocess_socket
 def test_runner_cancel_noop_when_not_running():
     """Verifies cancel() is a safe noop when no execution is active."""
     runner = LoadGeneratorRunner(isolate_process=True)
@@ -506,6 +537,7 @@ def test_runner_cancel_noop_when_not_running():
     assert runner._current_proc is None
 
 
+@requires_subprocess_socket
 def test_runner_trace_end_to_end_metrics_compatibility(tmp_path: Path):
     """Verifies that the generated trace can be ingested directly by calculate_metrics()."""
     from slokern.core.metrics.aggregate import calculate_metrics
@@ -552,3 +584,36 @@ def test_runner_trace_end_to_end_metrics_compatibility(tmp_path: Path):
     assert metrics.error_rate == 0.0
     assert metrics.ttft_ms.mean is not None
     assert metrics.itl_ms.mean is not None
+
+def test_sync_dispatch_platform_fallback(tmp_path: Path):
+    """Verifies the synchronous in-process platform fallback executes streaming workload against FakeServingAdapter."""
+    workload = _build_test_workload(
+        arrival_mode=ArrivalMode.CONSTANT,
+        target_offered_rate=20.0,
+        warmup_duration_s=1,
+        measurement_duration_s=1,
+    )
+    adapter = FakeServingAdapter(simulate_delay=False)
+    trace_path = tmp_path / "sync_fallback_trace.jsonl"
+
+    runner = LoadGeneratorRunner(isolate_process=False)
+    result = runner.run(
+        workload=workload,
+        adapter=adapter,
+        output_path=trace_path,
+        run_id="run-sync-01",
+        stream=True,
+    )
+
+    assert isinstance(result, LoadGeneratorResult)
+    assert result.total_requests == 40
+    assert result.completed_requests == 40
+    assert result.failed_requests == 0
+    assert trace_path.exists()
+
+    records = JSONLRecorder.read_records(trace_path)
+    assert len(records) == 40
+    for rec in records:
+        assert rec.is_valid is True
+        assert rec.first_token_at is not None
+        assert rec.scheduled_at <= rec.sent_at <= rec.first_token_at <= rec.completed_at

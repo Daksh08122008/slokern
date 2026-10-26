@@ -56,6 +56,8 @@ def evaluate_constraint(observed_value: float | None, threshold: float, operator
     """
     if observed_value is None or threshold is None:
         return None
+    if isinstance(observed_value, bool) or isinstance(threshold, bool):
+        return None
     if not math.isfinite(observed_value) or observed_value < 0:
         return None
     if not math.isfinite(threshold) or threshold < 0:

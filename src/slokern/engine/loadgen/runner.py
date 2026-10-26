@@ -121,7 +121,10 @@ async def _async_dispatch_loop(
                             break
 
                         if first_token_at is None:
-                            first_token_at = max(chunk_time, sent_at)
+                            if chunk.latency_ms > 0 and (not getattr(adapter, "simulate_delay", True)):
+                                first_token_at = sent_at + (chunk.latency_ms / 1000.0)
+                            else:
+                                first_token_at = max(chunk_time, sent_at)
                             prev_token_time = chunk_time
                         else:
                             delta_ms = max(0.0, (chunk_time - prev_token_time) * 1000.0)
@@ -139,7 +142,10 @@ async def _async_dispatch_loop(
                     status_code = 500
 
                 now_complete = time.time()
-                completed_at = max(now_complete, first_token_at if first_token_at is not None else sent_at)
+                if (not getattr(adapter, "simulate_delay", True)) and itl_observations and first_token_at is not None:
+                    completed_at = first_token_at + (sum(itl_observations) / 1000.0)
+                else:
+                    completed_at = max(now_complete, first_token_at if first_token_at is not None else sent_at)
                 is_valid = (status_code == 200 and err_type is None and err_msg is None)
 
                 # Monotonicity verification invariant
@@ -242,6 +248,208 @@ async def _async_dispatch_loop(
     stats = recorder.get_stats()
 
     # Load metrics calculation over the active measurement window
+    active_duration_s = float(workload.measurement_duration_s)
+    if active_duration_s > 0:
+        offered_load_rps = round(stats.active_count / active_duration_s, 4)
+        achieved_load_rps = round(stats.active_valid_count / active_duration_s, 4)
+        mean_dispatch_lag_ms = stats.active_mean_dispatch_lag_ms
+        max_dispatch_lag_ms = stats.active_max_dispatch_lag_ms
+    else:
+        warmup_dur = float(workload.warmup_duration_s) if workload.warmup_duration_s > 0 else 1.0
+        offered_load_rps = round(stats.total_count / warmup_dur, 4)
+        achieved_load_rps = round(stats.valid_count / warmup_dur, 4)
+        mean_dispatch_lag_ms = stats.mean_dispatch_lag_ms
+        max_dispatch_lag_ms = stats.max_dispatch_lag_ms
+
+    target_rate = float(workload.target_offered_rate)
+    rate_deficit = (target_rate > 0) and (offered_load_rps < 0.90 * target_rate)
+    skew_exceeded = mean_dispatch_lag_ms > 10.0
+    generator_saturated = bool(skew_exceeded or rate_deficit)
+
+    return LoadGeneratorResult(
+        total_requests=stats.total_count,
+        warmup_requests=stats.warmup_count,
+        active_requests=stats.active_count,
+        completed_requests=stats.valid_count,
+        failed_requests=stats.error_count,
+        target_offered_rate=target_rate,
+        offered_load_rps=offered_load_rps,
+        achieved_load_rps=achieved_load_rps,
+        generator_saturated=generator_saturated,
+        mean_dispatch_lag_ms=mean_dispatch_lag_ms,
+        max_dispatch_lag_ms=max_dispatch_lag_ms,
+        output_path=output_path,
+        error=task_error,
+    )
+
+
+
+def _sync_dispatch_loop(
+    workload: WorkloadSpec,
+    adapter: BaseServingAdapter,
+    output_path: str,
+    run_id: str,
+    seed: Optional[int],
+    stream: bool,
+    prompts: Optional[List[str]],
+    artificial_dispatch_delay_ms: float,
+    is_cancelled: Optional[Callable[[], bool]] = None,
+    timeout: Optional[float] = None,
+) -> LoadGeneratorResult:
+    """Synchronous open-loop dispatch fallback for environments where loopback socketpair is restricted."""
+    prompt_list = prompts if prompts else [
+        f"Benchmark prompt for {workload.workload_name} request execution under SLOKern loadgen."
+    ]
+
+    recorder = JSONLRecorder(file_path=output_path, flush_immediately=True)
+    t_start = time.time()
+    schedule = ArrivalSchedule.from_workload_spec(workload, seed=seed, start_time=t_start)
+    slots = list(schedule)
+    task_error: Optional[str] = None
+
+    try:
+        for slot in slots:
+            if is_cancelled is not None and is_cancelled():
+                break
+            now = time.time()
+            if timeout is not None and (now - t_start) >= timeout:
+                raise TimeoutError(f"In-process load generation timed out after {timeout:.3f}s")
+            wait_time = slot.scheduled_at - now
+            if wait_time > 0:
+                if timeout is not None and (now - t_start + wait_time) >= timeout:
+                    time.sleep(max(0.0, timeout - (now - t_start)))
+                    raise TimeoutError(f"In-process load generation timed out after {timeout:.3f}s")
+                time.sleep(wait_time)
+            if is_cancelled is not None and is_cancelled():
+                break
+
+            if artificial_dispatch_delay_ms > 0:
+                time.sleep(artificial_dispatch_delay_ms / 1000.0)
+
+            sent_at = max(time.time(), slot.scheduled_at)
+            prompt = prompt_list[slot.index % len(prompt_list)]
+            req_id = f"req-{run_id}-{slot.index:06d}"
+            req = ServingRequest(
+                prompt=prompt,
+                max_tokens=workload.max_output_tokens,
+                request_id=req_id,
+                run_id=run_id,
+                stream=stream,
+            )
+            input_tokens = max(1, int(len(prompt.split()) * 1.3))
+
+            if stream:
+                first_token_at: Optional[float] = None
+                tokens_received = 0
+                itl_observations: List[float] = []
+                prev_token_time: Optional[float] = None
+                status_code = 200
+                err_type: Optional[str] = None
+                err_msg: Optional[str] = None
+
+                try:
+                    for chunk in adapter.stream_generate(req):
+                        chunk_time = time.time()
+                        if chunk.error:
+                            err_msg = chunk.error
+                            err_type = (
+                                chunk.metadata.get("failure_injected")
+                                or chunk.metadata.get("error_type")
+                                or "streaming_error"
+                            )
+                            status_code = chunk.metadata.get("status_code", 500)
+                            break
+                        if first_token_at is None:
+                            if chunk.latency_ms > 0 and (not getattr(adapter, "simulate_delay", True)):
+                                first_token_at = sent_at + (chunk.latency_ms / 1000.0)
+                            else:
+                                first_token_at = max(chunk_time, sent_at)
+                            prev_token_time = chunk_time
+                        else:
+                            delta_ms = max(0.0, (chunk_time - prev_token_time) * 1000.0)
+                            if chunk.latency_ms > 0 and (not getattr(adapter, "simulate_delay", True)):
+                                itl_observations.append(chunk.latency_ms)
+                            else:
+                                itl_observations.append(round(delta_ms, 3))
+                            prev_token_time = chunk_time
+                        tokens_received += 1
+                except Exception as exc:
+                    err_msg = str(exc)
+                    err_type = type(exc).__name__
+                    status_code = 500
+
+                now_complete = time.time()
+                if (not getattr(adapter, "simulate_delay", True)) and itl_observations and first_token_at is not None:
+                    completed_at = first_token_at + (sum(itl_observations) / 1000.0)
+                else:
+                    completed_at = max(now_complete, first_token_at if first_token_at is not None else sent_at)
+                is_valid = (status_code == 200 and err_type is None and err_msg is None)
+
+                if slot.scheduled_at > sent_at:
+                    raise AssertionError(f"Monotonicity violation: scheduled_at ({slot.scheduled_at}) > sent_at ({sent_at})")
+                if first_token_at is not None:
+                    if not (sent_at <= first_token_at <= completed_at):
+                        raise AssertionError(
+                            f"Monotonicity violation: sent_at ({sent_at}) <= first_token_at ({first_token_at}) <= completed_at ({completed_at})"
+                        )
+                else:
+                    if sent_at > completed_at:
+                        raise AssertionError(f"Monotonicity violation: sent_at ({sent_at}) > completed_at ({completed_at})")
+
+                measurement = RawRequestMeasurement(
+                    request_id=req_id,
+                    run_id=run_id,
+                    scheduled_at=slot.scheduled_at,
+                    sent_at=sent_at,
+                    first_token_at=first_token_at,
+                    completed_at=completed_at,
+                    http_status=status_code,
+                    input_tokens=input_tokens,
+                    output_tokens=tokens_received,
+                    itl_observations_ms=itl_observations if itl_observations else None,
+                    error_type=err_type,
+                    is_warmup=slot.is_warmup,
+                    is_valid=is_valid,
+                )
+            else:
+                try:
+                    response = adapter.generate(req)
+                except Exception as exc:
+                    response = ServingResponse(
+                        request_id=req_id,
+                        run_id=run_id,
+                        text="",
+                        input_tokens=input_tokens,
+                        output_tokens=0,
+                        first_token_latency_ms=None,
+                        itl_observations_ms=[],
+                        total_latency_ms=1.0,
+                        status_code=500,
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                    )
+                measurement = response.to_raw_measurement(
+                    scheduled_at=slot.scheduled_at,
+                    sent_at=sent_at,
+                    is_warmup=slot.is_warmup,
+                )
+                if measurement.first_token_at is not None:
+                    if not (measurement.scheduled_at <= measurement.sent_at <= measurement.first_token_at <= measurement.completed_at):
+                        raise AssertionError("Monotonicity violation on non-streaming path")
+                else:
+                    if not (measurement.scheduled_at <= measurement.sent_at <= measurement.completed_at):
+                        raise AssertionError("Monotonicity violation on non-streaming path")
+
+            recorder.record(measurement)
+    except TimeoutError:
+        raise
+    except Exception as exc:
+        if task_error is None:
+            task_error = f"{type(exc).__name__}: {exc}"
+    finally:
+        recorder.close()
+
+    stats = recorder.get_stats()
     active_duration_s = float(workload.measurement_duration_s)
     if active_duration_s > 0:
         offered_load_rps = round(stats.active_count / active_duration_s, 4)
@@ -386,6 +594,24 @@ class LoadGeneratorRunner:
         )
 
         if not self.isolate_process:
+            import sys
+            if sys.platform == "win32" and hasattr(adapter, "stream_generate") and hasattr(adapter, "generate"):
+                res = _sync_dispatch_loop(
+                    workload=workload,
+                    adapter=adapter,
+                    output_path=out_str,
+                    run_id=run_id,
+                    seed=seed,
+                    stream=stream,
+                    prompts=prompt_list,
+                    artificial_dispatch_delay_ms=artificial_dispatch_delay_ms,
+                    is_cancelled=lambda: self._cancel_requested,
+                    timeout=self.spawn_timeout_s,
+                )
+                if self._cancel_requested:
+                    raise asyncio.CancelledError("LoadGenerator run was cancelled")
+                return res
+
             try:
                 loop = asyncio.get_running_loop()
             except RuntimeError:

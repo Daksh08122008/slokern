@@ -474,3 +474,10 @@ def test_evaluator_empty_constraints(base_metrics: MetricSet):
     assert result.validity_status == EvidenceValidity.VALID
     assert result.audit_notes == "All hard constraints satisfied."
     assert len(result.constraint_evaluations) == 0
+
+
+def test_evaluate_constraint_boolean_rejected():
+    assert evaluate_constraint(True, 10.0, '<=') is None
+    assert evaluate_constraint(False, 10.0, '<=') is None
+    assert evaluate_constraint(10.0, True, '<=') is None
+    assert evaluate_constraint(10.0, False, '<=') is None
