@@ -25,6 +25,7 @@ def optimize_command(
     adapter: Optional[str] = None,
     objective: Optional[str] = None,
     output_dir: Optional[str] = None,
+    auto_verify: bool = False,
 ) -> int:
     """
     Executes an optimization experiment specified in spec_file.
@@ -96,7 +97,7 @@ def optimize_command(
             default_objective=resolved_objective,
             isolate_process=False,
         )
-        outcome = controller.run(spec, ranking_objective=resolved_objective)
+        outcome = controller.run(spec, ranking_objective=resolved_objective, auto_verify=auto_verify)
         search_res = outcome.search_result
         exp_dir = Path(output_dir or "artifacts") / "experiments" / spec.experiment_id
         exp_dir.mkdir(parents=True, exist_ok=True)
@@ -107,6 +108,16 @@ def optimize_command(
         print(f"  Selected Winner ID:   {search_res.selected_candidate_id}")
         print(f"  Selection Rationale:  {search_res.selection_rationale}")
         print(f"  Stopping Reason:      {search_res.stopping_reason}")
+
+        if outcome.verification_record:
+            verif = outcome.verification_record
+            print("\n[Independent Verification Rerun (Run 6)]")
+            print(f"  Verification ID:      {verif.verification_id}")
+            print(f"  Verification Run ID:  {verif.verification_run_id}")
+            print(f"  Verification Verdict: {verif.verification_verdict.value}")
+            if verif.final_decision_notes:
+                print(f"  Decision Notes:       {verif.final_decision_notes}")
+
         return 0
 
     except Exception as exc:

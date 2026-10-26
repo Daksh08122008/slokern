@@ -66,6 +66,14 @@ def test_golden_fixture_percentiles_basic():
     computed = calculate_percentiles(raw_values)
 
     assert computed is not None
+    assert computed.p50 is not None
+    assert computed.p90 is not None
+    assert computed.p95 is not None
+    assert computed.p99 is not None
+    assert computed.mean is not None
+    assert computed.min is not None
+    assert computed.max is not None
+
     assert round(computed.p50, 3) == round(expected["p50"], 3)
     assert round(computed.p90, 3) == round(expected["p90"], 3)
     assert round(computed.p95, 3) == round(expected["p95"], 3)
@@ -130,6 +138,7 @@ def test_evidence_fixtures_schema_and_provenance():
     assert pass_data["_meta"]["label"] == "DEMO DATA"
     m_pass = RawRequestMeasurement.model_validate(pass_data["measurement"])
     assert m_pass.is_valid is True
+    assert m_pass.first_token_at is not None
     assert m_pass.scheduled_at <= m_pass.sent_at <= m_pass.first_token_at <= m_pass.completed_at
 
     # 2. Valid fail fixture
@@ -224,7 +233,9 @@ def test_evidence_invariants_auditor():
     m_valid = RawRequestMeasurement(
         request_id="r1", run_id="run1", scheduled_at=1.0, sent_at=1.01,
         first_token_at=1.02, completed_at=1.05, http_status=200,
-        input_tokens=5, output_tokens=5, is_warmup=False, is_valid=True
+        input_tokens=5, output_tokens=5,
+        itl_observations_ms=None, error_type=None,
+        is_warmup=False, is_valid=True
     )
     ok, reason = audit_measurement_invariants(m_valid)
     assert ok is True
@@ -233,7 +244,9 @@ def test_evidence_invariants_auditor():
     m_inv_ttft = RawRequestMeasurement(
         request_id="r2", run_id="run1", scheduled_at=1.0, sent_at=1.05,
         first_token_at=1.02, completed_at=1.06, http_status=200,
-        input_tokens=5, output_tokens=5, is_warmup=False, is_valid=True
+        input_tokens=5, output_tokens=5,
+        itl_observations_ms=None, error_type=None,
+        is_warmup=False, is_valid=True
     )
     ok, reason = audit_measurement_invariants(m_inv_ttft)
     assert ok is False
@@ -243,7 +256,9 @@ def test_evidence_invariants_auditor():
     m_nan = RawRequestMeasurement(
         request_id="r3", run_id="run1", scheduled_at=float("nan"), sent_at=1.01,
         first_token_at=1.02, completed_at=1.05, http_status=200,
-        input_tokens=5, output_tokens=5, is_warmup=False, is_valid=True
+        input_tokens=5, output_tokens=5,
+        itl_observations_ms=None, error_type=None,
+        is_warmup=False, is_valid=True
     )
     ok, reason = audit_measurement_invariants(m_nan)
     assert ok is False
