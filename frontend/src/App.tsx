@@ -1135,27 +1135,27 @@ export default function App() {
                         <MiniTag>REQUIRED</MiniTag>
                       </div>
                       <div className="form-grid">
-                        <label className="field field-wide">
+                        <label htmlFor="workload-profile" className="field field-wide">
                           Workload profile <span className="field-note">Named workload under test</span>
-                          <select value={builder.workload} onChange={e => setBuilder({ ...builder, workload: e.target.value })}>
+                          <select id="workload-profile" value={builder.workload} onChange={e => setBuilder({ ...builder, workload: e.target.value })}>
                             <option value="chat-completions-prod">chat-completions-prod</option>
                             <option value="summarization-batch">summarization-batch</option>
                             <option value="code-assist-staging">code-assist-staging</option>
                           </select>
                         </label>
-                        <label className="field">
+                        <label htmlFor="input-rate" className="field">
                           Offered request rate <span className="unit-label">req/min</span>
-                          <input type="number" min="1" value={builder.inputRate} onChange={e => setBuilder({ ...builder, inputRate: Number(e.target.value) })} />
+                          <input id="input-rate" type="number" min="1" value={builder.inputRate} onChange={e => setBuilder({ ...builder, inputRate: Number(e.target.value) })} />
                           <small>Expected request arrival rate</small>
                         </label>
-                        <label className="field">
+                        <label htmlFor="input-tokens" className="field">
                           Mean input tokens <span className="unit-label">tokens</span>
-                          <input type="number" min="1" value={builder.inputTokens} onChange={e => setBuilder({ ...builder, inputTokens: Number(e.target.value) })} />
+                          <input id="input-tokens" type="number" min="1" value={builder.inputTokens} onChange={e => setBuilder({ ...builder, inputTokens: Number(e.target.value) })} />
                           <small>Prompt length estimate</small>
                         </label>
-                        <label className="field">
+                        <label htmlFor="output-tokens" className="field">
                           Mean output tokens <span className="unit-label">tokens</span>
-                          <input type="number" min="1" value={builder.outputTokens} onChange={e => setBuilder({ ...builder, outputTokens: Number(e.target.value) })} />
+                          <input id="output-tokens" type="number" min="1" value={builder.outputTokens} onChange={e => setBuilder({ ...builder, outputTokens: Number(e.target.value) })} />
                           <small>Generated response estimate</small>
                         </label>
                       </div>
@@ -1170,27 +1170,27 @@ export default function App() {
                         </div>
                       </div>
                       <div className="form-grid">
-                        <label className="field field-wide">
+                        <label htmlFor="model-select" className="field field-wide">
                           Model <span className="field-note">Demo model registry</span>
-                          <select value={builder.model} onChange={e => setBuilder({ ...builder, model: e.target.value })}>
+                          <select id="model-select" value={builder.model} onChange={e => setBuilder({ ...builder, model: e.target.value })}>
                             <option>Llama-3-8B-Instruct</option>
                             <option>Qwen2.5-7B-Instruct</option>
                             <option>Mistral-7B-Instruct-v0.3</option>
                           </select>
                         </label>
-                        <label className="field">
+                        <label htmlFor="max-batch-size" className="field">
                           Max batch size
-                          <input type="number" min="1" max="128" value={builder.batch} onChange={e => setBuilder({ ...builder, batch: Number(e.target.value) })} />
+                          <input id="max-batch-size" type="number" min="1" max="128" value={builder.batch} onChange={e => setBuilder({ ...builder, batch: Number(e.target.value) })} />
                           <small>Upper bound for batch formation</small>
                         </label>
-                        <label className="field">
+                        <label htmlFor="max-concurrency" className="field">
                           Max concurrency
-                          <input type="number" min="1" max="256" value={builder.concurrency} onChange={e => setBuilder({ ...builder, concurrency: Number(e.target.value) })} />
+                          <input id="max-concurrency" type="number" min="1" max="256" value={builder.concurrency} onChange={e => setBuilder({ ...builder, concurrency: Number(e.target.value) })} />
                           <small>Concurrent in-flight requests</small>
                         </label>
-                        <label className="field">
+                        <label htmlFor="kv-cache-precision" className="field">
                           KV cache precision
-                          <select value={builder.kvCache} onChange={e => setBuilder({ ...builder, kvCache: e.target.value })}>
+                          <select id="kv-cache-precision" value={builder.kvCache} onChange={e => setBuilder({ ...builder, kvCache: e.target.value })}>
                             <option>FP16</option>
                             <option>FP8</option>
                             <option>INT8</option>
@@ -1210,19 +1210,19 @@ export default function App() {
                         <MiniTag tone="accent">HARD LIMITS</MiniTag>
                       </div>
                       <div className="form-grid">
-                        <label className="field">
+                        <label htmlFor="p95-latency" className="field">
                           P95 latency ceiling <span className="unit-label">ms</span>
-                          <input type="number" min="1" value={builder.p95} onChange={e => setBuilder({ ...builder, p95: Number(e.target.value) })} />
+                          <input id="p95-latency" type="number" min="1" value={builder.p95} onChange={e => setBuilder({ ...builder, p95: Number(e.target.value) })} />
                           <small>Requests beyond this threshold fail</small>
                         </label>
-                        <label className="field">
+                        <label htmlFor="min-throughput" className="field">
                           Minimum throughput <span className="unit-label">k tok/s</span>
-                          <input type="number" min="1" value={builder.minThroughput} onChange={e => setBuilder({ ...builder, minThroughput: Number(e.target.value) })} />
+                          <input id="min-throughput" type="number" min="1" value={builder.minThroughput} onChange={e => setBuilder({ ...builder, minThroughput: Number(e.target.value) })} />
                           <small>Minimum sustained token rate</small>
                         </label>
-                        <label className="field">
+                        <label htmlFor="max-error-rate" className="field">
                           Maximum error rate <span className="unit-label">%</span>
-                          <input type="number" min="0" max="100" step="0.01" value={builder.maxError} onChange={e => setBuilder({ ...builder, maxError: Number(e.target.value) })} />
+                          <input id="max-error-rate" type="number" min="0" max="100" step="0.01" value={builder.maxError} onChange={e => setBuilder({ ...builder, maxError: Number(e.target.value) })} />
                           <small>Failed requests as a percentage</small>
                         </label>
                       </div>
