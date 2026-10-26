@@ -53,6 +53,7 @@ class GridSearchOutcome:
 
     search_result: SearchResult
     run_results: List[Any]
+    verification_record: Optional[Any] = None
 
 
 def validate_search_capabilities(
@@ -190,6 +191,7 @@ class GridSearchController:
         cancellation_token: Optional[Any] = None,
         seed: Optional[int] = 42,
         prompts: Optional[Sequence[str]] = None,
+        auto_verify: bool = False,
     ) -> GridSearchOutcome:
         """Validate preflight budget and capabilities, then execute baseline and bounded candidates."""
         validate_budget(spec)
@@ -356,9 +358,73 @@ class GridSearchController:
             search_dir = self.artifacts_root / "experiments" / spec.experiment_id
             search_dir.mkdir(parents=True, exist_ok=True)
             (search_dir / "search_result.json").write_text(search_result.model_dump_json(indent=2), encoding="utf-8")
-            return GridSearchOutcome(search_result=search_result, run_results=run_results)
+
+            verification_record = None
+            if auto_verify and winner is not None and budget.can_execute_verification_run():
+                from slokern.core.verification.protocol import run_independent_verification
+
+                winner_config = next((c for c in configs if c.candidate_id == winner.candidate_id), None)
+                if winner_config is not None:
+                    budget.record_verification_run()
+                    verif_seed = None if seed is None else seed + 100
+                    winner_result = next(
+                        (
+                            r for r in run_results
+                            if getattr(r, "run_record", None) and r.run_record.candidate_id == winner.candidate_id
+                        ),
+                        None,
+                    )
+                    orig_run_id = (
+                        winner_result.run_id
+                        if winner_result is not None
+                        else f"run-search-{winner.candidate_id[:6]}"
+                    )
+                    existing_run_ids = [r.run_id for r in run_results if getattr(r, "run_id", None)]
+                    verification_record = run_independent_verification(
+                        original_run_id=orig_run_id,
+                        candidate_config=winner_config,
+                        workload=spec.workload,
+                        slo=spec.slo,
+                        experiment_id=spec.experiment_id,
+                        original_metrics=winner.metric_set,
+                        adapter=self.adapter,
+                        single_run_executor=self.single_run_executor,
+                        artifacts_root=self.artifacts_root,
+                        cancellation_token=token,
+                        seed=verif_seed,
+                        persist_record=True,
+                        existing_run_ids=existing_run_ids,
+                    )
+
+            return GridSearchOutcome(
+                search_result=search_result,
+                run_results=run_results,
+                verification_record=verification_record,
+            )
         finally:
             timeout.cancel()
+
+    def run_full_campaign(
+        self,
+        spec: ExperimentSpec,
+        *,
+        ranking_objective: RankingObjective,
+        cancellation_token: Optional[Any] = None,
+        seed: Optional[int] = 42,
+        prompts: Optional[Sequence[str]] = None,
+    ) -> GridSearchOutcome:
+        """
+        Executes a complete 6-run campaign:
+        1 baseline + 4 candidates (5 search runs) + 1 independent verification run (Run 6).
+        """
+        return self.run(
+            spec,
+            ranking_objective=ranking_objective,
+            cancellation_token=cancellation_token,
+            seed=seed,
+            prompts=prompts,
+            auto_verify=True,
+        )
 
     def _candidate_settings(self, spec: ExperimentSpec) -> List[dict]:
         declared = spec.search_space or DEFAULT_SEARCH_SPACE
@@ -416,6 +482,7 @@ class GridSearchController:
         stream: bool = True,
         prompts: Optional[Union[List[str], str]] = None,
         strict_config: bool = True,
+        auto_verify: bool = False,
     ) -> SearchResult:
         """
         Executes the bounded 2x2 grid search campaign.
@@ -637,6 +704,38 @@ class GridSearchController:
         # Persist search_result.json to disk atomically
         result_path = resolved_output_dir / "search_result.json"
         result_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+
+        # Run 6: Independent Verification Rerun if auto_verify is requested
+        if auto_verify and selected_candidate_id and budget.can_execute_verification_run():
+            from slokern.core.verification.protocol import run_independent_verification
+
+            all_configs = [baseline_config] + grid_candidates
+            winner_cfg = next((c for c in all_configs if c.candidate_id == selected_candidate_id), None)
+            winner_eval = next((e for e in evaluated_candidates if e.candidate_id == selected_candidate_id), None)
+            orig_metrics = winner_eval.metric_set if winner_eval else None
+
+            if winner_cfg is not None and orig_metrics is not None:
+                budget.record_verification_run()
+                verif_seed = None if seed is None else seed + 100
+                cand_run_ids = {baseline_config.candidate_id: f"run-00-base-{baseline_config.candidate_id[:6]}"}
+                for idx, c in enumerate(grid_candidates, start=1):
+                    cand_run_ids[c.candidate_id] = f"run-{idx:02d}-cand-{c.candidate_id[:6]}"
+                orig_run_id = cand_run_ids.get(selected_candidate_id, f"run-search-{selected_candidate_id[:6]}")
+                run_independent_verification(
+                    original_run_id=orig_run_id,
+                    candidate_config=winner_cfg,
+                    workload=resolved_workload,
+                    slo=resolved_slo,
+                    experiment_id=resolved_experiment_id,
+                    original_metrics=orig_metrics,
+                    adapter=adapter_to_use,
+                    single_run_executor=self.single_run_executor,
+                    artifacts_root=self.artifacts_root,
+                    cancellation_token=cancellation_token,
+                    seed=verif_seed,
+                    persist_record=True,
+                    existing_run_ids=list(cand_run_ids.values()),
+                )
 
         return result
 

@@ -60,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--output-dir",
         help="Directory to persist experiment artifacts (default: artifacts).",
     )
+    opt_parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="Execute independent verification rerun (Run 6) immediately after candidate search.",
+    )
 
     # verify
     verify_p = subparsers.add_parser(
@@ -116,11 +121,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             prompt=args.prompt,
         )
     elif args.command == "optimize":
+        kwargs = {}
+        if getattr(args, "verify", False):
+            kwargs["auto_verify"] = True
         return optimize_command(
             spec_file=args.spec_file,
             adapter=args.adapter,
             objective=args.objective,
             output_dir=args.output_dir,
+            **kwargs,
         )
     elif args.command == "verify":
         return verify_command(

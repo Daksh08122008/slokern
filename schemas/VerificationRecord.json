@@ -15,6 +15,28 @@
           "description": "Boolean indicating whether verification drifted across a threshold",
           "title": "Slo Drift Detected",
           "type": "boolean"
+        },
+        "metric_comparisons": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/MetricDriftComparison"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Detailed per-metric drift evaluations",
+          "title": "Metric Comparisons"
+        },
+        "drift_exceeded": {
+          "default": false,
+          "description": "True if any required metric exceeded its declared drift tolerance",
+          "title": "Drift Exceeded",
+          "type": "boolean"
         }
       },
       "required": [
@@ -23,6 +45,115 @@
       ],
       "title": "DriftAnalysis",
       "type": "object"
+    },
+    "MetricDriftComparison": {
+      "additionalProperties": false,
+      "description": "Detailed drift evaluation for an individual metric.",
+      "properties": {
+        "metric_name": {
+          "description": "Canonical metric identifier",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "reference_value": {
+          "description": "Reference measurement from winning search run",
+          "title": "Reference Value",
+          "type": "number"
+        },
+        "verification_value": {
+          "description": "Fresh measurement from independent verification run",
+          "title": "Verification Value",
+          "type": "number"
+        },
+        "absolute_drift": {
+          "description": "Absolute difference between verification and reference",
+          "title": "Absolute Drift",
+          "type": "number"
+        },
+        "relative_drift": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Percentage drift relative to reference when defined",
+          "title": "Relative Drift"
+        },
+        "tolerance": {
+          "description": "Declared drift tolerance threshold",
+          "title": "Tolerance",
+          "type": "number"
+        },
+        "comparison_method": {
+          "description": "Mathematical comparison formula applied",
+          "enum": [
+            "relative_percentage",
+            "absolute_difference"
+          ],
+          "title": "Comparison Method",
+          "type": "string"
+        },
+        "unit": {
+          "description": "Explicit metric unit",
+          "title": "Unit",
+          "type": "string"
+        },
+        "passed": {
+          "description": "True if drift is within accepted tolerance",
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "failure_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Diagnostic reason if drift failed or could not be evaluated",
+          "title": "Failure Reason"
+        }
+      },
+      "required": [
+        "metric_name",
+        "reference_value",
+        "verification_value",
+        "absolute_drift",
+        "tolerance",
+        "comparison_method",
+        "unit",
+        "passed"
+      ],
+      "title": "MetricDriftComparison",
+      "type": "object"
+    },
+    "ReasonCode": {
+      "description": "Machine-readable reason codes for feasibility and verification decisions.",
+      "enum": [
+        "HARD_CONSTRAINTS_PASSED",
+        "TTFT_P95_EXCEEDED",
+        "TTFT_P50_EXCEEDED",
+        "ITL_P95_EXCEEDED",
+        "E2E_LATENCY_EXCEEDED",
+        "ERROR_RATE_EXCEEDED",
+        "THROUGHPUT_DEFICIT",
+        "INSUFFICIENT_SAMPLES",
+        "GENERATOR_SATURATED",
+        "CONTAMINATED_LOAD",
+        "MISSING_REQUIRED_METRIC",
+        "UNSUPPORTED_OPERATOR",
+        "EXECUTION_CRASHED",
+        "VERIFICATION_DRIFT_EXCEEDED"
+      ],
+      "title": "ReasonCode",
+      "type": "string"
     },
     "VerificationState": {
       "description": "Independent verification status of the selected winning candidate.",
@@ -80,6 +211,22 @@
       ],
       "default": null,
       "description": "Drift analysis"
+    },
+    "reason_codes": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Machine-readable decision reason codes",
+      "title": "Reason Codes"
     },
     "final_decision_notes": {
       "anyOf": [

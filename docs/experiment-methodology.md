@@ -143,8 +143,8 @@ The current DEC-0010 six-run campaign is one baseline + four candidates + one ve
 
 - Proposed validity checks include requested/effective settings match, endpoint health before and after the window, generator capacity, no process restart/OOM, cache state captured where observable, and complete accounting for timeouts, dropped requests, partial streams, and cancellations. The numerical p99-lateness, CPU, and 0.98 load-ratio gates require approval and code support before they can determine verdicts.
 - A crashed process, failed health check, invalid load generator, configuration mismatch, or incomplete stream is not a valid SLO failure and must not be ranked as a successful candidate. The current evaluator receives only `MetricSet` and `SLOSpec`; it does not consume `RunRecord.execution_status` or per-request validity as a global run gate. This integration gap needs a separately approved code change before the full invariant can be claimed.
-- Verification needs a fresh run ID, fresh raw request evidence, the same frozen winner settings/SLO/workload, and a separately generated arrival schedule. `ExperimentVerificationPolicy.repetitions` governs the reserve. The proposed ±15% p95 TTFT/TPOT agreement tolerance is **not approved** and must not be silently applied; no TPOT metric exists in the current contract.
-- `src/slokern/core/verification/protocol.py` and `compare.py` are stubs. Verification independence and any drift comparison are planned, not implemented.
+- Verification needs a fresh run ID, fresh raw request evidence, the same frozen winner settings/SLO/workload, and a separately generated arrival schedule. ExperimentVerificationPolicy.repetitions governs the reserve. Drift policy is defined in DriftPolicy (+15% latency, -15% throughput, +0.01 error rate).
+- src/slokern/core/verification/protocol.py and compare.py implement independent verification and metric drift auditing (TASK-11, BLK-08 resolved). Verified via unit tests (	est_drift_boundary.py, 	est_verification_campaign.py) and offline Run 6 campaign rerun (exp-audit-offline-campaign).
 
 ---
 

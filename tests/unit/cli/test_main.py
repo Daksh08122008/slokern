@@ -52,6 +52,19 @@ def test_main_routes_to_optimize():
         )
 
 
+def test_main_routes_to_optimize_with_verify():
+    with patch("slokern.cli.main.optimize_command", return_value=0) as mock_cmd:
+        ret = main(["optimize", "spec.json", "--adapter", "fake", "--verify"])
+        assert ret == 0
+        mock_cmd.assert_called_once_with(
+            spec_file="spec.json",
+            adapter="fake",
+            objective=None,
+            output_dir=None,
+            auto_verify=True,
+        )
+
+
 def test_main_routes_to_verify():
     with patch("slokern.cli.main.verify_command", return_value=0) as mock_cmd:
         ret = main(["verify", "spec.json", "results.json", "--adapter", "fake"])

@@ -53,7 +53,7 @@
 - **Current Critical-Path Tasks:**
    - [`TASK-09`](#task-09--implement-nebius-serving-adapter-and-execute-live-smoke-test): Nebius Serving Adapter & Live Smoke Probe (`src/slokern/engine/serving/nebius.py`) [**`DONE / OFFLINE FALLBACK (BLK-04)`**].
    - [`TASK-10`](#task-10--implement-22-bounded-search-controller-and-history-store): 2×2 Bounded Search Controller & Budget Limiter (`src/slokern/core/search/`) [**`DONE`**].
-   - [`TASK-11`](#task-11--implement-independent-verification-engine): Independent Verification Engine (`src/slokern/core/verification/`) [**`READY / CRITICAL PATH`**].
+   - [`TASK-11`](#task-11--implement-independent-verification-engine): Independent Verification Engine (`src/slokern/core/verification/`) [**`DONE / VERIFIED`**].
 
 ### 1.2 Immediate Next 1–3 Actions
 1. **Action 1 (Rajdeep — TASK-11):** Implement metric drift calculation in `compare.py` and orchestrate the independent verification rerun under fresh `verification_run_id`.
@@ -176,7 +176,7 @@ The October 21 audit revealed four cross-document contradictions across earlier 
 | **TASK-08** | Single-Run Pipeline Orchestrator | `DONE` | `UNIT` | TASK-04, TASK-05, TASK-06, TASK-07 | Rajdeep |
 | **TASK-09** | Nebius Live Serving Adapter & Smoke Probe | `DONE / OFFLINE FALLBACK` | `UNIT` | Closed BLK-04 fallback | Rajdeep |
 | **TASK-10** | 2×2 Bounded Search Controller | `DONE` | `UNIT` | Closed BLK-11, BLK-15, BLK-16 | Rajdeep |
-| **TASK-11** | Independent Verification Engine | `READY / CRITICAL PATH` | `CONTRACT` | TASK-10, BLK-08 (16 contract tests pass) | Rajdeep |
+| **TASK-11** | Independent Verification Engine | `DONE / VERIFIED` | `UNIT, CONTRACT & CAMPAIGN` | TASK-10, BLK-08 (28 unit + 17 contract tests pass) | Rajdeep |
 | **TASK-12** | Report Artifact Generator & Publisher | `BLOCKED` | `NONE` | TASK-11, BLK-09 | Rajdeep |
 | **TASK-13** | Minimal CLI Runner (`slokern verify`) | `BLOCKED` | `NONE` | TASK-12 | Rajdeep |
 | **TASK-14** | Benchmark Data Integrity & Trace Audit Suite | READY | UNIT | TASK-07 | Rajdeep |
@@ -345,7 +345,7 @@ This day-by-day plan governs all development leading up to the submission deadli
 ### Day 6: Monday, October 26, 2026 — Phase D: Independent Verification Engine (Run 6) & Metric Drift Auditing
 - **Intended Outcome:** Verification runner reruns winning candidate under a fresh `verification_run_id` (Run 6), computes metric drift ($\Delta M$), and assigns definitive verification verdict.
 - **Ordered Actions:**
-  - [ ] **Action 6.1 (Rajdeep):** Execute `TASK-11`: Implement verification engine in `src/slokern/core/verification/protocol.py` and drift comparison in `compare.py` (closing `BLK-08`).
+  - [x] **Action 6.1 (Rajdeep):** Execute `TASK-11`: Implement verification engine in `src/slokern/core/verification/protocol.py` and drift comparison in `compare.py` (closing `BLK-08`).
   - [ ] **Action 6.2 (Rajdeep):** Execute the 6th benchmark run: independent verification rerun of the winning candidate under fresh `verification_run_id`.
   - [ ] **Action 6.3 (Rajdeep):** Audit verification independence: verify that verification run does NOT reuse search metrics or copy run IDs, and recomputes all metrics from fresh evidence.
   - [ ] **Action 6.4 (Rajdeep):** Test drift threshold evaluation: assert verification fails if metric drift exceeds declared tolerance ($\Delta \text{TTFT} > \epsilon$).

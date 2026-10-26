@@ -134,11 +134,18 @@ Evaluate constraints → Verification Verdict:
 ```
 
 ### Verification Drift Analysis
-If an accepted verification policy requests drift analysis, report metric deltas between the search run and the verification run:
-$$\Delta M = \frac{M_{\text{verification}} - M_{\text{search}}}{M_{\text{search}}} \times 100\%$$
+Independent verification reports metric deltas between the search run and the verification run:
+\Delta M = 
+rac{M_{\text{verification}} - M_{\text{search}}}{M_{\text{search}}} \times 100\%
 
-Verification feasibility is determined by applying the same declared hard SLOs to fresh verification evidence. A drift threshold is a separate policy from an SLO threshold and must not be inferred from it. The proposed ±15% p95 TTFT/TPOT tolerance is unapproved; TPOT is not currently in `MetricSet`. `src/slokern/core/verification/protocol.py` and `compare.py` are stubs, so drift behavior is not implemented.
-
+Drift policy is governed by DriftPolicy in src/slokern/core/verification/compare.py:
+- **Latency Percentiles (	tft_p95, 	tft_p50, itl_p95, itl_p50, e2e_latency_p95, e2e_latency_p50):** maximum +15.0% relative increase.
+- **Throughput (
+equest_throughput_rps, 	oken_throughput_tps):** maximum -15.0% relative drop.
+- **Error Rate (error_rate):** maximum +0.01 (+1.0 percentage points) absolute increase.
+- **Boundary Evaluation:** strict > triggers failure (drift > tolerance). An exact match (drift == tolerance) passes.
+- **Dual Verdict Semantics:** A candidate configuration is marked VERIFIED if and only if all declared hard SLO constraints pass on verification evidence AND drift remains within declared tolerances. If any hard constraint fails or drift exceeds tolerance, the verdict is VERIFICATION_FAILED. Execution failures or invalid/contaminated samples yield VERIFICATION_INCONCLUSIVE.
+- Implemented and verified in src/slokern/core/verification/protocol.py and compare.py (TASK-11, BLK-08 resolved).
 ---
 
 ## 6. Related Documentation

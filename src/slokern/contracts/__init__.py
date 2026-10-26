@@ -10,7 +10,7 @@ from .evidence import RawRequestMeasurement
 from .metrics import MetricSet, PercentileDistribution
 from .verdict import FeasibilityResult, ConstraintEvaluation
 from .search import SearchResult, CandidateSummary
-from .verification import VerificationRecord, DriftAnalysis
+from .verification import VerificationRecord, DriftAnalysis, MetricDriftComparison
 from .report import ReportArtifact, BaselineSummary, SearchSummary
 from .enums import (
     ExecutionStatus, EvidenceValidity, FeasibilityVerdict,
@@ -27,7 +27,7 @@ __all__ = [
     "MetricSet", "PercentileDistribution",
     "FeasibilityResult", "ConstraintEvaluation",
     "SearchResult", "CandidateSummary",
-    "VerificationRecord", "DriftAnalysis",
+    "VerificationRecord", "DriftAnalysis", "MetricDriftComparison",
     "ReportArtifact", "BaselineSummary", "SearchSummary",
     "ExecutionStatus", "EvidenceValidity", "FeasibilityVerdict",
     "VerificationState", "ArrivalMode", "CostAccountingMode",

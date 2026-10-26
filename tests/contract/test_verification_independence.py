@@ -22,7 +22,7 @@ from slokern.contracts.enums import (
 from slokern.contracts.metrics import MetricSet, PercentileDistribution
 from slokern.contracts.run import RunRecord
 from slokern.contracts.spec import SLOConstraint, SLOSpec
-from slokern.contracts.verification import DriftAnalysis, VerificationRecord
+from slokern.contracts.verification import DriftAnalysis, MetricDriftComparison, VerificationRecord
 from slokern.core.evaluator.evaluate import evaluate_slo
 
 
@@ -446,3 +446,49 @@ def test_inconclusive_takes_precedence_over_infeasible(
     result = evaluate_slo(passing_metrics, standard_slo)
     assert result.overall_verdict == FeasibilityVerdict.INCONCLUSIVE
     assert result.validity_status == EvidenceValidity.CONTAMINATED
+
+
+
+def test_verification_record_structured_reason_codes_and_drift_comparisons():
+    """Validates VerificationRecord with structured reason codes and per-metric drift comparisons."""
+    metric_comp = MetricDriftComparison(
+        metric_name="ttft_p95",
+        reference_value=150.0,
+        verification_value=165.0,
+        absolute_drift=15.0,
+        relative_drift=10.0,
+        tolerance=15.0,
+        comparison_method="relative_percentage",
+        unit="ms",
+        passed=True,
+        failure_reason=None,
+    )
+
+    record = VerificationRecord(
+        verification_id="verif-struct-001",
+        experiment_id="exp-001",
+        candidate_id="cand-01",
+        original_run_id="run-search-cand-01",
+        verification_run_id="run-verify-cand-01",
+        verification_verdict=VerificationState.VERIFIED,
+        drift_analysis=DriftAnalysis(
+            metric_deltas={"ttft_p95": 10.0},
+            slo_drift_detected=False,
+            metric_comparisons={"ttft_p95": metric_comp},
+            drift_exceeded=False,
+        ),
+        reason_codes=[ReasonCode.HARD_CONSTRAINTS_PASSED],
+        final_decision_notes="All constraints verified independently under fresh run ID.",
+    )
+
+    # Validate structured reason codes
+    assert record.reason_codes == [ReasonCode.HARD_CONSTRAINTS_PASSED]
+    assert record.drift_analysis is not None
+    assert record.drift_analysis.drift_exceeded is False
+    assert "ttft_p95" in record.drift_analysis.metric_comparisons
+    assert record.drift_analysis.metric_comparisons["ttft_p95"].passed is True
+
+    # Validate lossless serialization round-trip
+    dumped = record.model_dump_json()
+    loaded = VerificationRecord.model_validate_json(dumped)
+    assert loaded == record
