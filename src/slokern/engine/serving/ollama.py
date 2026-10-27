@@ -25,28 +25,7 @@ from slokern.engine.serving.base import (
     TokenChunk,
 )
 from slokern.engine.serving.capabilities import ParameterSpec, RuntimeCapabilities
-
-
-def sanitize_secret_message(message: str, known_secret: Optional[str] = None) -> str:
-    """Redacts API keys, Bearer tokens, and secrets from error messages and logs."""
-    if not message:
-        return ""
-    sanitized = str(message)
-    if known_secret and len(known_secret) >= 6:
-        sanitized = sanitized.replace(known_secret, "***REDACTED***")
-    sanitized = re.sub(
-        r"(Bearer\s+)[A-Za-z0-9_\-\.]{6,}",
-        r"\g<1>***REDACTED***",
-        sanitized,
-        flags=re.IGNORECASE,
-    )
-    sanitized = re.sub(
-        r"((?:api[_-]?key|token|secret|password)\s*[:=]\s*['\"]?)[A-Za-z0-9_\-\.]{6,}(['\"]?)",
-        r"\g<1>***REDACTED***\g<2>",
-        sanitized,
-        flags=re.IGNORECASE,
-    )
-    return sanitized
+from slokern.engine.store.redact import sanitize_secret_message
 
 
 class StrictLoopbackRedirectHandler(urllib.request.HTTPRedirectHandler):
