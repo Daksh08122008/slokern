@@ -1,0 +1,376 @@
+{
+  "_meta": {
+    "purpose": "Trace data demonstrating load generator saturation (lag > 10ms and rate undersupply).",
+    "owner": "Rajdeep",
+    "label": "DEMO DATA",
+    "provenance": "synthetic-fixture"
+  },
+  "raw_measurements": [
+    {
+      "request_id": "req-sat-000",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.0,
+      "sent_at": 1000.015,
+      "first_token_at": 1000.035,
+      "completed_at": 1000.0849999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-001",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.01,
+      "sent_at": 1000.025,
+      "first_token_at": 1000.045,
+      "completed_at": 1000.0949999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-002",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.02,
+      "sent_at": 1000.035,
+      "first_token_at": 1000.055,
+      "completed_at": 1000.1049999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-003",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.03,
+      "sent_at": 1000.045,
+      "first_token_at": 1000.0649999999999,
+      "completed_at": 1000.1149999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-004",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.04,
+      "sent_at": 1000.055,
+      "first_token_at": 1000.0749999999999,
+      "completed_at": 1000.1249999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-005",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.05,
+      "sent_at": 1000.0649999999999,
+      "first_token_at": 1000.0849999999999,
+      "completed_at": 1000.1349999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-006",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.06,
+      "sent_at": 1000.0749999999999,
+      "first_token_at": 1000.0949999999999,
+      "completed_at": 1000.1449999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-007",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.07,
+      "sent_at": 1000.085,
+      "first_token_at": 1000.105,
+      "completed_at": 1000.155,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-008",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.08,
+      "sent_at": 1000.095,
+      "first_token_at": 1000.115,
+      "completed_at": 1000.165,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-009",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.09,
+      "sent_at": 1000.105,
+      "first_token_at": 1000.125,
+      "completed_at": 1000.175,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-010",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.1,
+      "sent_at": 1000.115,
+      "first_token_at": 1000.135,
+      "completed_at": 1000.185,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-011",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.11,
+      "sent_at": 1000.125,
+      "first_token_at": 1000.145,
+      "completed_at": 1000.1949999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-012",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.12,
+      "sent_at": 1000.135,
+      "first_token_at": 1000.155,
+      "completed_at": 1000.2049999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-013",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.13,
+      "sent_at": 1000.145,
+      "first_token_at": 1000.165,
+      "completed_at": 1000.2149999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-014",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.14,
+      "sent_at": 1000.155,
+      "first_token_at": 1000.175,
+      "completed_at": 1000.2249999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-015",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.15,
+      "sent_at": 1000.165,
+      "first_token_at": 1000.185,
+      "completed_at": 1000.2349999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-016",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.16,
+      "sent_at": 1000.175,
+      "first_token_at": 1000.1949999999999,
+      "completed_at": 1000.2449999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-017",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.17,
+      "sent_at": 1000.185,
+      "first_token_at": 1000.2049999999999,
+      "completed_at": 1000.2549999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-018",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.18,
+      "sent_at": 1000.1949999999999,
+      "first_token_at": 1000.2149999999999,
+      "completed_at": 1000.2649999999999,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    },
+    {
+      "request_id": "req-sat-019",
+      "run_id": "run-sat-001",
+      "scheduled_at": 1000.19,
+      "sent_at": 1000.205,
+      "first_token_at": 1000.225,
+      "completed_at": 1000.275,
+      "http_status": 200,
+      "input_tokens": 10,
+      "output_tokens": 10,
+      "itl_observations_ms": [
+        10.0,
+        10.0
+      ],
+      "error_type": null,
+      "is_warmup": false,
+      "is_valid": true
+    }
+  ],
+  "expected_metrics": {
+    "run_id": "run-sat-001",
+    "generator_saturated": true,
+    "mean_dispatch_lag_ms": 15.0,
+    "target_offered_rate": 100.0
+  }
+}

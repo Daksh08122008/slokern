@@ -55,7 +55,7 @@ class StrictLoopbackRedirectHandler(urllib.request.HTTPRedirectHandler):
     Conforms to DEC-0014 loopback security boundary.
     """
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> urllib.request.Request:
         raise ConfigurationError(
             f"HTTP redirect ({code}) prohibited for loopback security boundary: redirection to '{newurl}' is blocked"
         )
@@ -65,19 +65,19 @@ class StrictLoopbackRedirectHandler(urllib.request.HTTPRedirectHandler):
             return headers.get("Location") or headers.get("location") or ""
         return ""
 
-    def http_error_301(self, req, fp, code, msg, headers):
+    def http_error_301(self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any) -> urllib.request.Request:
         return self.redirect_request(req, fp, code, msg, headers, self._extract_location(headers))
 
-    def http_error_302(self, req, fp, code, msg, headers):
+    def http_error_302(self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any) -> urllib.request.Request:
         return self.redirect_request(req, fp, code, msg, headers, self._extract_location(headers))
 
-    def http_error_303(self, req, fp, code, msg, headers):
+    def http_error_303(self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any) -> urllib.request.Request:
         return self.redirect_request(req, fp, code, msg, headers, self._extract_location(headers))
 
-    def http_error_307(self, req, fp, code, msg, headers):
+    def http_error_307(self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any) -> urllib.request.Request:
         return self.redirect_request(req, fp, code, msg, headers, self._extract_location(headers))
 
-    def http_error_308(self, req, fp, code, msg, headers):
+    def http_error_308(self, req: urllib.request.Request, fp: Any, code: int, msg: str, headers: Any) -> urllib.request.Request:
         return self.redirect_request(req, fp, code, msg, headers, self._extract_location(headers))
 
 
