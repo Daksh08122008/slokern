@@ -17,6 +17,7 @@ from slokern.contracts.report import BaselineSummary, ReportArtifact, SearchSumm
 from slokern.contracts.search import SearchResult
 from slokern.contracts.spec import ExperimentSpec
 from slokern.contracts.verification import VerificationRecord
+from slokern.common.security import sanitize_report_artifact, sanitize_credentials, assert_no_unredacted_credentials
 
 
 def _now_iso() -> str:
@@ -191,11 +192,16 @@ def write_report_artifacts(
 
     # Write report.json atomically
     temp_json = out_path / f"report.json.tmp.{uuid.uuid4().hex[:6]}"
-    temp_json.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+    sanitized_report = sanitize_report_artifact(report)
+    temp_json.write_text(sanitized_report.model_dump_json(indent=2), encoding="utf-8")
+    assert_no_unredacted_credentials(temp_json.read_text(encoding="utf-8"))
     temp_json.replace(json_path)
 
     # Write report.md atomically
-    md_content = render_markdown_report(report)
+    sanitized_report = sanitize_report_artifact(report)
+    md_content = render_markdown_report(sanitized_report)
+    md_content = sanitize_credentials(md_content)
+    assert_no_unredacted_credentials(md_content)
     temp_md = out_path / f"report.md.tmp.{uuid.uuid4().hex[:6]}"
     temp_md.write_text(md_content, encoding="utf-8")
     temp_md.replace(md_path)

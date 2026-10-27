@@ -24,6 +24,7 @@ from slokern.contracts.spec import (
     WorkloadSpec,
 )
 from slokern.contracts.verification import DriftAnalysis, VerificationRecord
+from slokern.common.security import sanitize_credentials
 from slokern.engine.reporting.report_builder import (
     build_report_artifact,
     render_markdown_report,
@@ -144,3 +145,80 @@ def test_build_report_artifact_and_render_markdown(mock_experiment_spec, tmp_pat
     loaded = ReportArtifact.model_validate_json(json_path.read_text(encoding="utf-8"))
     assert loaded.report_id == report.report_id
     assert loaded.verification_record.verification_verdict == VerificationState.VERIFIED
+
+
+def test_report_artifact_sanitization(tmp_path):
+    report = ReportArtifact(
+        report_id="rep-sec-01",
+        created_at="2026-10-27T00:00:00Z",
+        experiment_spec=ExperimentSpec(
+            experiment_id="exp-1",
+            workload=WorkloadSpec(
+                schema_version="1.0.0",
+                workload_name="sat-test",
+                fixture_id="sat-001",
+                arrival_mode="poisson",
+                target_offered_rate=100.0,
+                concurrency_limit=10,
+                warmup_duration_s=0.0,
+                measurement_duration_s=1,
+                max_input_tokens=10,
+                max_output_tokens=10
+            ),
+            slo=SLOSpec(
+                slo_id="slo-1",
+                min_sample_count=20,
+                constraints=[SLOConstraint(metric_name="ttft_ms", statistic="p99", threshold=500.0, unit="ms", operator="<=")]
+            ),
+            search_space={"model": ["test"]},
+            budget={"max_candidates": 4, "max_wallclock_seconds": 3600}
+        ),
+        environment_fingerprint={
+            "api_key": "nvapi-12345678901234567890",
+            "bearer_token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+            "url": "http://user:password@localhost:11434"
+        },
+        baseline_summary=BaselineSummary(
+            baseline_candidate_id="base-1",
+            verdict=FeasibilityVerdict.FEASIBLE,
+            metrics={"p99_latency_ms": 100.0}
+        ),
+        search_summary=SearchSummary(
+            tested_candidates=["base-1"],
+            rankings=["base-1"],
+            rejected_options=[]
+        ),
+        selected_candidate=None,
+        verification_record=None,
+        limitations_disclosed={"note": "api_key='nvapi-fake1234567890'"},
+        cost_accounting_basis="None",
+        artifact_paths={"logs": "http://user:pass@127.0.0.1/logs"}
+    )
+
+    json_path, md_path = write_report_artifacts(report, tmp_path)
+
+    json_text = json_path.read_text(encoding="utf-8")
+    md_text = md_path.read_text(encoding="utf-8")
+
+    assert "nvapi-" not in json_text
+    assert "nvapi-" not in md_text
+
+    assert "eyJhbGciOi" not in json_text
+    assert "eyJhbGciOi" not in md_text
+
+    assert "user:password" not in json_text
+    assert "user:pass" not in md_text
+
+    assert "***REDACTED***" in json_text
+    assert "***REDACTED***" in md_text
+
+    assert "http://***REDACTED***@localhost:11434" in json_text
+
+    # False positive test: loopback IPs shouldn't be fully redacted, just the auth
+    assert "127.0.0.1" in json_text
+    assert "localhost" in json_text
+
+    # Ensure it's valid JSON and parses back
+    import json
+    data = json.loads(json_text)
+    ReportArtifact.model_validate(data)
