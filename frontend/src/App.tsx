@@ -635,10 +635,17 @@ export default function App() {
   }, [demoRunCreated, builder.workload, builder.model, evidenceStale, winner, verificationState]);
 
   const visibleExperiments = useMemo(() => {
-    return experimentRecords.filter(record =>
-      `${record.id} ${record.run} ${record.work} ${record.model}`.toLowerCase().includes(search.toLowerCase()) &&
-      (statusFilter === 'All statuses' || (statusFilter === 'Needs review' ? record.state === 'Needs review' : record.state === statusFilter))
-    );
+    const searchLower = search.toLowerCase();
+    return experimentRecords.filter(record => {
+      // ⚡ Bolt Optimization: Short-circuit on O(1) status check before O(N) string allocation
+      const statusMatches = statusFilter === 'All statuses' ||
+                           (statusFilter === 'Needs review' ? record.state === 'Needs review' : record.state === statusFilter);
+
+      if (!statusMatches) return false;
+      if (!searchLower) return true;
+
+      return `${record.id} ${record.run} ${record.work} ${record.model}`.toLowerCase().includes(searchLower);
+    });
   }, [experimentRecords, search, statusFilter]);
 
   const navigate = (next: Page) => { setPage(next); setShowReview(false); };
