@@ -47,3 +47,27 @@ htmlcov/
 
 # Local overrides
 *.local
+
+# Development-only agent tooling and copied skill assets
+.agent/
+.agents/skills/
+.agents/teamwork/*
+!.agents/teamwork/sentinel_victory_auditor_1/
+.agents/teamwork/sentinel_victory_auditor_1/*
+!.agents/teamwork/sentinel_victory_auditor_1/independent_audit_verification.py
+.jules/
+.codex/
+.mcp.json
+.impeccable/
+frontend/.agents/
+frontend/skills-lock.json
+
+# Historical one-off scripts and reports
+scratch/
+update_roadmap.py
+patch_scan_secrets.py
+final_report.md
+
+# Unused package-manager lockfile and empty output placeholder
+frontend/pnpm-lock.yaml
+results/final/.gitkeep
