@@ -1,5 +1,5 @@
 {
     "python.defaultInterpreterPath": ".venv\\Scripts\\python.exe",
     "python.terminal.useEnvFile": true,
-    "typescript.tsdk": "frontend/node_modules/typescript/lib"
+    "js/ts.tsdk.path": "frontend/node_modules/typescript/lib"
 }
