@@ -4,12 +4,10 @@ Owner: Rajdeep (Historical design: Aman)
 Authority: Aligned with AGENTS.md Section 10 and DEC-0014
 """
 
-import pytest
-
 from slokern.api.routes.health import get_health, run_smoke_probe
 
 
-def test_get_health_fake():
+def test_get_health_fake() -> None:
     res = get_health(adapter_name="fake")
     assert res["status"] == "ok"
     assert res["runtime"] == "vllm-fake"
@@ -17,7 +15,7 @@ def test_get_health_fake():
     assert res["fingerprint"]["is_simulated"] is True
 
 
-def test_run_smoke_probe_fake():
+def test_run_smoke_probe_fake() -> None:
     res = run_smoke_probe(adapter_name="fake", prompt="Health test probe")
     assert res["status"] == "success"
     assert res["status_code"] == 200
@@ -28,7 +26,7 @@ def test_run_smoke_probe_fake():
     assert res["error"] is None
 
 
-def test_get_health_invalid_adapter():
+def test_get_health_invalid_adapter() -> None:
     res = get_health(adapter_name="nonexistent_runtime")
     assert res["status"] == "error"
     assert res["is_healthy"] is False

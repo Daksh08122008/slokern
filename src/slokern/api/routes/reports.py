@@ -116,7 +116,7 @@ def get_report_data(experiment_id: str, artifacts_root: str = "artifacts") -> Di
             workload=workload,
             slo=slo,
             search_space={"max_num_seqs": [8, 16], "max_num_batched_tokens": [256, 512]},
-            budget=ExperimentBudget(max_candidates=4, max_wallclock_seconds=120),
+            budget=ExperimentBudget(max_candidates=4, max_wallclock_seconds=120, max_cost_limit=None),
         )
 
         selected_candidate = CandidateConfig(

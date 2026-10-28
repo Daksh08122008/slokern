@@ -5,29 +5,28 @@ Authority: Aligned with AGENTS.md Section 10, 11 and DEC-0014
 """
 
 import json
-from pathlib import Path
 import time
-import pytest
+from pathlib import Path
 
 from slokern.api.app import handle_api_request
 from slokern.contracts.enums import ExecutionStatus, FeasibilityVerdict
 
 
-def test_api_options_preflight():
+def test_api_options_preflight() -> None:
     status, headers, body = handle_api_request("OPTIONS", "/api/health")
     assert status == 200
     assert headers["Access-Control-Allow-Origin"] == "*"
     assert "POST" in headers["Access-Control-Allow-Methods"]
 
 
-def test_api_404_not_found():
+def test_api_404_not_found() -> None:
     status, headers, body = handle_api_request("GET", "/api/nonexistent")
     assert status == 404
     data = json.loads(body.decode("utf-8"))
     assert "error" in data
 
 
-def test_api_health_fake_adapter():
+def test_api_health_fake_adapter() -> None:
     status, headers, body = handle_api_request("GET", "/api/health?adapter=fake")
     assert status == 200
     data = json.loads(body.decode("utf-8"))
@@ -37,7 +36,7 @@ def test_api_health_fake_adapter():
     assert data["fingerprint"]["is_simulated"] is True
 
 
-def test_api_smoke_test_fake_adapter():
+def test_api_smoke_test_fake_adapter() -> None:
     payload = {"adapter": "fake", "prompt": "Test smoke probe"}
     status, headers, body = handle_api_request("POST", "/api/smoke-test", body=payload)
     assert status == 200
@@ -49,7 +48,7 @@ def test_api_smoke_test_fake_adapter():
     assert data["output_tokens"] > 0
 
 
-def test_api_single_run_and_status(tmp_path: Path):
+def test_api_single_run_and_status(tmp_path: Path) -> None:
     payload = {
         "adapter": "fake",
         "workload": {
@@ -109,7 +108,7 @@ def test_api_single_run_and_status(tmp_path: Path):
     assert result_data["feasibility_result"]["overall_verdict"] == FeasibilityVerdict.FEASIBLE.value
 
 
-def test_api_verification_run(tmp_path: Path):
+def test_api_verification_run(tmp_path: Path) -> None:
     payload = {
         "adapter": "fake",
         "candidate_id": "cand-api-test-01",
