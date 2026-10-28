@@ -912,6 +912,35 @@ Every evening during active sprint execution (Oct 21–30):
 
 ### 10.3 Recorded Daily Engineering Updates
 
+#### Daily Engineering Update — 2026-10-28 (Sprint Day 8)
+- **Active Milestone:** Phase E: Frontend Integration & Control Plane Bridge (Day 8 of 10, ~64 hrs remaining)
+- **Completed Work & Deliverables:**
+  - `FE-INT-01`: Exported canonical Pydantic v2 schemas to 100% typed TypeScript interfaces in `frontend/src/types/contracts.ts` matching all 11 backend models and canonical enums.
+  - `FE-INT-02` / `SUB-11`: Built minimal stdlib HTTP control plane & SSE streaming engine in `src/slokern/api/` (`slokern serve`), providing `/api/health`, `/api/smoke-test`, `/api/runs/single`, `/api/runs/<id>`, `/api/runs/verify`, `/api/reports/<id>`, and thread-safe `SSEEventQueue`.
+  - `FE-INT-03`: Implemented and verified backend API unit tests (`tests/unit/api/`, 9/9 passed in 2.75s).
+  - `FE-INT-04`: Built typed fetch client in `frontend/src/api/client.ts` with Server-Sent Events subscriber and automatic polling fallback.
+  - `FE-INT-05` to `FE-INT-10` / `SUB-12`: Connected React 19 UI in `frontend/src/App.tsx` across the full vertical slice:
+    - Background health check handshake with active adapter toggle (`ollama` / `fake`).
+    - Interactive Preflight Smoke Probe with initial TTFT measurement on Runtime Profile.
+    - Live benchmark dispatch with SSE progress streaming on Workload Builder and Live Monitor.
+    - Live measured candidate card with physical JSONL trace provenance and BLK-17 capability gating notice on Tuning Lab.
+    - Independent verification rerun with fresh run ID and drift analysis on Verification Lab.
+    - Live Markdown report generation and dossier export on Evidence & Reports.
+  - `FE-INT-11`: Delivered and verified full end-to-end integration test `tests/integration/test_frontend_api_integration.py` passing 100%.
+  - `FE-INT-12`: Updated documentation in `docs/implementation-status.md`, `docs/integration-checklist.md`, and `ROADMAP.md`.
+- **Validation Evidence:**
+  - Frontend production build: `npm run build` compiled cleanly in 1.65s (`tsc -b && vite build` with 0 TypeScript/JSX errors).
+  - Full repository test regression: 484 collected, **471 passed, 13 skipped in 25.85s** (`pytest`, 0 failures).
+  - API unit tests: `tests/unit/api/` passed 9/9 tests in 2.75s.
+  - E2E API integration test: `tests/integration/test_frontend_api_integration.py` passed in 0.80s.
+- **Active Blockers & Decisions Needed:**
+  - `BLK-17`: Serving engine dynamic parameter controls (`max_num_batched_tokens`, `max_num_seqs`) are unsupported on local Ollama without server daemon restart; capability gating properly displayed on UI and enforced in backend.
+  - `BLK-04`: Nebius credentials unset (offline simulation uses `FakeServingAdapter` labeled `DEMO DATA`).
+- **Next Day Priorities (Top 3):**
+  1. Priority 1: Run host Ollama live demo end-to-end from browser against `qwen3:4b-instruct-2507-q4_K_M` via `slokern serve`.
+  2. Priority 2: Finalize demo recording script and visual timing ($\le 3$ minutes) for hackathon submission.
+  3. Priority 3: CI/CD workflow hardening (`BLK-13`) with ruff, mypy, and secret scanning ahead of final submission packaging.
+
 #### Daily Engineering Update — 2026-10-27 (Sprint Day 7)
 - **Active Milestone:** Phase D: Local Ollama Verification & Pipeline Execution (Day 7 of 10, ~88 hrs remaining)
 - **Completed Work & Deliverables:**
