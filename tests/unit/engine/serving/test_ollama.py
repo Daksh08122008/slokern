@@ -335,3 +335,74 @@ def test_ollama_stream_generate_premature_termination():
     assert chunks[1].is_last is True
     assert chunks[1].error is not None
     assert "interrupted prematurely" in chunks[1].error
+
+
+def test_ollama_check_readiness_ready():
+    """check_readiness returns ready=True when target model is present in tags."""
+    adapter = OllamaServingAdapter(model_name="qwen3:4b-instruct-2507-q4_K_M")
+    tags_data = json.dumps({
+        "models": [{"name": "qwen3:4b-instruct-2507-q4_K_M:latest", "model": "qwen3:4b-instruct-2507-q4_K_M"}]
+    }).encode("utf-8")
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = tags_data
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch.object(adapter._opener, "open", return_value=mock_resp):
+        res = adapter.check_readiness()
+
+    assert res["ready"] is True
+    assert res["status"] == "ready"
+    assert "ready" in res["message"].lower()
+
+
+def test_ollama_check_readiness_model_missing():
+    """check_readiness returns model_missing status when model is not pulled."""
+    adapter = OllamaServingAdapter(model_name="qwen3:4b-instruct-2507-q4_K_M")
+    tags_data = json.dumps({
+        "models": [{"name": "llama3:8b", "model": "llama3:8b"}]
+    }).encode("utf-8")
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = tags_data
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch.object(adapter._opener, "open", return_value=mock_resp):
+        res = adapter.check_readiness()
+
+    assert res["ready"] is False
+    assert res["status"] == "model_missing"
+    assert "ollama pull" in res["message"]
+
+
+def test_ollama_check_readiness_connection_error():
+    """check_readiness returns connection_error when daemon is unreachable."""
+    adapter = OllamaServingAdapter()
+    with patch.object(adapter._opener, "open", side_effect=urllib.error.URLError("Connection refused")):
+        res = adapter.check_readiness()
+
+    assert res["ready"] is False
+    assert res["status"] == "connection_error"
+    assert res["error"] is not None
+
+
+def test_ollama_check_readiness_different_family_variant_rejected():
+    """check_readiness rejects matching qwen3:0.5b when target is qwen3:4b-instruct."""
+    adapter = OllamaServingAdapter(model_name="qwen3:4b-instruct-2507-q4_K_M")
+    tags_data = json.dumps({
+        "models": [{"name": "qwen3:0.5b", "model": "qwen3:0.5b"}]
+    }).encode("utf-8")
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = tags_data
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch.object(adapter._opener, "open", return_value=mock_resp):
+        res = adapter.check_readiness()
+
+    assert res["ready"] is False
+    assert res["status"] == "model_missing"
+

@@ -99,6 +99,26 @@ export async function getReport(
   );
 }
 
+export function getRunTraceUrl(runId: string): string {
+  return `${API_BASE}/api/runs/${encodeURIComponent(runId)}/trace`;
+}
+
+export async function fetchRunTrace(runId: string): Promise<string> {
+  const url = getRunTraceUrl(runId);
+  const res = await fetch(url);
+  if (!res.ok) {
+    let errMsg = `Failed to fetch raw trace: HTTP ${res.status}`;
+    try {
+      const errJson = await res.json();
+      if (errJson.error) errMsg = errJson.error;
+    } catch {
+      // ignore
+    }
+    throw new ApiClientError(errMsg, res.status);
+  }
+  return res.text();
+}
+
 /**
  * Subscribes to live SSE events from /api/runs/<run_id>/events.
  * Includes automatic polling fallback in case SSE is blocked or disconnects.
@@ -129,11 +149,15 @@ export function subscribeRunProgress(
           clearInterval(pollInterval);
           onError(status.error || 'Execution failed');
         } else {
+          const totalReqs = status.workload
+            ? Math.max(1, Math.round((status.workload.warmup_duration_s + status.workload.measurement_duration_s) * status.workload.target_offered_rate))
+            : 10;
           onProgress({
             type: 'progress',
             run_id: runId,
             completed_requests: status.raw_measurements_count || 0,
-            total_requests: 10,
+            total_requests: totalReqs,
+            current_ttft_ms: status.metric_set?.ttft_ms?.p50 ?? null,
           });
         }
       } catch (err: any) {

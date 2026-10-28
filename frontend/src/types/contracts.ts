@@ -249,6 +249,8 @@ export interface HealthResponse {
   endpoint: string;
   is_healthy: boolean;
   fingerprint: Record<string, any>;
+  message?: string;
+  error?: string;
 }
 
 export interface SmokeTestResponse {
@@ -268,6 +270,7 @@ export interface SmokeTestResponse {
 export interface SingleRunDispatchResponse {
   run_id: string;
   experiment_id: string;
+  candidate_id?: string;
   status: ExecutionStatus;
   message: string;
 }
@@ -282,6 +285,9 @@ export interface RunStatusResponse {
   metric_set?: MetricSet | null;
   feasibility_result?: FeasibilityResult | null;
   raw_measurements_count: number;
+  artifact_paths?: Record<string, string>;
+  workload?: WorkloadSpec;
+  slo?: SLOSpec;
   error?: string | null;
 }
 

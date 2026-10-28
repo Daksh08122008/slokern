@@ -10,7 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -214,6 +214,7 @@ class SingleRunExecutor:
         prompts: Optional[Union[List[str], str]] = None,
         artificial_dispatch_delay_ms: float = 0.0,
         raise_on_failure: bool = False,
+        progress_callback: Optional[Callable[[int, int, Optional[float]], None]] = None,
     ) -> SingleRunResult:
         """
         Executes a single benchmark run through the full lifecycle.
@@ -416,6 +417,7 @@ class SingleRunExecutor:
                 stream=stream,
                 prompts=prompts,
                 artificial_dispatch_delay_ms=artificial_dispatch_delay_ms,
+                progress_callback=progress_callback,
             )
 
             if raw_path.exists() and raw_path.stat().st_size > 0:

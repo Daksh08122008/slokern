@@ -3,3 +3,4 @@
     "python.terminal.useEnvFile": true,
     "js/ts.tsdk.path": "frontend/node_modules/typescript/lib"
 }
+

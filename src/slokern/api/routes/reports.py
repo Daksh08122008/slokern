@@ -119,15 +119,42 @@ def get_report_data(experiment_id: str, artifacts_root: str = "artifacts") -> Di
             budget=ExperimentBudget(max_candidates=4, max_wallclock_seconds=120, max_cost_limit=None),
         )
 
-        selected_candidate = CandidateConfig(
-            candidate_id=cand_id,
-            model_name="fake-llama-3-8b",
-            runtime_name="vllm-fake",
-            requested_settings={},
-            effective_settings={"max_num_seqs": 16},
-            parameter_status={},
-            environment_fingerprint={"hardware": "Host (CPU/Simulation)"},
-        )
+        # Resolve candidate config from run_data, verification run artifacts, applied_config.json, or fallback
+        selected_candidate: Optional[CandidateConfig] = None
+        if run_data and run_data.get("applied_config"):
+            try:
+                selected_candidate = CandidateConfig.model_validate(run_data["applied_config"])
+            except Exception:
+                selected_candidate = None
+
+        if selected_candidate is None and verif_record:
+            for r_id in (verif_record.original_run_id, verif_record.verification_run_id):
+                ac_file = exp_dir / "runs" / r_id / "applied_config.json"
+                if ac_file.exists():
+                    try:
+                        selected_candidate = CandidateConfig.model_validate_json(ac_file.read_text(encoding="utf-8"))
+                        break
+                    except Exception:
+                        pass
+
+        if selected_candidate is None:
+            for ac_p in exp_dir.glob("runs/*/applied_config.json"):
+                try:
+                    selected_candidate = CandidateConfig.model_validate_json(ac_p.read_text(encoding="utf-8"))
+                    break
+                except Exception:
+                    pass
+
+        if selected_candidate is None:
+            selected_candidate = CandidateConfig(
+                candidate_id=cand_id,
+                model_name=run_data.get("model", "qwen3:4b-instruct-2507-q4_K_M") if run_data else "qwen3:4b-instruct-2507-q4_K_M",
+                runtime_name=run_data.get("adapter", "ollama") if run_data else "ollama",
+                requested_settings={},
+                effective_settings={},
+                parameter_status={},
+                environment_fingerprint={"hardware": "Host Environment"},
+            )
 
         base_summary = BaselineSummary(
             baseline_candidate_id=cand_id,
@@ -145,7 +172,7 @@ def get_report_data(experiment_id: str, artifacts_root: str = "artifacts") -> Di
             experiment_spec=spec,
             baseline_summary=base_summary,
             search_summary=search_summary,
-            environment_fingerprint={"device": "CPU/Test Environment"},
+            environment_fingerprint=selected_candidate.environment_fingerprint or {"device": "Host Environment"},
             limitations_disclosed={"gating": "BLK-17: Dynamic batching gated on remote vLLM"},
             cost_accounting_basis="proxy_gpu_seconds",
             artifact_paths={"experiment_dir": str(exp_dir)},

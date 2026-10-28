@@ -16,9 +16,19 @@ def get_health(adapter_name: Optional[str] = None) -> Dict[str, Any]:
     """
     try:
         adapter = create_serving_adapter(backend=adapter_name)
-        is_healthy = adapter.health_check()
+        readiness_fn = getattr(adapter, "check_readiness", None)
+        if callable(readiness_fn):
+            readiness = readiness_fn()
+            is_healthy = bool(readiness.get("ready", False))
+            diag_error = readiness.get("error")
+            diag_msg = readiness.get("message")
+        else:
+            is_healthy = adapter.health_check()
+            diag_error = None if is_healthy else "Runtime health check failed"
+            diag_msg = "Runtime healthy" if is_healthy else None
+
         fp = adapter.get_environment_fingerprint()
-        return {
+        res: Dict[str, Any] = {
             "status": "ok" if is_healthy else "degraded",
             "runtime": adapter.runtime_name,
             "model": adapter.model_name,
@@ -26,6 +36,11 @@ def get_health(adapter_name: Optional[str] = None) -> Dict[str, Any]:
             "is_healthy": is_healthy,
             "fingerprint": fp,
         }
+        if diag_error:
+            res["error"] = diag_error
+        if diag_msg:
+            res["message"] = diag_msg
+        return res
     except ConfigurationError as exc:
         return {
             "status": "error",
@@ -58,6 +73,12 @@ def run_smoke_probe(
     try:
         adapter = create_serving_adapter(backend=adapter_name)
         if not adapter.health_check():
+            readiness_fn = getattr(adapter, "check_readiness", None)
+            err_detail = "Runtime is unreachable or target model is not installed."
+            if callable(readiness_fn):
+                readiness = readiness_fn()
+                if readiness.get("error"):
+                    err_detail = readiness["error"]
             return {
                 "status": "failed",
                 "runtime": adapter.runtime_name,
@@ -69,7 +90,7 @@ def run_smoke_probe(
                 "output_tokens": 0,
                 "output_preview": "",
                 "metadata": adapter.get_environment_fingerprint(),
-                "error": "Runtime is unreachable or target model is not installed.",
+                "error": err_detail,
             }
 
         req = ServingRequest(prompt=prompt, max_tokens=16, request_id="api-smoke-probe-01")
