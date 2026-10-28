@@ -425,6 +425,7 @@ function ParetoFrontier({
                 className={`pareto-node ${isSelected ? 'is-selected' : ''} ${isFeasible ? 'is-feasible' : 'is-infeasible'}`}
                 tabIndex={0}
                 role="button"
+                aria-pressed={isSelected}
                 aria-label={`Candidate ${c.id}: ${c.name}, P95 ${c.p95} ms, Throughput ${c.throughput}k tokens per second. Status: ${c.feasible ? 'Feasible' : 'Infeasible'}.`}
                 onClick={() => onSelect(c.id)}
                 onKeyDown={(e) => {
@@ -497,6 +498,7 @@ function Button({
       className={`btn btn-${variant} ${loading ? 'btn-loading' : ''} ${className}`}
       onClick={onClick}
       disabled={disabled || loading}
+      aria-busy={loading}
     >
       {loading ? (
         <span className="btn-spinner"><Icon name="refresh" size={14} /></span>
@@ -768,7 +770,7 @@ export default function App() {
             </button>
             <button
               className="icon-button notification-button"
-              aria-label="Notifications"
+              aria-label={(scenario === 'verification-failed' || scenario === 'no-feasible' || evidenceStale) ? "Notifications (unread alerts)" : "Notifications"}
               onClick={() => {
                 if (scenario === 'verification-failed') {
                   notify('Alert: Verification drift breach detected (+11 ms vs 5 ms limit).');
@@ -912,6 +914,7 @@ export default function App() {
                       <div
                         role="button"
                         tabIndex={0}
+                        aria-pressed={c.id === selectedCandidate}
                         className={`rank-row ${c.id === selectedCandidate ? 'rank-selected' : ''}`}
                         key={c.id}
                         onClick={() => openCandidate(c.id)}
