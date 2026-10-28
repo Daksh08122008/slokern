@@ -92,6 +92,7 @@ def run_independent_verification(
 
     drift = None
     reason_codes: List[ReasonCode] = []
+    feasibility: Optional[FeasibilityResult] = None
 
     if run_result.run_record.execution_status != ExecutionStatus.COMPLETED:
         verdict = VerificationState.VERIFICATION_INCONCLUSIVE
@@ -103,6 +104,7 @@ def run_independent_verification(
         notes = "Verification run completed without required metric or feasibility evidence."
     elif run_result.feasibility_result.validity_status != EvidenceValidity.VALID:
         verdict = VerificationState.VERIFICATION_INCONCLUSIVE
+        feasibility = run_result.feasibility_result
         if run_result.feasibility_result.validity_status == EvidenceValidity.CONTAMINATED:
             reason_codes = [ReasonCode.GENERATOR_SATURATED]
         else:
@@ -145,6 +147,8 @@ def run_independent_verification(
         verification_run_id=verification_run_id,
         verification_verdict=verdict,
         drift_analysis=drift,
+        metric_set=run_result.metric_set,
+        feasibility_result=feasibility if feasibility is not None else run_result.feasibility_result,
         reason_codes=reason_codes,
         final_decision_notes=notes,
     )

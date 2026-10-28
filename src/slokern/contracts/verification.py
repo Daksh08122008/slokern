@@ -7,6 +7,8 @@ from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.enums import ReasonCode, VerificationState
+from slokern.contracts.metrics import MetricSet
+from slokern.contracts.verdict import FeasibilityResult
 
 
 class MetricDriftComparison(BaseModel):
@@ -45,5 +47,7 @@ class VerificationRecord(BaseModel):
     verification_run_id: str = Field(..., description="Fresh run ID under which rerun was conducted")
     verification_verdict: VerificationState = Field(..., description="Enum: VERIFIED, VERIFICATION_FAILED, VERIFICATION_INCONCLUSIVE")
     drift_analysis: Optional[DriftAnalysis] = Field(None, description="Drift analysis")
+    metric_set: Optional[MetricSet] = Field(default=None, description="Derived metrics from the verification run")
+    feasibility_result: Optional[FeasibilityResult] = Field(default=None, description="Deterministic feasibility verdict from the verification run")
     reason_codes: Optional[List[ReasonCode]] = Field(default=None, description="Machine-readable decision reason codes")
     final_decision_notes: Optional[str] = Field(None, description="Explanation of confirmation or failure")

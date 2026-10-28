@@ -804,11 +804,12 @@ export default function App() {
       setShowReview(false);
       notify(`Launching live benchmark run against ${apiHealth?.runtime || activeAdapter}...`);
       try {
+        const isLocalAdapter = activeAdapter === 'ollama' || activeAdapter === 'local';
         const dispatch = await launchSingleRun({
           adapter: activeAdapter,
           workload_name: builder.workload,
-          target_offered_rate: 2.0,
-          concurrency_limit: 2,
+          target_offered_rate: isLocalAdapter ? 1.0 : 2.0,
+          concurrency_limit: isLocalAdapter ? 1 : 2,
           measurement_duration_s: 5,
           p95_ttft_threshold: builder.p95,
           max_error_rate: builder.maxError / 100.0,
@@ -882,9 +883,12 @@ export default function App() {
       notify('Executing independent verification rerun under fresh run ID...');
       try {
         const verif = await runVerification({
+          experiment_id: liveRunResult.experiment_id,
           candidate_id: liveRunResult.candidate_id,
           original_run_id: liveRunResult.run_id,
           adapter: activeAdapter,
+          workload: liveRunResult.workload,
+          slo: liveRunResult.slo,
         });
         setLiveVerificationResult(verif);
         setIsVerifying(false);
@@ -1590,7 +1594,7 @@ export default function App() {
 
                     <div className="trust-note">
                       <Icon name="shield" size={16} />
-                      <span><strong>Decision integrity</strong> A candidate only wins if it satisfies every hard constraint. No feasible candidate is not a successful outcome.</span>
+                      <span><strong>Decision integrity:</strong> A candidate only wins if it satisfies every hard constraint. No feasible candidate is not a successful outcome.</span>
                     </div>
                   </aside>
                 </div>
@@ -1782,7 +1786,7 @@ export default function App() {
                         Generator saturated: <strong>{liveRunResult.metric_set?.generator_saturated ? 'YES' : 'NO'}</strong>
                       </span>
                       <span style={{ color: 'var(--text-muted, #888)' }}>
-                        Valid requests: <strong>{liveRunResult.metric_set?.valid_count ?? 0} / {liveRunResult.metric_set?.sample_count ?? 0}</strong>
+                        Valid requests: <strong>{liveRunResult.metric_set?.sample_count ?? 0} / {((liveRunResult.metric_set?.sample_count ?? 0) + (liveRunResult.metric_set?.failed_request_count ?? 0))}</strong>
                       </span>
                     </div>
                   </div>
@@ -2176,6 +2180,8 @@ export default function App() {
                       liveVerificationResult
                         ? liveVerificationResult.verification_verdict === 'VERIFIED'
                           ? 'success'
+                          : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                          ? 'warning'
                           : 'danger'
                         : verificationState === 'Failed' || verificationState === 'Stale'
                         ? 'danger'
@@ -2212,6 +2218,8 @@ export default function App() {
                   liveVerificationResult
                     ? liveVerificationResult.verification_verdict === 'VERIFIED'
                       ? 'verification-verified'
+                      : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                      ? 'verification-stale'
                       : 'verification-failed'
                     : verificationState === 'Failed'
                     ? 'verification-failed'
@@ -2224,6 +2232,8 @@ export default function App() {
                   {liveVerificationResult ? (
                     liveVerificationResult.verification_verdict === 'VERIFIED' ? (
                       <Icon name="check" size={26} />
+                    ) : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? (
+                      <Icon name="alert" size={26} />
                     ) : (
                       <Icon name="alert" size={26} />
                     )
@@ -2241,6 +2251,8 @@ export default function App() {
                     {liveVerificationResult
                       ? liveVerificationResult.verification_verdict === 'VERIFIED'
                         ? 'Independent Verification Verified'
+                        : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                        ? 'Independent Verification Inconclusive'
                         : 'Independent Verification Failed'
                       : verificationState === 'Failed'
                       ? 'Verification failed'
@@ -2280,6 +2292,8 @@ export default function App() {
                       liveVerificationResult
                         ? liveVerificationResult.verification_verdict === 'VERIFIED'
                           ? 'success'
+                          : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                          ? 'warning'
                           : 'danger'
                         : verificationState === 'Failed' || verificationState === 'Stale'
                         ? 'danger'
@@ -2324,7 +2338,9 @@ export default function App() {
                     <div>
                       <span>THROUGHPUT</span>
                       <strong>
-                        {liveRunResult?.metric_set?.output_token_throughput_tps != null
+                        {liveRunResult?.metric_set?.token_throughput_tps != null
+                          ? liveRunResult.metric_set.token_throughput_tps.toFixed(1)
+                          : liveRunResult?.metric_set?.output_token_throughput_tps != null
                           ? liveRunResult.metric_set.output_token_throughput_tps.toFixed(1)
                           : winner?.throughput.toFixed(1) ?? '46.1'}
                         <small>{liveRunResult ? 'tok/s' : 'k'}</small>
@@ -2351,7 +2367,7 @@ export default function App() {
                   <span>INDEPENDENT RERUN</span>
                 </div>
 
-                <section className={`panel comparison-card ${liveVerificationResult && liveVerificationResult.verification_verdict !== 'VERIFIED' ? 'comparison-card-failed' : verificationState === 'Failed' ? 'comparison-card-failed' : ''}`}>
+                <section className={`panel comparison-card ${liveVerificationResult ? (liveVerificationResult.verification_verdict === 'VERIFIED' ? '' : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? 'comparison-card-stale' : 'comparison-card-failed') : verificationState === 'Failed' ? 'comparison-card-failed' : ''}`}>
                   <div className="comparison-head">
                     <div className="comparison-icon verify-icon"><Icon name="shield" size={17} /></div>
                     <div>
@@ -2363,6 +2379,8 @@ export default function App() {
                         liveVerificationResult
                           ? liveVerificationResult.verification_verdict === 'VERIFIED'
                             ? 'success'
+                            : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                            ? 'warning'
                             : 'danger'
                           : verificationState === 'Failed' || verificationState === 'Stale'
                           ? 'danger'
@@ -2372,48 +2390,92 @@ export default function App() {
                       {liveVerificationResult ? liveVerificationResult.verification_verdict : verificationState}
                     </Status>
                   </div>
-                  <div className="comparison-metrics">
-                    <div>
-                      <span>P95 LATENCY</span>
-                      <strong>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))
-                          ? liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))!.verification_value.toFixed(1)
-                          : verificationState === 'Failed' ? '58' : '—'}
-                        <small>ms</small>
-                      </strong>
-                      <em className={liveVerificationResult && !liveVerificationResult.drift_analysis?.comparisons?.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))?.drift_acceptable ? 'drift-bad' : ''}>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))
-                          ? `${liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))!.absolute_drift.toFixed(1)} ms drift`
-                          : verificationState === 'Failed' ? '+11 ms drift' : 'No measurement'}
-                      </em>
-                    </div>
-                    <div>
-                      <span>THROUGHPUT</span>
-                      <strong>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('throughput'))
-                          ? liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('throughput'))!.verification_value.toFixed(1)
-                          : verificationState === 'Failed' ? '59.4' : '—'}
-                        <small>{liveVerificationResult ? 'tok/s' : 'k'}</small>
-                      </strong>
-                      <em>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('throughput'))
-                          ? `${(liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('throughput'))!.percentage_drift * 100).toFixed(1)}% drift`
-                          : verificationState === 'Failed' ? '−3.9% drift' : 'No measurement'}
-                      </em>
-                    </div>
-                    <div>
-                      <span>ERROR RATE</span>
-                      <strong>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('error'))
-                          ? `${(liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('error'))!.verification_value * 100).toFixed(2)}`
-                          : verificationState === 'Failed' ? '0.09' : '—'}
-                        <small>%</small>
-                      </strong>
-                      <em>
-                        {liveVerificationResult ? 'Evaluated' : verificationState === 'Failed' ? 'Within tolerance' : 'No measurement'}
-                      </em>
-                    </div>
-                  </div>
+                  {(() => {
+                    const verifMetrics = liveVerificationResult?.metric_set;
+                    const driftComps = liveVerificationResult?.drift_analysis?.metric_comparisons;
+                    const p95Comp = driftComps?.['ttft_p95'] ?? (driftComps ? Object.values(driftComps).find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95')) : undefined);
+                    const tpsComp = driftComps?.['token_throughput_tps'] ?? driftComps?.['request_throughput_rps'] ?? (driftComps ? Object.values(driftComps).find(c => c.metric_name.includes('throughput')) : undefined);
+                    const errComp = driftComps?.['error_rate'] ?? (driftComps ? Object.values(driftComps).find(c => c.metric_name.includes('error')) : undefined);
+
+                    const p95Val = verifMetrics?.ttft_ms?.p95 != null
+                      ? verifMetrics.ttft_ms.p95.toFixed(1)
+                      : (p95Comp?.verification_value != null
+                          ? p95Comp.verification_value.toFixed(1)
+                          : (verificationState === 'Failed' ? '58' : '—'));
+
+                    const p95Comparable = p95Comp && p95Comp.failure_reason !== 'MISSING_METRIC_VALUE' && p95Comp.failure_reason !== 'NON_FINITE_METRIC';
+                    const p95DriftText = p95Comparable
+                      ? `${p95Comp.absolute_drift.toFixed(1)} ms drift`
+                      : (liveVerificationResult
+                          ? (liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? 'Validity inconclusive' : 'Fresh rerun')
+                          : (verificationState === 'Failed' ? '+11 ms drift' : 'No measurement'));
+                    const p95Bad = p95Comparable ? !p95Comp.passed : false;
+
+                    const tpsVal = verifMetrics?.token_throughput_tps != null
+                      ? verifMetrics.token_throughput_tps.toFixed(1)
+                      : (verifMetrics?.request_throughput_rps != null
+                          ? verifMetrics.request_throughput_rps.toFixed(1)
+                          : (tpsComp?.verification_value != null
+                              ? tpsComp.verification_value.toFixed(1)
+                              : (verificationState === 'Failed' ? '59.4' : '—')));
+
+                    const tpsComparable = tpsComp && tpsComp.failure_reason !== 'MISSING_METRIC_VALUE' && tpsComp.failure_reason !== 'NON_FINITE_METRIC';
+                    const tpsDriftText = tpsComparable && tpsComp.relative_drift != null
+                      ? `${tpsComp.relative_drift > 0 ? '+' : ''}${tpsComp.relative_drift.toFixed(1)}% drift`
+                      : (liveVerificationResult
+                          ? (liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? 'Validity inconclusive' : 'Fresh rerun')
+                          : (verificationState === 'Failed' ? '−3.9% drift' : 'No measurement'));
+                    const tpsBad = tpsComparable ? !tpsComp.passed : false;
+
+                    const errVal = verifMetrics?.error_rate != null
+                      ? (verifMetrics.error_rate * 100).toFixed(2)
+                      : (errComp?.verification_value != null
+                          ? (errComp.verification_value * 100).toFixed(2)
+                          : (verificationState === 'Failed' ? '0.09' : '—'));
+
+                    const errComparable = errComp && errComp.failure_reason !== 'MISSING_METRIC_VALUE' && errComp.failure_reason !== 'NON_FINITE_METRIC';
+                    const errDriftText = errComparable
+                      ? (errComp.passed ? 'Within tolerance' : 'Drift exceeded')
+                      : (liveVerificationResult
+                          ? (liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? 'Validity inconclusive' : 'Fresh rerun')
+                          : (verificationState === 'Failed' ? 'Within tolerance' : 'No measurement'));
+                    const errBad = errComparable ? !errComp.passed : false;
+
+                    return (
+                      <div className="comparison-metrics">
+                        <div>
+                          <span>P95 LATENCY</span>
+                          <strong>
+                            {p95Val}
+                            <small>ms</small>
+                          </strong>
+                          <em className={p95Bad ? 'drift-bad' : ''}>
+                            {p95DriftText}
+                          </em>
+                        </div>
+                        <div>
+                          <span>THROUGHPUT</span>
+                          <strong>
+                            {tpsVal}
+                            <small>{liveVerificationResult ? 'tok/s' : 'k'}</small>
+                          </strong>
+                          <em className={tpsBad ? 'drift-bad' : ''}>
+                            {tpsDriftText}
+                          </em>
+                        </div>
+                        <div>
+                          <span>ERROR RATE</span>
+                          <strong>
+                            {errVal}
+                            <small>%</small>
+                          </strong>
+                          <em className={errBad ? 'drift-bad' : ''}>
+                            {errDriftText}
+                          </em>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="comparison-foot">
                     <span>
                       {liveVerificationResult
@@ -2427,6 +2489,8 @@ export default function App() {
                         liveVerificationResult
                           ? liveVerificationResult.verification_verdict === 'VERIFIED'
                             ? 'success'
+                            : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                            ? 'warning'
                             : 'danger'
                           : verificationState === 'Failed'
                           ? 'danger'
@@ -2436,7 +2500,11 @@ export default function App() {
                       {liveVerificationResult
                         ? liveVerificationResult.verification_verdict === 'VERIFIED'
                           ? 'VERIFIED'
-                          : 'DRIFT EXCEEDED'
+                          : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                          ? 'INCONCLUSIVE'
+                          : liveVerificationResult.drift_analysis?.drift_exceeded
+                          ? 'DRIFT EXCEEDED'
+                          : 'FAILED'
                         : verificationState === 'Failed'
                         ? 'DRIFT DETECTED'
                         : 'PENDING'}
@@ -2573,13 +2641,19 @@ export default function App() {
                       </div>
                       <div className="document-section">
                         <h3>01 / Decision summary</h3>
-                        <p>{liveRunResult ? `Candidate ${liveRunResult.candidate_id} was evaluated by the deterministic feasibility evaluator under run ${liveRunResult.run_id}. P95 TTFT latency: ${liveRunResult.metric_set?.ttft_ms.p95?.toFixed(1) ?? '—'} ms.` : winner ? 'Candidate C-02 Balanced is the highest-ranked feasible fixture. It achieves 47 ms P95 latency, 61.8k tokens per second, and a 0.08% error rate.' : 'No candidate currently satisfies the complete constraint set. A successful optimization claim cannot be made from this evidence.'} Independent verification status is <strong>{liveVerificationResult ? liveVerificationResult.verification_verdict.toLowerCase() : verificationState.toLowerCase()}</strong>, which remains separate from feasibility.</p>
+                        <p>
+                          {liveRunResult ? `Candidate ${liveRunResult.candidate_id} was evaluated by the deterministic feasibility evaluator under run ${liveRunResult.run_id}. P95 TTFT latency: ${liveRunResult.metric_set?.ttft_ms.p95?.toFixed(1) ?? '—'} ms.` : winner ? 'Candidate C-02 Balanced is the highest-ranked feasible fixture. It achieves 47 ms P95 latency, 61.8k tokens per second, and a 0.08% error rate.' : 'No candidate currently satisfies the complete constraint set. A successful optimization claim cannot be made from this evidence.'}
+                          {' '}
+                          Independent verification status is{' '}
+                          <strong>{liveVerificationResult ? liveVerificationResult.verification_verdict.toLowerCase() : verificationState.toLowerCase()}</strong>
+                          {', which remains separate from feasibility.'}
+                        </p>
                       </div>
                       <div className="document-section">
                         <h3>02 / Key measurements</h3>
                         <div className="doc-metric-row">
                           <div><span>P95 LATENCY</span><strong>{liveRunResult?.metric_set?.ttft_ms.p95 != null ? liveRunResult.metric_set.ttft_ms.p95.toFixed(1) : winner?.p95 ?? '—'}<small>ms</small></strong></div>
-                          <div><span>THROUGHPUT</span><strong>{liveRunResult?.metric_set?.output_token_throughput_tps != null ? liveRunResult.metric_set.output_token_throughput_tps.toFixed(1) : winner?.throughput.toFixed(1) ?? '—'}<small>{liveRunResult ? 'tok/s' : 'k tok/s'}</small></strong></div>
+                          <div><span>THROUGHPUT</span><strong>{liveRunResult?.metric_set?.token_throughput_tps != null ? liveRunResult.metric_set.token_throughput_tps.toFixed(1) : liveRunResult?.metric_set?.output_token_throughput_tps != null ? liveRunResult.metric_set.output_token_throughput_tps.toFixed(1) : winner?.throughput.toFixed(1) ?? '—'}<small>{liveRunResult ? 'tok/s' : 'k tok/s'}</small></strong></div>
                           <div><span>ERROR RATE</span><strong>{liveRunResult?.metric_set?.error_rate != null ? (liveRunResult.metric_set.error_rate * 100).toFixed(2) : winner?.error.toFixed(2) ?? '—'}<small>%</small></strong></div>
                         </div>
                       </div>
@@ -2657,9 +2731,9 @@ export default function App() {
                           <h4 style={{ margin: '0.25rem 0 0.5rem 0', fontFamily: 'var(--font-mono, monospace)', wordBreak: 'break-all' }}>{liveRunResult.artifact_paths?.raw_measurements || `artifacts/runs/${liveRunResult.run_id}/raw_measurements.jsonl`}</h4>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.85rem' }}>
                             <div><span>Total Recorded:</span> <strong>{liveRunResult.raw_measurements_count} events</strong></div>
-                            <div><span>Valid Evaluated:</span> <strong>{liveRunResult.metric_set?.valid_count ?? 0} events</strong></div>
-                            <div><span>Warmup Discarded:</span> <strong>{liveRunResult.metric_set?.warmup_count ?? 0} events</strong></div>
-                            <div><span>Errors Captured:</span> <strong>{liveRunResult.metric_set?.error_count ?? 0} events</strong></div>
+                            <div><span>Valid Evaluated:</span> <strong>{liveRunResult.metric_set?.sample_count ?? 0} events</strong></div>
+                            <div><span>Warmup Discarded:</span> <strong>{Math.max(0, (liveRunResult.raw_measurements_count ?? 0) - ((liveRunResult.metric_set?.sample_count ?? 0) + (liveRunResult.metric_set?.failed_request_count ?? 0)))} events</strong></div>
+                            <div><span>Errors Captured:</span> <strong>{liveRunResult.metric_set?.failed_request_count ?? 0} events</strong></div>
                           </div>
                           <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <Button

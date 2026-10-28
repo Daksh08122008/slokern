@@ -135,6 +135,10 @@ def dispatch_single_run(
     adapter_name = payload.get("adapter", "local")
     adapter = create_serving_adapter(backend=adapter_name)
 
+    is_local = adapter_name in ("ollama", "local")
+    default_rate = 1.0 if is_local else 2.0
+    default_concurrency = 1 if is_local else 2
+
     # Resolve or create workload spec
     raw_workload = payload.get("workload")
     if raw_workload:
@@ -145,8 +149,8 @@ def dispatch_single_run(
             workload_name=payload.get("workload_name", "live-ui-benchmark"),
             fixture_id="fix-ui-live-01",
             arrival_mode=ArrivalMode(payload.get("arrival_mode", "constant")),
-            target_offered_rate=float(payload.get("target_offered_rate", 2.0)),
-            concurrency_limit=int(payload.get("concurrency_limit", 2)),
+            target_offered_rate=float(payload.get("target_offered_rate", default_rate)),
+            concurrency_limit=int(payload.get("concurrency_limit", default_concurrency)),
             warmup_duration_s=int(payload.get("warmup_duration_s", 1)),
             measurement_duration_s=int(payload.get("measurement_duration_s", 5)),
             max_input_tokens=int(payload.get("max_input_tokens", 64)),

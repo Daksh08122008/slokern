@@ -192,6 +192,16 @@ def compare_metrics(
     for m_name, stat, label in standard_checks:
         orig_val = get_observed_value(original_metrics, m_name, stat)
         verif_val = get_observed_value(verification_metrics, m_name, stat)
+        if "throughput" in label:
+            if original_metrics.sample_count == 0:
+                orig_val = None
+            if verification_metrics.sample_count == 0:
+                verif_val = None
+        elif label == "error_rate":
+            if (original_metrics.sample_count + original_metrics.failed_request_count) == 0:
+                orig_val = None
+            if (verification_metrics.sample_count + verification_metrics.failed_request_count) == 0:
+                verif_val = None
         delta, comp = _evaluate_single_metric_drift(label, orig_val, verif_val, policy)
         if delta is not None:
             metric_deltas[label] = delta
@@ -203,6 +213,16 @@ def compare_metrics(
             key = f"{constraint.metric_name}_{constraint.statistic}"
             orig_val = get_observed_value(original_metrics, constraint.metric_name, constraint.statistic)
             verif_val = get_observed_value(verification_metrics, constraint.metric_name, constraint.statistic)
+            if "throughput" in constraint.metric_name:
+                if original_metrics.sample_count == 0:
+                    orig_val = None
+                if verification_metrics.sample_count == 0:
+                    verif_val = None
+            elif constraint.metric_name == "error_rate":
+                if (original_metrics.sample_count + original_metrics.failed_request_count) == 0:
+                    orig_val = None
+                if (verification_metrics.sample_count + verification_metrics.failed_request_count) == 0:
+                    verif_val = None
 
             if orig_val is not None and verif_val is not None:
                 if key not in metric_deltas:
@@ -223,7 +243,18 @@ def compare_metrics(
                     _, comp = _evaluate_single_metric_drift(key, orig_val, verif_val, policy)
                     metric_comparisons[key] = comp
 
-    drift_exceeded = any(not comp.passed for comp in metric_comparisons.values())
+    both_datasets_valid = (
+        original_metrics.sample_count > 0 and verification_metrics.sample_count > 0
+    )
+    comparable_comparisons = [
+        comp for comp in metric_comparisons.values()
+        if comp.failure_reason != "MISSING_METRIC_VALUE"
+    ]
+    drift_exceeded = (
+        both_datasets_valid
+        and bool(comparable_comparisons)
+        and any(not comp.passed for comp in comparable_comparisons)
+    )
 
     return DriftAnalysis(
         metric_deltas=metric_deltas,

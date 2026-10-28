@@ -92,6 +92,70 @@
       "title": "CandidateConfig",
       "type": "object"
     },
+    "ConstraintEvaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "metric_name": {
+          "description": "Target metric",
+          "title": "Metric Name",
+          "type": "string"
+        },
+        "statistic": {
+          "description": "Evaluated statistic",
+          "title": "Statistic",
+          "type": "string"
+        },
+        "observed_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Derived metric value (null if metric missing or sample insufficient)",
+          "title": "Observed Value"
+        },
+        "required_threshold": {
+          "description": "Threshold from SLOSpec",
+          "title": "Required Threshold",
+          "type": "number"
+        },
+        "operator": {
+          "description": "Comparison operator",
+          "title": "Operator",
+          "type": "string"
+        },
+        "passed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Boolean or null",
+          "title": "Passed"
+        },
+        "reason_code": {
+          "$ref": "#/$defs/ReasonCode",
+          "description": "Machine-readable reason code"
+        }
+      },
+      "required": [
+        "metric_name",
+        "statistic",
+        "required_threshold",
+        "operator",
+        "reason_code"
+      ],
+      "title": "ConstraintEvaluation",
+      "type": "object"
+    },
     "DriftAnalysis": {
       "additionalProperties": false,
       "properties": {
@@ -137,6 +201,16 @@
       ],
       "title": "DriftAnalysis",
       "type": "object"
+    },
+    "EvidenceValidity": {
+      "description": "Integrity of the measurement evidence collected during a run.",
+      "enum": [
+        "VALID",
+        "INVALID",
+        "CONTAMINATED"
+      ],
+      "title": "EvidenceValidity",
+      "type": "string"
     },
     "ExperimentBudget": {
       "additionalProperties": false,
@@ -231,6 +305,60 @@
         }
       },
       "title": "ExperimentVerificationPolicy",
+      "type": "object"
+    },
+    "FeasibilityResult": {
+      "additionalProperties": false,
+      "description": "Deterministic constraint audit result.",
+      "properties": {
+        "policy_version": {
+          "description": "Version of feasibility evaluation rules",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "run_id": {
+          "description": "Associated run identifier",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "overall_verdict": {
+          "$ref": "#/$defs/FeasibilityVerdict",
+          "description": "Enum: FEASIBLE, INFEASIBLE, INCONCLUSIVE"
+        },
+        "constraint_evaluations": {
+          "description": "List of per-constraint evaluation records",
+          "items": {
+            "$ref": "#/$defs/ConstraintEvaluation"
+          },
+          "title": "Constraint Evaluations",
+          "type": "array"
+        },
+        "validity_status": {
+          "$ref": "#/$defs/EvidenceValidity",
+          "description": "Enum: VALID, INVALID, CONTAMINATED"
+        },
+        "audit_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Structured text explaining edge cases or exclusions",
+          "title": "Audit Notes"
+        }
+      },
+      "required": [
+        "policy_version",
+        "run_id",
+        "overall_verdict",
+        "constraint_evaluations",
+        "validity_status"
+      ],
+      "title": "FeasibilityResult",
       "type": "object"
     },
     "FeasibilityVerdict": {
@@ -331,6 +459,97 @@
       "title": "MetricDriftComparison",
       "type": "object"
     },
+    "MetricSet": {
+      "additionalProperties": false,
+      "description": "Derived performance indicators calculated deterministically from valid measurement windows.\nTraceable to raw request records (RawRequestMeasurement).",
+      "properties": {
+        "metric_version": {
+          "description": "Version of metric calculation policy",
+          "title": "Metric Version",
+          "type": "string"
+        },
+        "run_id": {
+          "description": "Associated run identifier",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "sample_count": {
+          "description": "Count of completed valid requests analyzed",
+          "title": "Sample Count",
+          "type": "integer"
+        },
+        "failed_request_count": {
+          "description": "Count of failed or aborted requests",
+          "title": "Failed Request Count",
+          "type": "integer"
+        },
+        "offered_load_rps": {
+          "description": "Actual rate at which client scheduled requests",
+          "title": "Offered Load Rps",
+          "type": "number"
+        },
+        "achieved_load_rps": {
+          "description": "Actual completed request throughput over the measurement window",
+          "title": "Achieved Load Rps",
+          "type": "number"
+        },
+        "generator_saturated": {
+          "description": "Boolean flag indicating whether client load generator saturated",
+          "title": "Generator Saturated",
+          "type": "boolean"
+        },
+        "ttft_ms": {
+          "$ref": "#/$defs/PercentileDistribution",
+          "description": "Object containing p50, p90, p95, p99, mean, min, max"
+        },
+        "itl_ms": {
+          "$ref": "#/$defs/PercentileDistribution",
+          "description": "Object containing p50, p90, p95, p99, mean (with documented aggregation)"
+        },
+        "e2e_latency_ms": {
+          "$ref": "#/$defs/PercentileDistribution",
+          "description": "Percentiles and summary of total request durations"
+        },
+        "request_throughput_rps": {
+          "description": "Achieved completed requests per second",
+          "title": "Request Throughput Rps",
+          "type": "number"
+        },
+        "token_throughput_tps": {
+          "description": "Total output tokens generated per second",
+          "title": "Token Throughput Tps",
+          "type": "number"
+        },
+        "error_rate": {
+          "description": "Ratio of failed requests to total offered requests",
+          "title": "Error Rate",
+          "type": "number"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "description": "Optional metadata",
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "metric_version",
+        "run_id",
+        "sample_count",
+        "failed_request_count",
+        "offered_load_rps",
+        "achieved_load_rps",
+        "generator_saturated",
+        "ttft_ms",
+        "itl_ms",
+        "e2e_latency_ms",
+        "request_throughput_rps",
+        "token_throughput_tps",
+        "error_rate"
+      ],
+      "title": "MetricSet",
+      "type": "object"
+    },
     "ParameterStatus": {
       "description": "Status of requested serving configuration parameters after runtime read-back.",
       "enum": [
@@ -341,6 +560,98 @@
       ],
       "title": "ParameterStatus",
       "type": "string"
+    },
+    "PercentileDistribution": {
+      "additionalProperties": false,
+      "description": "Summary statistics for latency observations in milliseconds.",
+      "properties": {
+        "p50": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P50"
+        },
+        "p90": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P90"
+        },
+        "p95": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P95"
+        },
+        "p99": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P99"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        }
+      },
+      "title": "PercentileDistribution",
+      "type": "object"
     },
     "ReasonCode": {
       "description": "Machine-readable reason codes for feasibility and verification decisions.",
@@ -530,6 +841,30 @@
           ],
           "default": null,
           "description": "Drift analysis"
+        },
+        "metric_set": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MetricSet"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Derived metrics from the verification run"
+        },
+        "feasibility_result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FeasibilityResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Deterministic feasibility verdict from the verification run"
         },
         "reason_codes": {
           "anyOf": [

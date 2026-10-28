@@ -165,3 +165,53 @@ def test_protocol_inconclusive_on_adapter_failure(test_setup):
     )
 
     assert record.verification_verdict == VerificationState.VERIFICATION_INCONCLUSIVE
+
+
+def test_protocol_populates_metric_set_and_feasibility_result(test_setup):
+    """Verifies that VerificationRecord includes metric_set and feasibility_result upon completion."""
+    candidate, workload, slo = test_setup
+    mock_executor = MockProtocolExecutor(default_verdict=FeasibilityVerdict.FEASIBLE, ttft_p95=120.0)
+
+    record = run_independent_verification(
+        original_run_id="run-search-100",
+        candidate_config=candidate,
+        workload=workload,
+        slo=slo,
+        single_run_executor=mock_executor,
+    )
+
+    assert record.verification_verdict == VerificationState.VERIFIED
+    assert record.metric_set is not None
+    assert record.metric_set.ttft_ms.p95 == 120.0
+    assert record.feasibility_result is not None
+    assert record.feasibility_result.overall_verdict == FeasibilityVerdict.FEASIBLE
+
+
+def test_protocol_inconclusive_on_contaminated_evidence_retains_metrics(test_setup):
+    """Verifies that contaminated evidence (e.g. generator saturation) yields INCONCLUSIVE but retains metrics."""
+    from slokern.contracts.enums import ReasonCode
+
+    candidate, workload, slo = test_setup
+    mock_executor = MockProtocolExecutor(
+        default_verdict=FeasibilityVerdict.INCONCLUSIVE,
+        validity_status=EvidenceValidity.CONTAMINATED,
+        ttft_p95=70.0,
+    )
+
+    record = run_independent_verification(
+        original_run_id="run-search-100",
+        candidate_config=candidate,
+        workload=workload,
+        slo=slo,
+        single_run_executor=mock_executor,
+    )
+
+    assert record.verification_verdict == VerificationState.VERIFICATION_INCONCLUSIVE
+    assert record.reason_codes == [ReasonCode.GENERATOR_SATURATED]
+    assert record.drift_analysis is None
+    # Essential for UI display: metric_set and feasibility_result must still be retained
+    assert record.metric_set is not None
+    assert record.metric_set.ttft_ms.p95 == 70.0
+    assert record.feasibility_result is not None
+    assert record.feasibility_result.validity_status == EvidenceValidity.CONTAMINATED
+

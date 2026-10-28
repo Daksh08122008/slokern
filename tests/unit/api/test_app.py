@@ -149,6 +149,49 @@ def test_api_verification_run(tmp_path: Path) -> None:
     assert "verification_run_id" in data
     assert data["verification_run_id"] != "run-orig-01"
     assert data["verification_verdict"] in ("VERIFIED", "VERIFICATION_FAILED")
+    assert data.get("metric_set") is not None
+    assert data.get("feasibility_result") is not None
+
+
+def test_api_verification_run_preserves_experiment_id(tmp_path: Path) -> None:
+    payload = {
+        "adapter": "fake",
+        "experiment_id": "exp-custom-verification-99",
+        "candidate_id": "cand-api-test-02",
+        "original_run_id": "run-orig-02",
+        "workload": {
+            "schema_version": "1.0.0",
+            "workload_name": "test-verify-workload",
+            "fixture_id": "fix-verify-02",
+            "arrival_mode": "constant",
+            "target_offered_rate": 5.0,
+            "concurrency_limit": 2,
+            "warmup_duration_s": 0,
+            "measurement_duration_s": 1,
+            "max_input_tokens": 32,
+            "max_output_tokens": 16,
+        },
+        "slo": {
+            "slo_id": "slo-verify-02",
+            "constraints": [
+                {
+                    "metric_name": "ttft_ms",
+                    "statistic": "p95",
+                    "threshold": 5000.0,
+                    "unit": "ms",
+                    "operator": "<=",
+                }
+            ],
+            "min_sample_count": 2,
+        },
+    }
+
+    status, headers, body = handle_api_request(
+        "POST", "/api/runs/verify", body=payload, artifacts_root=str(tmp_path)
+    )
+    assert status == 200
+    data = json.loads(body.decode("utf-8"))
+    assert data["experiment_id"] == "exp-custom-verification-99"
 
 
 def test_api_run_trace_success(tmp_path: Path) -> None:
