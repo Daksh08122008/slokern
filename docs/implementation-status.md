@@ -256,8 +256,8 @@ flowchart LR
 | **3. Metrics** | Raw events to `MetricSet` aggregation | `src/slokern/core/metrics/` | Pure deterministic metrics engine implemented. | `UNIT` (pass, 42 tests) | Operational. Computes percentiles, throughput, and validity. |
 | **4. Evaluator**| Feasibility verdict vs hard SLO constraints | `src/slokern/core/evaluator/` | Implemented; NaN & negative latency guards active. | `UNIT` (pass, 29 tests) | Operational. Emits deterministic FeasibilityResult. |
 | **5. Search & Ranking** | 2×2 grid search & candidate ranking | `src/slokern/core/search/` | `GridSearchController`, `SearchSpace`, `BudgetLimiter`, and `CandidateRanker` implemented with 33 unit tests. Audit notes caveat BLK-15/16. | `UNIT` (pass, 33 tests in search) | Operational in unit paths; caveat BLK-15 (budget limiter enforcement) and BLK-16. |
-| **6. Verification**| Independent rerun under fresh run ID | `src/slokern/core/verification/` | `IMPLEMENTED & VERIFIED.` Full protocol, drift policy, and campaign verification runner operational; 22 unit + 17 contract tests verified. | `NONE` | BLK-08 resolved. |
-| **7. Report** | Publish self-contained evidence artifact | `src/slokern/engine/reporting/` | **ABSENT.** Skeletons only; no Markdown builder. | `NONE` | Blocked by Stage 6 & BLK-09. No report output. |
+| **6. Verification**| Independent rerun under fresh run ID | `src/slokern/core/verification/` | `IMPLEMENTED & VERIFIED.` Full protocol, drift policy, and campaign verification runner operational; 22 unit + 17 contract tests verified. | `UNIT & CONTRACT VERIFIED` | BLK-08 resolved. |
+| **7. Report** | Publish self-contained evidence artifact | `src/slokern/engine/reporting/` | `IMPLEMENTED & VERIFIED.` `ReportBuilder` and Markdown exporter operational; verified via unit tests and offline campaign. | `UNIT & CAMPAIGN VERIFIED` | BLK-09 resolved. Emits immutable `ReportArtifact` and Markdown dossier. |
 
 
 ---
@@ -446,3 +446,19 @@ Scope freeze can only be reopened if:
   - `pytest tests/contract tests/unit/core tests/unit/engine/serving tests/unit/engine/runner/test_cancel.py tests/unit/engine/runner/test_lifecycle.py tests/unit/engine/loadgen/test_arrival.py tests/unit/engine/loadgen/test_recorder.py`: 322 passed in 3.16s.
   - `pytest tests/contract/test_verification_independence.py`: 16 passed in 0.38s.
   - Live Nebius smoke test: Skipped (no credentials configured; `BLK-04`, `BLK-17`).
+
+### 7.10 Browser End-to-End Vertical Slice Verification (FE-INT-13 / 2026-10-28)
+- **Milestone Progress:**
+  - **FE-INT-13 (Browser End-to-End Integration):** `DONE`. Complete browser-driven optimization and verification workflow connecting React 19 UI to Python control plane (`slokern serve`).
+  - **Hardened Subsystems:**
+    - Standardized artifact persistence and recovery across `artifacts/experiments/*/runs/<run_id>` and `artifacts/runs/<run_id>`.
+    - Strict alphanumeric regex input validation across all REST routes (`/api/runs/<run_id>`, `/api/reports/<experiment_id>`, `/api/runs/<run_id>/trace`) and SSE (`/api/runs/<run_id>/events`) preventing directory traversal and glob injection.
+    - Robust model readiness resolution in `OllamaServingAdapter` rejecting spurious family prefix collisions.
+    - Synchronized `SingleRunDispatchResponse` in TypeScript contracts (`frontend/src/types/contracts.ts`) with backend API.
+    - Replaced browser pop-up blocker susceptible `window.open` calls with standard DOM anchor click downloads for raw JSONL traces.
+- **Verification Evidence:**
+  - `npm --prefix frontend run build`: 0 TypeScript/JSX compiler errors.
+  - `pytest tests/unit/api/`: 15 passed (including 404 on missing runs, 400 on traversal, 404 on empty trace, and disk recovery).
+  - `pytest tests/integration/test_frontend_api_integration.py`: 12-stage lifecycle integration test passed 100%.
+  - Full repository test suite: 484 passed, 13 skipped in 25.85s.
+

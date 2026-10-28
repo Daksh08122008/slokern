@@ -187,11 +187,10 @@ class OllamaServingAdapter(BaseServingAdapter):
             "security_boundary": "strict_loopback",
         }
 
-    def health_check(self) -> bool:
+    def check_readiness(self) -> Dict[str, Any]:
         """
-        Probes local Ollama daemon readiness via GET /api/tags and verifies presence of model.
-        Returns True if reachable and target model is installed; False otherwise.
-        Never triggers silent model downloads.
+        Probes local Ollama daemon readiness via GET /api/tags and checks presence of model.
+        Returns detailed readiness dictionary with actionable error messages when unavailable.
         """
         endpoint = f"{self.base_url}/api/tags"
         req = urllib.request.Request(
@@ -202,7 +201,13 @@ class OllamaServingAdapter(BaseServingAdapter):
         try:
             with self._opener.open(req, timeout=min(5.0, self.timeout_s)) as resp:
                 if resp.status != 200:
-                    return False
+                    return {
+                        "ready": False,
+                        "status": "daemon_error",
+                        "daemon_reachable": True,
+                        "model_available": False,
+                        "error": f"Ollama daemon returned HTTP {resp.status} on /api/tags.",
+                    }
                 body = resp.read().decode("utf-8")
                 data = json.loads(body)
                 models = data.get("models", [])
@@ -212,16 +217,76 @@ class OllamaServingAdapter(BaseServingAdapter):
                 for m in models:
                     name = str(m.get("name", "")).lower()
                     model_field = str(m.get("model", "")).lower()
-                    if name == target or name == f"{target}:latest" or model_field == target:
-                        return True
-                    # Also match if model prefix matches and target has tag
-                    if ":" in target and name == target:
-                        return True
-                    if name == target_base or name.startswith(f"{target_base}:"):
-                        return True
-                return False
-        except Exception:
-            return False
+                    # 1. Exact match
+                    if name == target or model_field == target:
+                        return {
+                            "ready": True,
+                            "status": "ready",
+                            "daemon_reachable": True,
+                            "model_available": True,
+                            "message": f"Ollama daemon ready with model '{self.model_name}'.",
+                        }
+                    # 2. Tag handling for :latest
+                    if target.endswith(":latest") and (name == target[:-7] or model_field == target[:-7]):
+                        return {
+                            "ready": True,
+                            "status": "ready",
+                            "daemon_reachable": True,
+                            "model_available": True,
+                            "message": f"Ollama daemon ready with model '{self.model_name}'.",
+                        }
+                    if not target.endswith(":latest") and (name == f"{target}:latest" or model_field == f"{target}:latest"):
+                        return {
+                            "ready": True,
+                            "status": "ready",
+                            "daemon_reachable": True,
+                            "model_available": True,
+                            "message": f"Ollama daemon ready with model '{self.model_name}'.",
+                        }
+                    # 3. Only if target has no explicit tag, allow family prefix match
+                    if ":" not in target and (name == target or name.startswith(f"{target}:")):
+                        return {
+                            "ready": True,
+                            "status": "ready",
+                            "daemon_reachable": True,
+                            "model_available": True,
+                            "message": f"Ollama daemon ready with model '{self.model_name}'.",
+                        }
+                return {
+                    "ready": False,
+                    "status": "model_missing",
+                    "daemon_reachable": True,
+                    "model_available": False,
+                    "message": f"Ollama daemon reachable, but model '{self.model_name}' is not installed. Run 'ollama pull {self.model_name}'.",
+                    "error": f"Ollama daemon reachable, but model '{self.model_name}' is not installed. Run 'ollama pull {self.model_name}'.",
+                }
+        except urllib.error.URLError as exc:
+            reason = str(exc.reason)
+            return {
+                "ready": False,
+                "status": "connection_error",
+                "daemon_reachable": False,
+                "model_available": False,
+                "message": f"Cannot connect to Ollama daemon at {self.base_url}: {reason}. Ensure Ollama is running ('ollama serve').",
+                "error": f"Cannot connect to Ollama daemon at {self.base_url}: {reason}. Ensure Ollama is running ('ollama serve').",
+            }
+        except Exception as exc:
+            return {
+                "ready": False,
+                "status": "connection_error",
+                "daemon_reachable": False,
+                "model_available": False,
+                "message": f"Error probing Ollama endpoint: {exc}",
+                "error": f"Error probing Ollama endpoint: {exc}",
+            }
+
+    def health_check(self) -> bool:
+        """
+        Probes local Ollama daemon readiness via GET /api/tags and verifies presence of model.
+        Returns True if reachable and target model is installed; False otherwise.
+        Never triggers silent model downloads.
+        """
+        return bool(self.check_readiness().get("ready", False))
 
     def apply_config(
         self,

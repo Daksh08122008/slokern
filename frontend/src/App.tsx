@@ -4,9 +4,11 @@ import {
   checkHealth,
   runSmokeProbe,
   launchSingleRun,
+  getRunStatus,
   runVerification,
   getReport,
   subscribeRunProgress,
+  getRunTraceUrl,
 } from './api/client';
 import type {
   HealthResponse,
@@ -577,7 +579,7 @@ export default function App() {
         const h = await checkHealth(activeAdapter);
         if (mounted) {
           setApiHealth(h);
-          setApiConnected(h.status === 'ok' || h.is_healthy);
+          setApiConnected(true);
         }
       } catch {
         if (mounted) {
@@ -590,6 +592,48 @@ export default function App() {
     const interval = setInterval(probe, 6000);
     return () => { mounted = false; clearInterval(interval); };
   }, [activeAdapter]);
+
+  // Recover active / recent live run on page reload
+  useEffect(() => {
+    if (!apiConnected) return;
+    try {
+      const savedRunId = sessionStorage.getItem('slokern_live_run_id');
+      if (savedRunId && !liveRunResult && !isLiveRunning) {
+        getRunStatus(savedRunId).then(status => {
+          if (status.is_completed) {
+            setLiveRunResult(status);
+            setActiveRun(status.run_id);
+          } else if (status.execution_status === 'RUNNING') {
+            setActiveRun(status.run_id);
+            setIsLiveRunning(true);
+            setPage('Live Monitor');
+            subscribeRunProgress(
+              status.run_id,
+              (prog) => {
+                setLiveProgress({
+                  completed: prog.completed_requests,
+                  total: prog.total_requests,
+                  currentTtft: prog.current_ttft_ms,
+                });
+              },
+              (res) => {
+                setIsLiveRunning(false);
+                setLiveRunResult(res);
+                notify(`Benchmark run ${res.run_id} completed! Real measurements saved.`);
+                setPage('Tuning Lab');
+              },
+              (err) => {
+                setIsLiveRunning(false);
+                notify(`Benchmark run failed: ${err}`);
+              }
+            );
+          }
+        }).catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+  }, [apiConnected]);
 
   const handleCopyCli = (c: Candidate) => {
     const flags = `vllm serve ${builder.model} --max-num-seqs ${c.concurrency} --max-model-len 4096 --kv-cache-dtype ${c.kvCache.toLowerCase()} --gpu-memory-utilization ${(c.gpu / 100).toFixed(2)}`;
@@ -727,6 +771,7 @@ export default function App() {
 
   // Preflight Smoke Probe Handler
   const handleRunSmokeProbe = async () => {
+    if (isProbing) return;
     setIsProbing(true);
     notify(`Sending preflight probe to ${activeAdapter} serving adapter...`);
     try {
@@ -746,7 +791,12 @@ export default function App() {
 
   // Live Benchmark Run Dispatch Handler
   const handleLaunchRun = async () => {
+    if (isLiveRunning) return;
     if (apiConnected) {
+      if (apiHealth && !apiHealth.is_healthy && activeAdapter !== 'fake') {
+        notify(`Cannot launch benchmark: Serving runtime is not ready. ${apiHealth.message || apiHealth.error || ''}`);
+        return;
+      }
       setIsLiveRunning(true);
       setLiveRunResult(null);
       setLiveProgress(null);
@@ -754,16 +804,22 @@ export default function App() {
       setShowReview(false);
       notify(`Launching live benchmark run against ${apiHealth?.runtime || activeAdapter}...`);
       try {
+        const isLocalAdapter = activeAdapter === 'ollama' || activeAdapter === 'local';
         const dispatch = await launchSingleRun({
           adapter: activeAdapter,
           workload_name: builder.workload,
-          target_offered_rate: 2.0,
-          concurrency_limit: 2,
+          target_offered_rate: isLocalAdapter ? 1.0 : 2.0,
+          concurrency_limit: isLocalAdapter ? 1 : 2,
           measurement_duration_s: 5,
           p95_ttft_threshold: builder.p95,
           max_error_rate: builder.maxError / 100.0,
         });
         setActiveRun(dispatch.run_id);
+        try {
+          sessionStorage.setItem('slokern_live_run_id', dispatch.run_id);
+        } catch {
+          // ignore
+        }
         subscribeRunProgress(
           dispatch.run_id,
           (prog) => {
@@ -781,6 +837,16 @@ export default function App() {
           },
           (err) => {
             setIsLiveRunning(false);
+            setLiveRunResult({
+              run_id: dispatch.run_id,
+              experiment_id: dispatch.experiment_id || 'exp-failed',
+              candidate_id: dispatch.candidate_id || 'cand-failed',
+              execution_status: 'FAILED',
+              is_completed: false,
+              is_feasible: false,
+              raw_measurements_count: 0,
+              error: err,
+            });
             notify(`Benchmark run failed: ${err}`);
           }
         );
@@ -811,17 +877,22 @@ export default function App() {
 
   // Tactile Verification Rerun Handler
   const handleRunVerification = async () => {
+    if (isVerifying) return;
     setIsVerifying(true);
     if (apiConnected && liveRunResult) {
       notify('Executing independent verification rerun under fresh run ID...');
       try {
         const verif = await runVerification({
+          experiment_id: liveRunResult.experiment_id,
           candidate_id: liveRunResult.candidate_id,
           original_run_id: liveRunResult.run_id,
           adapter: activeAdapter,
+          workload: liveRunResult.workload,
+          slo: liveRunResult.slo,
         });
         setLiveVerificationResult(verif);
         setIsVerifying(false);
+        setPage('Verification');
         notify(`Verification complete! Verdict: ${verif.verification_verdict}`);
       } catch (err: any) {
         setIsVerifying(false);
@@ -831,9 +902,20 @@ export default function App() {
       setTimeout(() => {
         setIsVerifying(false);
         setScenario('verification-failed');
+        setPage('Verification');
         notify('Independent verification rerun completed (simulation). Drift detected outside tolerance.');
       }, 420);
     }
+  };
+
+  // Trace download helper
+  const handleDownloadTrace = (runId: string) => {
+    const a = document.createElement('a');
+    a.href = getRunTraceUrl(runId);
+    a.download = `raw_measurements_${runId}.jsonl`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   // Dossier Export Handler
@@ -1512,7 +1594,7 @@ export default function App() {
 
                     <div className="trust-note">
                       <Icon name="shield" size={16} />
-                      <span><strong>Decision integrity</strong> A candidate only wins if it satisfies every hard constraint. No feasible candidate is not a successful outcome.</span>
+                      <span><strong>Decision integrity:</strong> A candidate only wins if it satisfies every hard constraint. No feasible candidate is not a successful outcome.</span>
                     </div>
                   </aside>
                 </div>
@@ -1540,8 +1622,10 @@ export default function App() {
                       variant="primary"
                       icon="play"
                       onClick={handleLaunchRun}
+                      loading={isLiveRunning}
+                      disabled={isLiveRunning}
                     >
-                      {apiConnected ? 'Launch Benchmark Run (Live)' : 'Launch demo run'}
+                      {apiConnected ? (isLiveRunning ? 'Running Benchmark...' : 'Launch Benchmark Run (Live)') : 'Launch demo run'}
                     </Button>
                   </div>
                 </section>
@@ -1610,15 +1694,23 @@ export default function App() {
                         Run ID: <strong>{liveRunResult.run_id}</strong> · Experiment: <strong>{liveRunResult.experiment_id}</strong> · Samples: <strong>{liveRunResult.raw_measurements_count}</strong>
                       </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <Status tone={liveRunResult.is_feasible ? 'success' : 'danger'}>
                         {liveRunResult.is_feasible ? 'FEASIBLE (SLO PASS)' : 'INFEASIBLE (SLO BREACH)'}
                       </Status>
+                      <Button
+                        variant="secondary"
+                        icon="download"
+                        onClick={() => handleDownloadTrace(liveRunResult.run_id)}
+                      >
+                        Download Raw Trace (.jsonl)
+                      </Button>
                       <Button
                         variant="primary"
                         icon="shield"
                         onClick={handleRunVerification}
                         loading={isVerifying}
+                        disabled={isVerifying}
                       >
                         {isVerifying ? 'Verifying...' : 'Verify Independently'}
                       </Button>
@@ -1694,12 +1786,12 @@ export default function App() {
                         Generator saturated: <strong>{liveRunResult.metric_set?.generator_saturated ? 'YES' : 'NO'}</strong>
                       </span>
                       <span style={{ color: 'var(--text-muted, #888)' }}>
-                        Valid requests: <strong>{liveRunResult.metric_set?.valid_count ?? 0} / {liveRunResult.metric_set?.sample_count ?? 0}</strong>
+                        Valid requests: <strong>{liveRunResult.metric_set?.sample_count ?? 0} / {((liveRunResult.metric_set?.sample_count ?? 0) + (liveRunResult.metric_set?.failed_request_count ?? 0))}</strong>
                       </span>
                     </div>
                   </div>
 
-                  {activeAdapter === 'ollama' && (
+                  {(activeAdapter === 'ollama' || activeAdapter === 'local') && (
                     <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#ffb86c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <Icon name="info" size={14} />
                       <span>
@@ -1737,9 +1829,16 @@ export default function App() {
                     >
                       <div className="candidate-card-top">
                         <span className="candidate-id">{c.id} <span>/{String(i + 1).padStart(2, '0')}</span></span>
-                        <span className={`candidate-chip ${c.feasible ? 'chip-feasible' : c.id === 'C-01' ? 'chip-baseline' : 'chip-infeasible'}`}>
-                          {c.feasible ? 'FEASIBLE' : c.id === 'C-01' ? 'BASELINE' : 'INFEASIBLE'}
-                        </span>
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {(activeAdapter === 'ollama' || activeAdapter === 'local') && (
+                            <span className="candidate-chip" style={{ background: 'rgba(255,184,108,0.15)', color: '#ffb86c', border: '1px solid rgba(255,184,108,0.3)', fontSize: '0.68rem' }}>
+                              DEMO DATA (BLK-17)
+                            </span>
+                          )}
+                          <span className={`candidate-chip ${c.feasible ? 'chip-feasible' : c.id === 'C-01' ? 'chip-baseline' : 'chip-infeasible'}`}>
+                            {c.feasible ? 'FEASIBLE' : c.id === 'C-01' ? 'BASELINE' : 'INFEASIBLE'}
+                          </span>
+                        </div>
                       </div>
                       <div className="candidate-title-row">
                         <div>
@@ -1877,12 +1976,14 @@ export default function App() {
               </div>
 
               <section className="monitor-run-banner panel">
-                <div className="monitor-run-icon"><Icon name={isLiveRunning ? 'activity' : 'check'} size={20} /></div>
+                <div className="monitor-run-icon"><Icon name={isLiveRunning ? 'activity' : liveRunResult?.execution_status === 'FAILED' ? 'alert' : 'check'} size={20} /></div>
                 <div className="monitor-run-detail">
                   <div className="eyebrow">{apiConnected ? `ACTIVE TARGET / ${activeRun}` : 'CURRENT RUN / EXP-0248'}</div>
                   <h3>
                     {apiConnected ? builder.workload : 'chat-completions-prod'}{' '}
-                    <MiniTag tone={apiConnected ? 'green' : 'info'}>{apiConnected ? 'LIVE BENCHMARK' : 'DEMO RUN'}</MiniTag>
+                    <MiniTag tone={apiConnected ? (liveRunResult?.execution_status === 'FAILED' ? 'danger' : 'green') : 'info'}>
+                      {apiConnected ? (liveRunResult?.execution_status === 'FAILED' ? 'RUN FAILED' : 'LIVE BENCHMARK') : 'DEMO RUN'}
+                    </MiniTag>
                   </h3>
                   <p>
                     {apiConnected
@@ -1896,6 +1997,8 @@ export default function App() {
                     <strong>
                       {isLiveRunning && liveProgress
                         ? `${Math.min(100, Math.round((liveProgress.completed / Math.max(liveProgress.total, 1)) * 100))}%`
+                        : liveRunResult?.execution_status === 'FAILED'
+                        ? 'FAILED'
                         : '100%'}
                     </strong>
                   </div>
@@ -1909,14 +2012,18 @@ export default function App() {
                   <small>
                     {isLiveRunning
                       ? `Dispatched ${liveProgress?.completed ?? 0} / ${liveProgress?.total ?? 10} requests · streaming via SSE`
+                      : liveRunResult?.execution_status === 'FAILED'
+                      ? `Execution failed: ${liveRunResult.error || 'Operation failed'}`
                       : apiConnected
                       ? 'Execution complete · traces recorded on disk'
                       : `Execution complete · telemetry playback ${monitorPaused ? 'paused' : 'available'}`}
                   </small>
                 </div>
                 <div className="run-state-stamp">
-                  <span className="stamp-check"><Icon name="check" size={14} /></span>
-                  <span><strong>{isLiveRunning ? 'RUNNING' : 'COMPLETED'}</strong><small>Execution state</small></span>
+                  <span className={liveRunResult?.execution_status === 'FAILED' ? 'stamp-fail' : 'stamp-check'}>
+                    <Icon name={isLiveRunning ? 'activity' : liveRunResult?.execution_status === 'FAILED' ? 'alert' : 'check'} size={14} />
+                  </span>
+                  <span><strong>{isLiveRunning ? 'RUNNING' : liveRunResult?.execution_status === 'FAILED' ? 'FAILED' : 'COMPLETED'}</strong><small>Execution state</small></span>
                 </div>
               </section>
 
@@ -2073,6 +2180,8 @@ export default function App() {
                       liveVerificationResult
                         ? liveVerificationResult.verification_verdict === 'VERIFIED'
                           ? 'success'
+                          : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                          ? 'warning'
                           : 'danger'
                         : verificationState === 'Failed' || verificationState === 'Stale'
                         ? 'danger'
@@ -2083,6 +2192,15 @@ export default function App() {
                       ? `${liveVerificationResult.verification_verdict}`
                       : `${verificationState.toUpperCase()} VERIFICATION`}
                   </Status>
+                  {liveVerificationResult?.verification_run_id && (
+                    <Button
+                      variant="secondary"
+                      icon="download"
+                      onClick={() => handleDownloadTrace(liveVerificationResult.verification_run_id)}
+                    >
+                      Download Verification Trace (.jsonl)
+                    </Button>
+                  )}
                   <Button
                     variant="primary"
                     icon="refresh"
@@ -2100,6 +2218,8 @@ export default function App() {
                   liveVerificationResult
                     ? liveVerificationResult.verification_verdict === 'VERIFIED'
                       ? 'verification-verified'
+                      : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                      ? 'verification-stale'
                       : 'verification-failed'
                     : verificationState === 'Failed'
                     ? 'verification-failed'
@@ -2112,6 +2232,8 @@ export default function App() {
                   {liveVerificationResult ? (
                     liveVerificationResult.verification_verdict === 'VERIFIED' ? (
                       <Icon name="check" size={26} />
+                    ) : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? (
+                      <Icon name="alert" size={26} />
                     ) : (
                       <Icon name="alert" size={26} />
                     )
@@ -2129,6 +2251,8 @@ export default function App() {
                     {liveVerificationResult
                       ? liveVerificationResult.verification_verdict === 'VERIFIED'
                         ? 'Independent Verification Verified'
+                        : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                        ? 'Independent Verification Inconclusive'
                         : 'Independent Verification Failed'
                       : verificationState === 'Failed'
                       ? 'Verification failed'
@@ -2168,6 +2292,8 @@ export default function App() {
                       liveVerificationResult
                         ? liveVerificationResult.verification_verdict === 'VERIFIED'
                           ? 'success'
+                          : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                          ? 'warning'
                           : 'danger'
                         : verificationState === 'Failed' || verificationState === 'Stale'
                         ? 'danger'
@@ -2212,7 +2338,9 @@ export default function App() {
                     <div>
                       <span>THROUGHPUT</span>
                       <strong>
-                        {liveRunResult?.metric_set?.output_token_throughput_tps != null
+                        {liveRunResult?.metric_set?.token_throughput_tps != null
+                          ? liveRunResult.metric_set.token_throughput_tps.toFixed(1)
+                          : liveRunResult?.metric_set?.output_token_throughput_tps != null
                           ? liveRunResult.metric_set.output_token_throughput_tps.toFixed(1)
                           : winner?.throughput.toFixed(1) ?? '46.1'}
                         <small>{liveRunResult ? 'tok/s' : 'k'}</small>
@@ -2239,7 +2367,7 @@ export default function App() {
                   <span>INDEPENDENT RERUN</span>
                 </div>
 
-                <section className={`panel comparison-card ${liveVerificationResult && liveVerificationResult.verification_verdict !== 'VERIFIED' ? 'comparison-card-failed' : verificationState === 'Failed' ? 'comparison-card-failed' : ''}`}>
+                <section className={`panel comparison-card ${liveVerificationResult ? (liveVerificationResult.verification_verdict === 'VERIFIED' ? '' : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? 'comparison-card-stale' : 'comparison-card-failed') : verificationState === 'Failed' ? 'comparison-card-failed' : ''}`}>
                   <div className="comparison-head">
                     <div className="comparison-icon verify-icon"><Icon name="shield" size={17} /></div>
                     <div>
@@ -2251,6 +2379,8 @@ export default function App() {
                         liveVerificationResult
                           ? liveVerificationResult.verification_verdict === 'VERIFIED'
                             ? 'success'
+                            : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                            ? 'warning'
                             : 'danger'
                           : verificationState === 'Failed' || verificationState === 'Stale'
                           ? 'danger'
@@ -2260,48 +2390,92 @@ export default function App() {
                       {liveVerificationResult ? liveVerificationResult.verification_verdict : verificationState}
                     </Status>
                   </div>
-                  <div className="comparison-metrics">
-                    <div>
-                      <span>P95 LATENCY</span>
-                      <strong>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))
-                          ? liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))!.verification_value.toFixed(1)
-                          : verificationState === 'Failed' ? '58' : '—'}
-                        <small>ms</small>
-                      </strong>
-                      <em className={liveVerificationResult && !liveVerificationResult.drift_analysis?.comparisons?.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))?.drift_acceptable ? 'drift-bad' : ''}>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))
-                          ? `${liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95'))!.absolute_drift.toFixed(1)} ms drift`
-                          : verificationState === 'Failed' ? '+11 ms drift' : 'No measurement'}
-                      </em>
-                    </div>
-                    <div>
-                      <span>THROUGHPUT</span>
-                      <strong>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('throughput'))
-                          ? liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('throughput'))!.verification_value.toFixed(1)
-                          : verificationState === 'Failed' ? '59.4' : '—'}
-                        <small>{liveVerificationResult ? 'tok/s' : 'k'}</small>
-                      </strong>
-                      <em>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('throughput'))
-                          ? `${(liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('throughput'))!.percentage_drift * 100).toFixed(1)}% drift`
-                          : verificationState === 'Failed' ? '−3.9% drift' : 'No measurement'}
-                      </em>
-                    </div>
-                    <div>
-                      <span>ERROR RATE</span>
-                      <strong>
-                        {liveVerificationResult?.drift_analysis?.comparisons?.find(c => c.metric_name.includes('error'))
-                          ? `${(liveVerificationResult.drift_analysis.comparisons.find(c => c.metric_name.includes('error'))!.verification_value * 100).toFixed(2)}`
-                          : verificationState === 'Failed' ? '0.09' : '—'}
-                        <small>%</small>
-                      </strong>
-                      <em>
-                        {liveVerificationResult ? 'Evaluated' : verificationState === 'Failed' ? 'Within tolerance' : 'No measurement'}
-                      </em>
-                    </div>
-                  </div>
+                  {(() => {
+                    const verifMetrics = liveVerificationResult?.metric_set;
+                    const driftComps = liveVerificationResult?.drift_analysis?.metric_comparisons;
+                    const p95Comp = driftComps?.['ttft_p95'] ?? (driftComps ? Object.values(driftComps).find(c => c.metric_name.includes('ttft') || c.metric_name.includes('p95')) : undefined);
+                    const tpsComp = driftComps?.['token_throughput_tps'] ?? driftComps?.['request_throughput_rps'] ?? (driftComps ? Object.values(driftComps).find(c => c.metric_name.includes('throughput')) : undefined);
+                    const errComp = driftComps?.['error_rate'] ?? (driftComps ? Object.values(driftComps).find(c => c.metric_name.includes('error')) : undefined);
+
+                    const p95Val = verifMetrics?.ttft_ms?.p95 != null
+                      ? verifMetrics.ttft_ms.p95.toFixed(1)
+                      : (p95Comp?.verification_value != null
+                          ? p95Comp.verification_value.toFixed(1)
+                          : (verificationState === 'Failed' ? '58' : '—'));
+
+                    const p95Comparable = p95Comp && p95Comp.failure_reason !== 'MISSING_METRIC_VALUE' && p95Comp.failure_reason !== 'NON_FINITE_METRIC';
+                    const p95DriftText = p95Comparable
+                      ? `${p95Comp.absolute_drift.toFixed(1)} ms drift`
+                      : (liveVerificationResult
+                          ? (liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? 'Validity inconclusive' : 'Fresh rerun')
+                          : (verificationState === 'Failed' ? '+11 ms drift' : 'No measurement'));
+                    const p95Bad = p95Comparable ? !p95Comp.passed : false;
+
+                    const tpsVal = verifMetrics?.token_throughput_tps != null
+                      ? verifMetrics.token_throughput_tps.toFixed(1)
+                      : (verifMetrics?.request_throughput_rps != null
+                          ? verifMetrics.request_throughput_rps.toFixed(1)
+                          : (tpsComp?.verification_value != null
+                              ? tpsComp.verification_value.toFixed(1)
+                              : (verificationState === 'Failed' ? '59.4' : '—')));
+
+                    const tpsComparable = tpsComp && tpsComp.failure_reason !== 'MISSING_METRIC_VALUE' && tpsComp.failure_reason !== 'NON_FINITE_METRIC';
+                    const tpsDriftText = tpsComparable && tpsComp.relative_drift != null
+                      ? `${tpsComp.relative_drift > 0 ? '+' : ''}${tpsComp.relative_drift.toFixed(1)}% drift`
+                      : (liveVerificationResult
+                          ? (liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? 'Validity inconclusive' : 'Fresh rerun')
+                          : (verificationState === 'Failed' ? '−3.9% drift' : 'No measurement'));
+                    const tpsBad = tpsComparable ? !tpsComp.passed : false;
+
+                    const errVal = verifMetrics?.error_rate != null
+                      ? (verifMetrics.error_rate * 100).toFixed(2)
+                      : (errComp?.verification_value != null
+                          ? (errComp.verification_value * 100).toFixed(2)
+                          : (verificationState === 'Failed' ? '0.09' : '—'));
+
+                    const errComparable = errComp && errComp.failure_reason !== 'MISSING_METRIC_VALUE' && errComp.failure_reason !== 'NON_FINITE_METRIC';
+                    const errDriftText = errComparable
+                      ? (errComp.passed ? 'Within tolerance' : 'Drift exceeded')
+                      : (liveVerificationResult
+                          ? (liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE' ? 'Validity inconclusive' : 'Fresh rerun')
+                          : (verificationState === 'Failed' ? 'Within tolerance' : 'No measurement'));
+                    const errBad = errComparable ? !errComp.passed : false;
+
+                    return (
+                      <div className="comparison-metrics">
+                        <div>
+                          <span>P95 LATENCY</span>
+                          <strong>
+                            {p95Val}
+                            <small>ms</small>
+                          </strong>
+                          <em className={p95Bad ? 'drift-bad' : ''}>
+                            {p95DriftText}
+                          </em>
+                        </div>
+                        <div>
+                          <span>THROUGHPUT</span>
+                          <strong>
+                            {tpsVal}
+                            <small>{liveVerificationResult ? 'tok/s' : 'k'}</small>
+                          </strong>
+                          <em className={tpsBad ? 'drift-bad' : ''}>
+                            {tpsDriftText}
+                          </em>
+                        </div>
+                        <div>
+                          <span>ERROR RATE</span>
+                          <strong>
+                            {errVal}
+                            <small>%</small>
+                          </strong>
+                          <em className={errBad ? 'drift-bad' : ''}>
+                            {errDriftText}
+                          </em>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="comparison-foot">
                     <span>
                       {liveVerificationResult
@@ -2315,6 +2489,8 @@ export default function App() {
                         liveVerificationResult
                           ? liveVerificationResult.verification_verdict === 'VERIFIED'
                             ? 'success'
+                            : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                            ? 'warning'
                             : 'danger'
                           : verificationState === 'Failed'
                           ? 'danger'
@@ -2324,7 +2500,11 @@ export default function App() {
                       {liveVerificationResult
                         ? liveVerificationResult.verification_verdict === 'VERIFIED'
                           ? 'VERIFIED'
-                          : 'DRIFT EXCEEDED'
+                          : liveVerificationResult.verification_verdict === 'VERIFICATION_INCONCLUSIVE'
+                          ? 'INCONCLUSIVE'
+                          : liveVerificationResult.drift_analysis?.drift_exceeded
+                          ? 'DRIFT EXCEEDED'
+                          : 'FAILED'
                         : verificationState === 'Failed'
                         ? 'DRIFT DETECTED'
                         : 'PENDING'}
@@ -2461,13 +2641,19 @@ export default function App() {
                       </div>
                       <div className="document-section">
                         <h3>01 / Decision summary</h3>
-                        <p>{liveRunResult ? `Candidate ${liveRunResult.candidate_id} was evaluated by the deterministic feasibility evaluator under run ${liveRunResult.run_id}. P95 TTFT latency: ${liveRunResult.metric_set?.ttft_ms.p95?.toFixed(1) ?? '—'} ms.` : winner ? 'Candidate C-02 Balanced is the highest-ranked feasible fixture. It achieves 47 ms P95 latency, 61.8k tokens per second, and a 0.08% error rate.' : 'No candidate currently satisfies the complete constraint set. A successful optimization claim cannot be made from this evidence.'} Independent verification status is <strong>{liveVerificationResult ? liveVerificationResult.verification_verdict.toLowerCase() : verificationState.toLowerCase()}</strong>, which remains separate from feasibility.</p>
+                        <p>
+                          {liveRunResult ? `Candidate ${liveRunResult.candidate_id} was evaluated by the deterministic feasibility evaluator under run ${liveRunResult.run_id}. P95 TTFT latency: ${liveRunResult.metric_set?.ttft_ms.p95?.toFixed(1) ?? '—'} ms.` : winner ? 'Candidate C-02 Balanced is the highest-ranked feasible fixture. It achieves 47 ms P95 latency, 61.8k tokens per second, and a 0.08% error rate.' : 'No candidate currently satisfies the complete constraint set. A successful optimization claim cannot be made from this evidence.'}
+                          {' '}
+                          Independent verification status is{' '}
+                          <strong>{liveVerificationResult ? liveVerificationResult.verification_verdict.toLowerCase() : verificationState.toLowerCase()}</strong>
+                          {', which remains separate from feasibility.'}
+                        </p>
                       </div>
                       <div className="document-section">
                         <h3>02 / Key measurements</h3>
                         <div className="doc-metric-row">
                           <div><span>P95 LATENCY</span><strong>{liveRunResult?.metric_set?.ttft_ms.p95 != null ? liveRunResult.metric_set.ttft_ms.p95.toFixed(1) : winner?.p95 ?? '—'}<small>ms</small></strong></div>
-                          <div><span>THROUGHPUT</span><strong>{liveRunResult?.metric_set?.output_token_throughput_tps != null ? liveRunResult.metric_set.output_token_throughput_tps.toFixed(1) : winner?.throughput.toFixed(1) ?? '—'}<small>{liveRunResult ? 'tok/s' : 'k tok/s'}</small></strong></div>
+                          <div><span>THROUGHPUT</span><strong>{liveRunResult?.metric_set?.token_throughput_tps != null ? liveRunResult.metric_set.token_throughput_tps.toFixed(1) : liveRunResult?.metric_set?.output_token_throughput_tps != null ? liveRunResult.metric_set.output_token_throughput_tps.toFixed(1) : winner?.throughput.toFixed(1) ?? '—'}<small>{liveRunResult ? 'tok/s' : 'k tok/s'}</small></strong></div>
                           <div><span>ERROR RATE</span><strong>{liveRunResult?.metric_set?.error_rate != null ? (liveRunResult.metric_set.error_rate * 100).toFixed(2) : winner?.error.toFixed(2) ?? '—'}<small>%</small></strong></div>
                         </div>
                       </div>
@@ -2542,12 +2728,30 @@ export default function App() {
                       {liveRunResult && (
                         <div style={{ marginBottom: '1.25rem', padding: '1rem', background: 'rgba(0,240,255,0.04)', border: '1px solid var(--accent-cyan, #00f0ff)', borderRadius: '4px' }}>
                           <div className="eyebrow" style={{ color: 'var(--accent-cyan, #00f0ff)', fontSize: '0.75rem' }}>PHYSICAL JSONL RAW TRACE ARTIFACT</div>
-                          <h4 style={{ margin: '0.25rem 0 0.5rem 0', fontFamily: 'var(--font-mono, monospace)', wordBreak: 'break-all' }}>artifacts/runs/{liveRunResult.run_id}/raw_measurements.jsonl</h4>
+                          <h4 style={{ margin: '0.25rem 0 0.5rem 0', fontFamily: 'var(--font-mono, monospace)', wordBreak: 'break-all' }}>{liveRunResult.artifact_paths?.raw_measurements || `artifacts/runs/${liveRunResult.run_id}/raw_measurements.jsonl`}</h4>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.85rem' }}>
                             <div><span>Total Recorded:</span> <strong>{liveRunResult.raw_measurements_count} events</strong></div>
-                            <div><span>Valid Evaluated:</span> <strong>{liveRunResult.metric_set?.valid_count ?? 0} events</strong></div>
-                            <div><span>Warmup Discarded:</span> <strong>{liveRunResult.metric_set?.warmup_count ?? 0} events</strong></div>
-                            <div><span>Errors Captured:</span> <strong>{liveRunResult.metric_set?.error_count ?? 0} events</strong></div>
+                            <div><span>Valid Evaluated:</span> <strong>{liveRunResult.metric_set?.sample_count ?? 0} events</strong></div>
+                            <div><span>Warmup Discarded:</span> <strong>{Math.max(0, (liveRunResult.raw_measurements_count ?? 0) - ((liveRunResult.metric_set?.sample_count ?? 0) + (liveRunResult.metric_set?.failed_request_count ?? 0)))} events</strong></div>
+                            <div><span>Errors Captured:</span> <strong>{liveRunResult.metric_set?.failed_request_count ?? 0} events</strong></div>
+                          </div>
+                          <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <Button
+                              variant="secondary"
+                              icon="download"
+                              onClick={() => handleDownloadTrace(liveRunResult.run_id)}
+                            >
+                              Download Raw Trace (.jsonl)
+                            </Button>
+                            {liveVerificationResult && (
+                              <Button
+                                variant="secondary"
+                                icon="download"
+                                onClick={() => handleDownloadTrace(liveVerificationResult.verification_run_id)}
+                              >
+                                Download Verification Trace (.jsonl)
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}
@@ -2652,6 +2856,56 @@ export default function App() {
                   <Button icon="refresh" onClick={() => notify('Runtime inventory is fixture data. No hardware probe was attempted.')}>Refresh fixture</Button>
                 </div>
               </div>
+
+              {/* Serving Daemon & Model Readiness Status */}
+              {apiHealth && (
+                <div
+                  style={{
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    background: apiHealth.is_healthy ? 'rgba(0, 240, 255, 0.05)' : 'rgba(255, 170, 0, 0.08)',
+                    border: `1px solid ${apiHealth.is_healthy ? 'var(--accent-cyan, #00f0ff)' : '#ffaa00'}`,
+                    borderRadius: '4px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <Status tone={apiHealth.is_healthy ? 'success' : 'warning'}>
+                        {apiHealth.is_healthy ? 'SERVING ENGINE READY' : 'SERVING RUNTIME ATTENTION'}
+                      </Status>
+                      <MiniTag tone={apiHealth.is_healthy ? 'success' : 'warning'}>{apiHealth.runtime.toUpperCase()}</MiniTag>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #888)' }}>{apiHealth.endpoint}</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#ccc' }}>
+                      {apiHealth.message || (apiHealth.is_healthy ? 'Serving daemon is reachable and target model is ready.' : 'Runtime is degraded or unreachable.')}
+                    </div>
+                    {apiHealth.error && (
+                      <div style={{ fontSize: '0.75rem', color: '#ff6b6b', fontFamily: 'monospace', marginTop: '0.25rem' }}>
+                        Error: {apiHealth.error}
+                      </div>
+                    )}
+                  </div>
+                  <Button icon="refresh" onClick={async () => {
+                    try {
+                      const h = await checkHealth(activeAdapter);
+                      setApiHealth(h);
+                      setApiConnected(true);
+                      notify('Checked health: ' + (h.is_healthy ? 'Ready' : (h.message || 'Degraded')));
+                    } catch (e: any) {
+                      setApiConnected(false);
+                      setApiHealth(null);
+                      notify('Health check failed: ' + (e instanceof Error ? e.message : String(e)));
+                    }
+                  }}>
+                    Recheck Health
+                  </Button>
+                </div>
+              )}
 
               {/* Live Serving Adapter Preflight Probe */}
               <section className="panel" style={{ marginBottom: '1.5rem', border: '1px solid rgba(0, 240, 255, 0.25)' }}>

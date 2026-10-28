@@ -42,6 +42,8 @@ def bypass_sandbox_socketpair_hang(monkeypatch):
         stream=True,
         prompts=None,
         artificial_dispatch_delay_ms=0.0,
+        *args,
+        **kwargs,
     ):
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)

@@ -34,7 +34,11 @@ def dispatch_verification_run(
 
     cand_id = payload.get("candidate_id", f"cand-{adapter.runtime_name}-01")
     orig_run_id = payload.get("original_run_id", f"run-search-{cand_id[:8]}")
-    experiment_id = payload.get("experiment_id", f"exp-{uuid.uuid4().hex[:8]}")
+    experiment_id = payload.get("experiment_id")
+
+    is_local = adapter_name in ("ollama", "local")
+    default_rate = 1.0 if is_local else 2.0
+    default_concurrency = 1 if is_local else 2
 
     raw_workload = payload.get("workload")
     raw_slo = payload.get("slo")
@@ -45,8 +49,17 @@ def dispatch_verification_run(
                 raw_workload = ACTIVE_RUNS[orig_run_id]["workload"]
             if not raw_slo and ACTIVE_RUNS[orig_run_id].get("slo"):
                 raw_slo = ACTIVE_RUNS[orig_run_id]["slo"]
-            if not payload.get("experiment_id") and ACTIVE_RUNS[orig_run_id].get("experiment_id"):
+            if not experiment_id and ACTIVE_RUNS[orig_run_id].get("experiment_id"):
                 experiment_id = ACTIVE_RUNS[orig_run_id]["experiment_id"]
+
+    # If experiment_id is still unknown, search artifacts on disk for the original run
+    if not experiment_id:
+        for p in Path(artifacts_root).glob(f"experiments/*/runs/{orig_run_id}/metrics.json"):
+            experiment_id = p.parents[2].name
+            break
+
+    if not experiment_id:
+        experiment_id = f"exp-{uuid.uuid4().hex[:8]}"
 
     if raw_workload:
         workload = WorkloadSpec.model_validate(raw_workload)
@@ -56,8 +69,8 @@ def dispatch_verification_run(
             workload_name="verification-workload",
             fixture_id="fix-ui-verify-01",
             arrival_mode=ArrivalMode.CONSTANT,
-            target_offered_rate=2.0,
-            concurrency_limit=2,
+            target_offered_rate=default_rate,
+            concurrency_limit=default_concurrency,
             warmup_duration_s=1,
             measurement_duration_s=5,
             max_input_tokens=64,
@@ -102,12 +115,20 @@ def dispatch_verification_run(
                 orig_metrics = None
 
     if orig_metrics is None:
-        for p in Path(artifacts_root).glob(f"experiments/*/runs/{orig_run_id}/metrics.json"):
-            try:
-                orig_metrics = MetricSet.model_validate_json(p.read_text(encoding="utf-8"))
-                break
-            except Exception:
-                pass
+        if experiment_id:
+            direct_p = Path(artifacts_root) / "experiments" / experiment_id / "runs" / orig_run_id / "metrics.json"
+            if direct_p.is_file():
+                try:
+                    orig_metrics = MetricSet.model_validate_json(direct_p.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+        if orig_metrics is None:
+            for p in Path(artifacts_root).glob(f"experiments/*/runs/{orig_run_id}/metrics.json"):
+                try:
+                    orig_metrics = MetricSet.model_validate_json(p.read_text(encoding="utf-8"))
+                    break
+                except Exception:
+                    pass
 
     record: VerificationRecord = run_independent_verification(
         original_run_id=orig_run_id,

@@ -32,9 +32,15 @@ def bypass_sandbox_socketpair_hang(monkeypatch: pytest.MonkeyPatch) -> None:
         stream: bool = True,
         prompts: Optional[List[str]] = None,
         artificial_dispatch_delay_ms: float = 0.0,
+        *args: Any,
+        **kwargs: Any,
     ) -> LoadGeneratorResult:
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
+
+        cb = kwargs.get("progress_callback")
+        if cb and callable(cb):
+            cb(25, 25, 12.0)
 
         if stream and hasattr(adapter, "stream_generate"):
             list(adapter.stream_generate("Benchmark test probe prompt."))
@@ -176,3 +182,47 @@ def test_full_frontend_api_lifecycle(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert report["experiment_id"] == experiment_id
     assert "# SLOKern Optimization & Verification" in report["markdown"]
     assert report["artifact"] is not None
+
+    # 7. Raw JSONL Trace Retrieval
+    status, headers, body = handle_api_request("GET", f"/api/runs/{run_id}/trace")
+    assert status == 200
+    assert "application/x-ndjson" in headers["Content-Type"]
+    assert f"raw_measurements_{run_id}.jsonl" in headers["Content-Disposition"]
+    assert len(body.strip().split(b"\n")) == 25
+
+    # 8. Verification Run Trace Retrieval
+    verif_run_id = verif["verification_run_id"]
+    status, headers, body = handle_api_request("GET", f"/api/runs/{verif_run_id}/trace")
+    assert status == 200
+    assert "application/x-ndjson" in headers["Content-Type"]
+    assert f"raw_measurements_{verif_run_id}.jsonl" in headers["Content-Disposition"]
+
+    # 9. List Recent Runs
+    status, _, body = handle_api_request("GET", "/api/runs")
+    assert status == 200
+    recent_runs = json.loads(body)
+    assert any(r["run_id"] == run_id for r in recent_runs)
+
+    # 10. Persistence check: Clear in-memory cache and retrieve run from disk
+    from slokern.api.routes.runs import ACTIVE_RUNS, RUNS_LOCK
+    with RUNS_LOCK:
+        ACTIVE_RUNS.clear()
+
+    status, _, body = handle_api_request("GET", f"/api/runs/{run_id}")
+    assert status == 200
+    disk_run = json.loads(body)
+    assert disk_run["run_id"] == run_id
+    assert disk_run["is_completed"] is True
+    assert disk_run["execution_status"] == "COMPLETED"
+    assert disk_run["raw_measurements_count"] == 25
+
+    # 11. Nonexistent Run 404 Check
+    status, _, body = handle_api_request("GET", "/api/runs/nonexistent-run-99999")
+    assert status == 404
+    assert json.loads(body).get("error") == "Run not found"
+
+    # 12. Security: Path Traversal 400 Check
+    status, _, body = handle_api_request("GET", "/api/runs/../../etc/passwd")
+    assert status == 400
+    assert "invalid run_id format" in json.loads(body).get("error", "").lower()
+

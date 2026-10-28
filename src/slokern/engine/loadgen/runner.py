@@ -295,6 +295,7 @@ def _sync_dispatch_loop(
     artificial_dispatch_delay_ms: float,
     is_cancelled: Optional[Callable[[], bool]] = None,
     timeout: Optional[float] = None,
+    progress_callback: Optional[Callable[[int, int, Optional[float]], None]] = None,
 ) -> LoadGeneratorResult:
     """Synchronous open-loop dispatch fallback for environments where loopback socketpair is restricted."""
     prompt_list = prompts if prompts else [
@@ -441,6 +442,11 @@ def _sync_dispatch_loop(
                         raise AssertionError("Monotonicity violation on non-streaming path")
 
             recorder.record(measurement)
+            if progress_callback is not None:
+                current_ttft = None
+                if measurement.first_token_at is not None:
+                    current_ttft = round((measurement.first_token_at - measurement.sent_at) * 1000.0, 2)
+                progress_callback(slot.index + 1, len(slots), current_ttft)
     except TimeoutError:
         raise
     except Exception as exc:
@@ -570,6 +576,7 @@ class LoadGeneratorRunner:
         stream: bool = True,
         prompts: Optional[Union[List[str], str]] = None,
         artificial_dispatch_delay_ms: float = 0.0,
+        progress_callback: Optional[Callable[[int, int, Optional[float]], None]] = None,
     ) -> LoadGeneratorResult:
         """
         Executes the benchmark load generation run.
@@ -607,6 +614,7 @@ class LoadGeneratorRunner:
                     artificial_dispatch_delay_ms=artificial_dispatch_delay_ms,
                     is_cancelled=lambda: self._cancel_requested,
                     timeout=self.spawn_timeout_s,
+                    progress_callback=progress_callback,
                 )
                 if self._cancel_requested:
                     raise asyncio.CancelledError("LoadGenerator run was cancelled")

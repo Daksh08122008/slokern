@@ -126,10 +126,10 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
   - Frontend command center reflects backend state with persistent **`DEMO DATA`** labeling.
 - [x] **Step 8b: Control Plane API & Frontend Vertical Slice Integration (Rajdeep):**
   - Minimal stdlib HTTP control plane & SSE streaming engine implemented in `src/slokern/api/` (`slokern serve`).
-  - Endpoints: `GET /api/health`, `POST /api/smoke-test`, `POST /api/runs/single`, `GET /api/runs`, `GET /api/runs/<id>`, `POST /api/runs/verify`, `GET /api/reports/<id>`.
+  - Endpoints: `GET /api/health`, `POST /api/smoke-test`, `POST /api/runs/single`, `GET /api/runs`, `GET /api/runs/<id>`, `GET /api/runs/<id>/trace`, `POST /api/runs/verify`, `GET /api/reports/<id>`.
   - Canonical TypeScript contract definitions in `frontend/src/types/contracts.ts` and typed API client in `frontend/src/api/client.ts`.
-  - Frontend features: live preflight smoke probe on Runtime Profile, live benchmark dispatch with SSE progress streaming on Live Monitor, measured candidate card with physical JSONL provenance and BLK-17 capability gating notice on Tuning Lab, independent verification rerun with fresh run ID and drift analysis on Verification Lab, and on-demand Markdown report generation and dossier download on Evidence & Reports.
-  - Automated test coverage: 9 API unit tests (`tests/unit/api/`) and full end-to-end lifecycle integration test (`tests/integration/test_frontend_api_integration.py`) passing 100%. Frontend compiles with 0 TypeScript/JSX errors (`npm run build`).
+  - Frontend features: live preflight smoke probe on Runtime Profile with actionable serving readiness diagnostics, live benchmark dispatch with SSE progress streaming on Live Monitor, measured candidate card with physical JSONL provenance and BLK-17 capability gating notice on Tuning Lab, independent verification rerun with fresh run ID and drift analysis on Verification Lab, on-demand Markdown report generation and dossier download on Evidence & Reports, and browser download of unaggregated JSONL traces (`/api/runs/:id/trace`) with duplicate action guards.
+  - Automated test coverage: 15 API unit tests (`tests/unit/api/`) and full end-to-end lifecycle integration test (`tests/integration/test_frontend_api_integration.py` with 12 lifecycle verification stages) passing 100%. Full repository test suite: 484 passed, 13 skipped in 25.85s. Frontend compiles with 0 TypeScript/JSX errors (`npm run build`).
 - [ ] **Step 9: Demo Hardening & Rehearsal (Rajdeep):**
   - Run clean environment setup test and offline synthetic walkthrough.
   - Validate demo script timing ($\le 3$ minutes).

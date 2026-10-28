@@ -5,6 +5,7 @@ Authority: Aligned with AGENTS.md Section 1, 3, 5, 7 and DEC-0014
 """
 
 import json
+import re
 import threading
 import uuid
 from pathlib import Path
@@ -54,7 +55,16 @@ def _execute_run_worker(
             isolate_process=False,
         )
 
-        sse_queue.emit("status", {"status": "STARTING", "run_id": run_id, "message": "Applying configuration and warm-up."})
+        def on_progress(completed: int, total: int, current_ttft: Optional[float] = None) -> None:
+            sse_queue.emit("progress", {
+                "run_id": run_id,
+                "completed_requests": completed,
+                "total_requests": total,
+                "current_ttft_ms": current_ttft,
+            })
+            with RUNS_LOCK:
+                if run_id in ACTIVE_RUNS:
+                    ACTIVE_RUNS[run_id]["raw_measurements_count"] = completed
 
         # Run benchmark
         run_res = executor.execute(
@@ -63,6 +73,7 @@ def _execute_run_worker(
             slo=slo,
             experiment_id=experiment_id,
             run_id=run_id,
+            progress_callback=on_progress,
         )
 
         # Build payload
@@ -79,6 +90,7 @@ def _execute_run_worker(
             "metric_set": metric_dump,
             "feasibility_result": feas_dump,
             "raw_measurements_count": run_res.raw_measurements_count,
+            "applied_config": run_res.applied_config.model_dump() if run_res.applied_config else None,
             "artifact_paths": run_res.artifact_paths,
             "workload": workload.model_dump(),
             "slo": slo.model_dump(),
@@ -123,6 +135,10 @@ def dispatch_single_run(
     adapter_name = payload.get("adapter", "local")
     adapter = create_serving_adapter(backend=adapter_name)
 
+    is_local = adapter_name in ("ollama", "local")
+    default_rate = 1.0 if is_local else 2.0
+    default_concurrency = 1 if is_local else 2
+
     # Resolve or create workload spec
     raw_workload = payload.get("workload")
     if raw_workload:
@@ -133,8 +149,8 @@ def dispatch_single_run(
             workload_name=payload.get("workload_name", "live-ui-benchmark"),
             fixture_id="fix-ui-live-01",
             arrival_mode=ArrivalMode(payload.get("arrival_mode", "constant")),
-            target_offered_rate=float(payload.get("target_offered_rate", 2.0)),
-            concurrency_limit=int(payload.get("concurrency_limit", 2)),
+            target_offered_rate=float(payload.get("target_offered_rate", default_rate)),
+            concurrency_limit=int(payload.get("concurrency_limit", default_concurrency)),
             warmup_duration_s=int(payload.get("warmup_duration_s", 1)),
             measurement_duration_s=int(payload.get("measurement_duration_s", 5)),
             max_input_tokens=int(payload.get("max_input_tokens", 64)),
@@ -194,6 +210,8 @@ def dispatch_single_run(
             "feasibility_result": None,
             "raw_measurements_count": 0,
             "artifact_paths": {},
+            "workload": workload.model_dump(),
+            "slo": slo.model_dump(),
             "error": None,
         }
         ACTIVE_QUEUES[run_id] = sse_queue
@@ -228,32 +246,68 @@ def get_run_status(run_id: str, artifacts_root: str = "artifacts") -> Dict[str, 
         if run_id in ACTIVE_RUNS:
             return ACTIVE_RUNS[run_id]
 
-    # Check filesystem
+    if not re.match(r"^[a-zA-Z0-9_\-]+$", run_id):
+        return {"run_id": run_id, "error": f"Invalid run_id format: {run_id}"}
+
+    # Check filesystem: check both direct runs/ and SingleRunExecutor experiments/*/runs/
     run_dir = Path(artifacts_root) / "runs" / run_id
+    if not (run_dir / "run_record.json").exists():
+        matches = list(Path(artifacts_root).glob(f"experiments/*/runs/{run_id}"))
+        if matches and (matches[0] / "run_record.json").exists():
+            run_dir = matches[0]
+
     rec_file = run_dir / "run_record.json"
     if rec_file.exists():
         try:
             rec = RunRecord.model_validate_json(rec_file.read_text(encoding="utf-8"))
+
             metric_set = None
-            met_file = run_dir / "metric_set.json"
-            if met_file.exists():
-                metric_set = json.loads(met_file.read_text(encoding="utf-8"))
+            met_file_resolved = ""
+            for met_name in ("metrics.json", "metric_set.json"):
+                mf = run_dir / met_name
+                if mf.exists():
+                    try:
+                        metric_set = json.loads(mf.read_text(encoding="utf-8"))
+                        met_file_resolved = str(mf)
+                        break
+                    except Exception:
+                        pass
 
             feas_result = None
-            feas_file = run_dir / "feasibility_result.json"
-            if feas_file.exists():
-                feas_result = json.loads(feas_file.read_text(encoding="utf-8"))
+            for feas_name in ("feasibility.json", "feasibility_result.json"):
+                ff = run_dir / feas_name
+                if ff.exists():
+                    try:
+                        feas_result = json.loads(ff.read_text(encoding="utf-8"))
+                        break
+                    except Exception:
+                        pass
 
             raw_count = 0
-            raw_file = run_dir / "measurements.jsonl"
-            if raw_file.exists():
-                with open(raw_file, "r", encoding="utf-8") as f:
-                    raw_count = sum(1 for line in f if line.strip())
+            raw_file_resolved = ""
+            for raw_name in ("raw_measurements.jsonl", "measurements.jsonl"):
+                rf = run_dir / raw_name
+                if rf.exists():
+                    raw_file_resolved = str(rf)
+                    try:
+                        with open(rf, "r", encoding="utf-8") as f:
+                            raw_count = sum(1 for line in f if line.strip())
+                        break
+                    except Exception:
+                        pass
 
             is_feasible = (
                 feas_result is not None
                 and feas_result.get("overall_verdict") == FeasibilityVerdict.FEASIBLE.value
             )
+
+            applied_cfg = None
+            ac_file = run_dir / "applied_config.json"
+            if ac_file.exists():
+                try:
+                    applied_cfg = json.loads(ac_file.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
 
             return {
                 "run_id": run_id,
@@ -265,10 +319,11 @@ def get_run_status(run_id: str, artifacts_root: str = "artifacts") -> Dict[str, 
                 "metric_set": metric_set,
                 "feasibility_result": feas_result,
                 "raw_measurements_count": raw_count,
+                "applied_config": applied_cfg,
                 "artifact_paths": {
                     "run_record": str(rec_file),
-                    "metric_set": str(met_file) if met_file.exists() else "",
-                    "raw_measurements": str(raw_file) if raw_file.exists() else "",
+                    "metric_set": met_file_resolved,
+                    "raw_measurements": raw_file_resolved,
                 },
                 "error": (
                     rec.execution_error.get("message")
@@ -279,22 +334,37 @@ def get_run_status(run_id: str, artifacts_root: str = "artifacts") -> Dict[str, 
         except Exception as exc:
             return {"run_id": run_id, "error": f"Failed reading run artifacts: {exc}"}
 
-    return {"run_id": run_id, "error": "Run not found", "execution_status": ExecutionStatus.FAILED.value}
+    return {"run_id": run_id, "error": "Run not found"}
 
 
 def list_recent_runs(artifacts_root: str = "artifacts", limit: int = 10) -> List[Dict[str, Any]]:
     runs = []
+    seen_ids = set()
     with RUNS_LOCK:
         for r in ACTIVE_RUNS.values():
             runs.append(r)
+            seen_ids.add(r.get("run_id"))
 
+    candidate_dirs: List[Path] = []
     runs_dir = Path(artifacts_root) / "runs"
     if runs_dir.exists():
-        for r_dir in sorted(runs_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
-            if r_dir.is_dir() and r_dir.name not in ACTIVE_RUNS:
-                status = get_run_status(r_dir.name, artifacts_root=artifacts_root)
-                if "error" not in status or status.get("execution_status"):
-                    runs.append(status)
-            if len(runs) >= limit:
-                break
+        for r_dir in runs_dir.iterdir():
+            if r_dir.is_dir() and r_dir.name not in seen_ids:
+                candidate_dirs.append(r_dir)
+
+    exp_runs = Path(artifacts_root).glob("experiments/*/runs/*")
+    for r_dir in exp_runs:
+        if r_dir.is_dir() and r_dir.name not in seen_ids:
+            candidate_dirs.append(r_dir)
+
+    candidate_dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+    for r_dir in candidate_dirs:
+        if r_dir.name not in seen_ids:
+            seen_ids.add(r_dir.name)
+            status = get_run_status(r_dir.name, artifacts_root=artifacts_root)
+            if status.get("error") != "Run not found":
+                runs.append(status)
+        if len(runs) >= limit:
+            break
     return runs[:limit]

@@ -133,15 +133,19 @@ export interface PercentileDistribution {
 }
 
 export interface MetricSet {
+  metric_version?: string;
   run_id: string;
   sample_count: number;
-  valid_count: number;
-  warmup_count: number;
-  error_count: number;
+  failed_request_count?: number;
+  valid_count?: number;
+  warmup_count?: number;
+  error_count?: number;
   error_rate: number;
   offered_load_rps: number;
   achieved_load_rps: number;
-  output_token_throughput_tps: number;
+  token_throughput_tps?: number;
+  output_token_throughput_tps?: number;
+  request_throughput_rps?: number;
   generator_saturated: boolean;
   ttft_ms: PercentileDistribution;
   itl_ms: PercentileDistribution;
@@ -149,6 +153,7 @@ export interface MetricSet {
   monetary_cost_per_token?: number | null;
   monetary_cost_per_1k_requests?: number | null;
   gpu_seconds_per_request?: number | null;
+  metadata?: Record<string, any>;
 }
 
 export interface ConstraintEvaluation {
@@ -205,18 +210,28 @@ export interface SearchResult {
 
 export interface MetricDriftComparison {
   metric_name: string;
-  statistic: string;
-  search_value: number;
+  reference_value: number;
   verification_value: number;
   absolute_drift: number;
-  percentage_drift: number;
-  tolerance_threshold: number;
-  drift_acceptable: boolean;
+  relative_drift?: number | null;
+  tolerance: number;
+  comparison_method: string;
+  unit: string;
+  passed: boolean;
+  failure_reason?: string | null;
+  statistic?: string;
+  search_value?: number;
+  percentage_drift?: number;
+  tolerance_threshold?: number;
+  drift_acceptable?: boolean;
 }
 
 export interface DriftAnalysis {
+  metric_deltas?: Record<string, number>;
   slo_drift_detected: boolean;
-  comparisons: MetricDriftComparison[];
+  metric_comparisons?: Record<string, MetricDriftComparison> | null;
+  drift_exceeded?: boolean;
+  comparisons?: MetricDriftComparison[];
   notes?: string;
 }
 
@@ -227,8 +242,11 @@ export interface VerificationRecord {
   original_run_id: string;
   verification_run_id: string;
   verification_verdict: VerificationState;
-  final_decision_notes: string;
+  final_decision_notes?: string | null;
   drift_analysis?: DriftAnalysis | null;
+  metric_set?: MetricSet | null;
+  feasibility_result?: FeasibilityResult | null;
+  reason_codes?: ReasonCode[] | null;
 }
 
 export interface ReportArtifact {
@@ -249,6 +267,8 @@ export interface HealthResponse {
   endpoint: string;
   is_healthy: boolean;
   fingerprint: Record<string, any>;
+  message?: string;
+  error?: string;
 }
 
 export interface SmokeTestResponse {
@@ -268,6 +288,7 @@ export interface SmokeTestResponse {
 export interface SingleRunDispatchResponse {
   run_id: string;
   experiment_id: string;
+  candidate_id?: string;
   status: ExecutionStatus;
   message: string;
 }
@@ -282,6 +303,9 @@ export interface RunStatusResponse {
   metric_set?: MetricSet | null;
   feasibility_result?: FeasibilityResult | null;
   raw_measurements_count: number;
+  artifact_paths?: Record<string, string>;
+  workload?: WorkloadSpec;
+  slo?: SLOSpec;
   error?: string | null;
 }
 

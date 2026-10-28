@@ -19,6 +19,9 @@ def test_factory_precedence_cli(monkeypatch):
     adapter = create_serving_adapter(backend="local")
     assert isinstance(adapter, OllamaServingAdapter)
 
+    adapter_alias = create_serving_adapter(backend="ollama")
+    assert isinstance(adapter_alias, OllamaServingAdapter)
+
     monkeypatch.setenv("SLOKERN_ADAPTER", "local")
     adapter = create_serving_adapter(backend="fake")
     assert isinstance(adapter, FakeServingAdapter)

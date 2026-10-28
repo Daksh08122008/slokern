@@ -33,7 +33,7 @@ def create_serving_adapter(
 
     normalized = resolved_backend.strip().lower()
 
-    if normalized == "local":
+    if normalized in ("local", "ollama"):
         local_kwargs = {
             k: v for k, v in kwargs.items()
             if k in ("model_name", "runtime_name", "base_url", "timeout_s", "allow_remote", "capabilities")

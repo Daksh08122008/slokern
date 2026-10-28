@@ -223,5 +223,123 @@ def test_verification_protocol_fresh_run_id():
     assert record.verification_run_id.startswith("run-verify-")
     assert record.verification_verdict == VerificationState.VERIFIED
     assert record.drift_analysis is not None
+    assert record.metric_set is not None
+    assert record.feasibility_result is not None
     assert mock_executor.call_count == 1
     assert mock_executor.last_run_id == record.verification_run_id
+
+
+def test_compare_empty_trace_does_not_exceed_drift():
+    """Validates that an empty verification trace does not falsely mark drift_exceeded=True."""
+    from slokern.core.metrics.aggregate import calculate_metrics
+
+    orig = _build_test_metric_set("run-orig", ttft_p95=100.0, throughput_rps=20.0, error_rate=0.0)
+    verif = calculate_metrics([], run_id="run-verif-empty")
+    assert verif.sample_count == 0
+
+    analysis = compare_metrics(orig, verif)
+    assert analysis.drift_exceeded is False
+    assert analysis.metric_comparisons["ttft_p95"].failure_reason == "MISSING_METRIC_VALUE"
+    assert analysis.metric_comparisons["request_throughput_rps"].failure_reason == "MISSING_METRIC_VALUE"
+    assert analysis.metric_comparisons["error_rate"].failure_reason == "MISSING_METRIC_VALUE"
+
+
+def test_compare_invalid_trace_does_not_exceed_drift():
+    """Validates that an invalid verification trace with 0 valid samples does not mark drift_exceeded=True."""
+    from slokern.contracts.evidence import RawRequestMeasurement
+    from slokern.core.metrics.aggregate import calculate_metrics
+
+    orig = _build_test_metric_set("run-orig", ttft_p95=100.0, throughput_rps=20.0, error_rate=0.0)
+    invalid_records = [
+        RawRequestMeasurement(
+            request_id=f"r-{i}",
+            run_id="run-invalid",
+            scheduled_at=100.0 + i * 0.1,
+            sent_at=100.0 + i * 0.1,
+            first_token_at=None,
+            completed_at=100.5 + i * 0.1,
+            http_status=500,
+            input_tokens=10,
+            output_tokens=0,
+            itl_observations_ms=[],
+            error_type="HTTP_500",
+            is_warmup=False,
+            is_valid=False,
+        )
+        for i in range(10)
+    ]
+    verif = calculate_metrics(invalid_records, run_id="run-invalid")
+    assert verif.sample_count == 0
+
+    analysis = compare_metrics(orig, verif)
+    assert analysis.drift_exceeded is False
+    assert analysis.metric_comparisons["ttft_p95"].failure_reason == "MISSING_METRIC_VALUE"
+    assert analysis.metric_comparisons["request_throughput_rps"].failure_reason == "MISSING_METRIC_VALUE"
+
+
+def test_compare_valid_fresh_verification_trace_evaluates_drift():
+    """Validates that drift is evaluated when both datasets contain valid comparable metrics."""
+    from slokern.contracts.evidence import RawRequestMeasurement
+    from slokern.core.metrics.aggregate import calculate_metrics
+
+    fresh_records = [
+        RawRequestMeasurement(
+            request_id=f"r-{i}",
+            run_id="run-valid-fresh",
+            scheduled_at=100.0 + i * 0.1,
+            sent_at=100.0 + i * 0.1,
+            first_token_at=100.1 + i * 0.1,
+            completed_at=100.5 + i * 0.1,
+            http_status=200,
+            input_tokens=10,
+            output_tokens=20,
+            itl_observations_ms=[20.0] * 19,
+            error_type=None,
+            is_warmup=False,
+            is_valid=True,
+        )
+        for i in range(20)
+    ]
+    verif = calculate_metrics(fresh_records, run_id="run-valid-fresh", measurement_duration_s=2.0)
+    assert verif.sample_count == 20
+    assert verif.ttft_ms.p95 is not None
+
+    # Reference with matching metrics -> drift within tolerance
+    orig_matching = MetricSet(
+        metric_version="1.0.0",
+        run_id="run-orig-match",
+        sample_count=20,
+        failed_request_count=0,
+        offered_load_rps=10.0,
+        achieved_load_rps=10.0,
+        generator_saturated=False,
+        ttft_ms=PercentileDistribution(p50=100.0, p95=100.0),
+        itl_ms=PercentileDistribution(p50=20.0, p95=20.0),
+        e2e_latency_ms=PercentileDistribution(p50=500.0, p95=500.0),
+        request_throughput_rps=10.0,
+        token_throughput_tps=200.0,
+        error_rate=0.0,
+    )
+    res_pass = compare_metrics(orig_matching, verif)
+    assert res_pass.drift_exceeded is False
+
+    # Reference with much lower TTFT (50.0 ms) -> TTFT drift is (100 - 50)/50 = +100% -> drift exceeded (> 15%)
+    orig_divergent = MetricSet(
+        metric_version="1.0.0",
+        run_id="run-orig-divergent",
+        sample_count=20,
+        failed_request_count=0,
+        offered_load_rps=10.0,
+        achieved_load_rps=10.0,
+        generator_saturated=False,
+        ttft_ms=PercentileDistribution(p50=50.0, p95=50.0),
+        itl_ms=PercentileDistribution(p50=20.0, p95=20.0),
+        e2e_latency_ms=PercentileDistribution(p50=500.0, p95=500.0),
+        request_throughput_rps=10.0,
+        token_throughput_tps=200.0,
+        error_rate=0.0,
+    )
+    res_fail = compare_metrics(orig_divergent, verif)
+    assert res_fail.drift_exceeded is True
+    assert res_fail.metric_comparisons["ttft_p95"].passed is False
+

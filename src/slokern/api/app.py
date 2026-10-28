@@ -9,6 +9,7 @@ import re
 import sys
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any, Dict, Tuple, Union
 
 from slokern.api.routes.health import get_health, run_smoke_probe
@@ -89,12 +90,53 @@ def handle_api_request(
             runs_list = list_recent_runs(artifacts_root=artifacts_root)
             return 200, headers, json.dumps(runs_list).encode("utf-8")
 
+        # GET /api/runs/<run_id>/trace
+        match_trace = re.match(r"^/api/runs/(.+)/trace$", clean_path)
+        if method == "GET" and match_trace:
+            run_id = match_trace.group(1)
+            # Security: Strict alphanumeric validation to prevent directory traversal
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", run_id):
+                err = {"error": f"Invalid run_id format: {run_id}"}
+                return 400, headers, json.dumps(err).encode("utf-8")
+
+            resolved_path = None
+            candidate_paths = [
+                Path(artifacts_root) / "runs" / run_id / "raw_measurements.jsonl",
+                Path(artifacts_root) / "runs" / run_id / "measurements.jsonl",
+            ]
+            for p in candidate_paths:
+                if p.exists() and p.stat().st_size > 0:
+                    resolved_path = p
+                    break
+
+            if resolved_path is None:
+                for pat in (
+                    f"experiments/*/runs/{run_id}/raw_measurements.jsonl",
+                    f"experiments/*/runs/{run_id}/measurements.jsonl",
+                ):
+                    matches = list(Path(artifacts_root).glob(pat))
+                    if matches and matches[0].exists() and matches[0].stat().st_size > 0:
+                        resolved_path = matches[0]
+                        break
+
+            if resolved_path is None or not resolved_path.exists():
+                err = {"error": f"Raw trace artifact not found for run {run_id}"}
+                return 404, headers, json.dumps(err).encode("utf-8")
+
+            trace_headers = dict(headers)
+            trace_headers["Content-Type"] = "application/x-ndjson; charset=utf-8"
+            trace_headers["Content-Disposition"] = f'attachment; filename="raw_measurements_{run_id}.jsonl"'
+            return 200, trace_headers, resolved_path.read_bytes()
+
         # GET /api/runs/<run_id>
-        match_run = re.match(r"^/api/runs/([^/]+)$", clean_path)
+        match_run = re.match(r"^/api/runs/(.+)$", clean_path)
         if method == "GET" and match_run:
             run_id = match_run.group(1)
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", run_id):
+                err = {"error": f"Invalid run_id format: {run_id}"}
+                return 400, headers, json.dumps(err).encode("utf-8")
             res = get_run_status(run_id, artifacts_root=artifacts_root)
-            status = 200 if "error" not in res or res.get("execution_status") else 404
+            status = 404 if res.get("error") == "Run not found" else 200
             return status, headers, json.dumps(res).encode("utf-8")
 
         # POST /api/runs/verify
@@ -104,9 +146,12 @@ def handle_api_request(
             return 200, headers, json.dumps(res).encode("utf-8")
 
         # GET /api/reports/<experiment_id>
-        match_rep = re.match(r"^/api/reports/([^/]+)$", clean_path)
+        match_rep = re.match(r"^/api/reports/(.+)$", clean_path)
         if method == "GET" and match_rep:
             exp_id = match_rep.group(1)
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", exp_id):
+                err = {"error": f"Invalid experiment_id format: {exp_id}"}
+                return 400, headers, json.dumps(err).encode("utf-8")
             res = get_report_data(exp_id, artifacts_root=artifacts_root)
             return 200, headers, json.dumps(res).encode("utf-8")
 
@@ -142,9 +187,17 @@ class SlokernHTTPRequestHandler(BaseHTTPRequestHandler):
         clean_path = parsed.path.rstrip("/")
 
         # Server-Sent Events stream: /api/runs/<run_id>/events
-        match_sse = re.match(r"^/api/runs/([^/]+)/events$", clean_path)
+        match_sse = re.match(r"^/api/runs/(.+)/events$", clean_path)
         if match_sse:
             run_id = match_sse.group(1)
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", run_id):
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"Invalid run_id format: {run_id}"}).encode("utf-8"))
+                return
+
             queue = get_run_queue(run_id)
             if not queue:
                 self.send_response(404)
@@ -236,7 +289,7 @@ def run_server(
     server = create_api_server(host=host, port=port, artifacts_root=artifacts_root)
     print(f"[SLOKern API Control Plane] Listening on http://{host}:{port}")
     print(f"  Artifacts directory: {artifacts_root}")
-    print("  Available endpoints: GET /api/health, POST /api/smoke-test, POST /api/runs/single, GET /api/runs, GET /api/reports/<id>")
+    print("  Available endpoints: GET /api/health, POST /api/smoke-test, POST /api/runs/single, GET /api/runs, GET /api/runs/<id>/trace, GET /api/reports/<id>")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
