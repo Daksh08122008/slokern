@@ -1,3 +1,3 @@
-## 2025-05-18 - Missing ARIA Labels on Pagination Buttons
-**Learning:** Found pagination buttons like "Previous", "1", "2" that do not have `aria-label` or `aria-current` indicators for screen readers. While "Previous" has text, screen readers benefit from explicit labels for pagination elements, and active page numbers need `aria-current="page"` to indicate state.
-**Action:** Will update the pagination controls in the table footer to include accessible labels and state attributes.
+## 2024-05-16 - ARIA attributes for custom React SVG/div elements
+**Learning:** In a heavily custom-styled React app using Vite without standard form controls (like custom `<g>` SVG items acting as buttons or `div` elements functioning as selectable rows), focus visualization is critical but so are semantics. Without `aria-pressed` or `aria-busy`, assistive technologies fail to parse interactive state that rely purely on conditionally rendered CSS classes (like `is-selected` or `rank-selected`).
+**Action:** Always check custom interactive elements (anything with `role="button"` or `onClick` that isn't a native `<button>`) for `aria-pressed`, `aria-expanded`, or `aria-selected` to map their visual CSS state to the accessibility tree.
