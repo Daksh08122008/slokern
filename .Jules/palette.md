@@ -1,3 +1,0 @@
-## 2024-05-16 - ARIA attributes for custom React SVG/div elements
-**Learning:** In a heavily custom-styled React app using Vite without standard form controls (like custom `<g>` SVG items acting as buttons or `div` elements functioning as selectable rows), focus visualization is critical but so are semantics. Without `aria-pressed` or `aria-busy`, assistive technologies fail to parse interactive state that rely purely on conditionally rendered CSS classes (like `is-selected` or `rank-selected`).
-**Action:** Always check custom interactive elements (anything with `role="button"` or `onClick` that isn't a native `<button>`) for `aria-pressed`, `aria-expanded`, or `aria-selected` to map their visual CSS state to the accessibility tree.
