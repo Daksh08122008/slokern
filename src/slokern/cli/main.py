@@ -101,6 +101,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validate_p.add_argument("spec_file", help="Path to ExperimentSpec JSON file.")
 
+    # serve
+    serve_p = subparsers.add_parser(
+        "serve",
+        help="Run the SLOKern control plane HTTP API server.",
+    )
+    serve_p.add_argument("--host", default="127.0.0.1", help="Host interface to bind (default: 127.0.0.1)")
+    serve_p.add_argument("--port", type=int, default=8000, help="Port to listen on (default: 8000)")
+    serve_p.add_argument("--artifacts-dir", default="artifacts", help="Artifacts root directory")
+
     return parser
 
 
@@ -147,6 +156,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         return validate_command(
             spec_file=args.spec_file,
         )
+    elif args.command == "serve":
+        from slokern.api.app import run_server
+        run_server(host=args.host, port=args.port, artifacts_root=args.artifacts_dir)
+        return 0
     else:
         parser.print_help(file=sys.stderr)
         return 1
