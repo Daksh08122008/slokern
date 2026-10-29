@@ -728,6 +728,7 @@ export function App() {
                   cursor: 'pointer',
                   fontSize: '16px',
                 }}
+                aria-label="Close"
               >
                 ✕
               </button>
