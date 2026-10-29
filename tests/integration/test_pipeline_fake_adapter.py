@@ -5,19 +5,20 @@ Authority: Aligned with AGENTS.md Section 10 and docs/experiment-methodology.md
 """
 
 from pathlib import Path
+
+import pytest
+
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import (
     ArrivalMode,
     ExecutionStatus,
     FeasibilityVerdict,
-    ParameterStatus,
 )
 from slokern.contracts.evidence import RawRequestMeasurement
 from slokern.contracts.metrics import MetricSet
 from slokern.contracts.run import RunRecord
 from slokern.contracts.spec import SLOConstraint, SLOSpec, WorkloadSpec
 from slokern.contracts.verdict import FeasibilityResult
-import pytest
 from slokern.engine.loadgen.runner import LoadGeneratorResult, LoadGeneratorRunner
 from slokern.engine.runner.run_executor import SingleRunExecutor, SingleRunResult
 from slokern.engine.serving.fake import FakeServingAdapter

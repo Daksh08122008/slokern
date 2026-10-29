@@ -2,6 +2,7 @@
 
 import json
 
+from slokern.cli.commands.validate import validate_command
 from slokern.contracts.enums import ArrivalMode
 from slokern.contracts.spec import (
     ExperimentBudget,
@@ -10,7 +11,6 @@ from slokern.contracts.spec import (
     SLOSpec,
     WorkloadSpec,
 )
-from slokern.cli.commands.validate import validate_command
 
 
 def make_spec(max_candidates=4):

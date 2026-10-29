@@ -4,7 +4,6 @@ Owner: Rajdeep (Historical design: Daksh)
 Authority: Aligned with AGENTS.md Section 5, 7, 10
 """
 
-import pytest
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import (

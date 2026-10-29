@@ -6,6 +6,7 @@ Authority: Aligned with AGENTS.md Section 1, 3, 5, 8
 
 import json
 from pathlib import Path
+
 import pytest
 
 from slokern.contracts.config import CandidateConfig
@@ -24,7 +25,6 @@ from slokern.contracts.spec import (
     WorkloadSpec,
 )
 from slokern.contracts.verification import DriftAnalysis, VerificationRecord
-from slokern.common.security import sanitize_credentials
 from slokern.engine.reporting.report_builder import (
     build_report_artifact,
     render_markdown_report,
@@ -219,6 +219,5 @@ def test_report_artifact_sanitization(tmp_path):
     assert "localhost" in json_text
 
     # Ensure it's valid JSON and parses back
-    import json
     data = json.loads(json_text)
     ReportArtifact.model_validate(data)

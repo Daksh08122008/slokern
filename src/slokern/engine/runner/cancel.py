@@ -4,8 +4,8 @@ Owner: Rajdeep (Architecture & Verification)
 Authority: Aligned with AGENTS.md Section 6, Section 9, and docs/architecture.md
 """
 
-from typing import Callable, List
 import threading
+from typing import Callable, List
 
 
 class RunCancelledError(Exception):

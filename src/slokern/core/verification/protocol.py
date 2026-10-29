@@ -5,9 +5,9 @@ Authority: Aligned with AGENTS.md Section 5, 7, and DEC-0014
 """
 
 import json
+import uuid
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union
-import uuid
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import (

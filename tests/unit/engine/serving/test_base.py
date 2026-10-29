@@ -8,14 +8,14 @@ from pydantic import ValidationError
 
 from slokern.engine.serving.base import (
     BaseServingAdapter,
-    ServingRequest,
-    TokenChunk,
-    ServingResponse,
-    ServingAdapterError,
     ConfigurationError,
+    ServingAdapterError,
     ServingOOMError,
-    ServingTimeoutError,
+    ServingRequest,
+    ServingResponse,
     ServingServerError,
+    ServingTimeoutError,
+    TokenChunk,
 )
 
 

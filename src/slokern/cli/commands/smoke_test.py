@@ -40,13 +40,13 @@ def smoke_test_command(
         return 1
 
     fp = serving_adapter.get_environment_fingerprint()
-    print(f"[SLOKern Preflight Smoke Test]")
+    print("[SLOKern Preflight Smoke Test]")
     print(f"  Runtime:  {serving_adapter.runtime_name}")
     print(f"  Model:    {serving_adapter.model_name}")
     print(f"  Endpoint: {fp.get('endpoint_host', 'N/A')}")
     print(f"  Provider: {fp.get('provider', 'N/A')}")
     if fp.get("is_simulated"):
-        print(f"  Notice:   DEMO DATA (Simulated adapter)")
+        print("  Notice:   DEMO DATA (Simulated adapter)")
 
     print("\nProbing health check...")
     try:
@@ -56,11 +56,11 @@ def smoke_test_command(
         return 1
 
     if not is_healthy:
-        print(f"[FAIL] Health check failed: runtime is unreachable or model is not installed.", file=sys.stderr)
+        print("[FAIL] Health check failed: runtime is unreachable or model is not installed.", file=sys.stderr)
         return 1
     print("[OK] Runtime is healthy and ready to serve requests.")
 
-    print(f"\nSending single probe request...")
+    print("\nSending single probe request...")
     req = ServingRequest(
         prompt=prompt,
         max_tokens=16,

@@ -5,13 +5,14 @@ Authority: Aligned with docs/metrics.md Section 2 and contracts/evidence.py
 """
 
 from typing import Optional
+
 import pytest
 
 from slokern.contracts.evidence import RawRequestMeasurement
 from slokern.core.metrics.latency import (
-    extract_ttft_observations,
-    extract_itl_observations,
     extract_e2e_observations,
+    extract_itl_observations,
+    extract_ttft_observations,
     is_valid_completed_request,
 )
 

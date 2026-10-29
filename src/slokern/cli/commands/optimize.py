@@ -4,8 +4,8 @@ Owner: Rajdeep (Historical design: Rohan)
 Authority: Aligned with AGENTS.md Section 1, 3, 5, 6 and DEC-0014
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Optional
 
 from slokern.contracts.enums import RankingObjective
@@ -68,7 +68,7 @@ def optimize_command(
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 1
 
-    print(f"[SLOKern Optimization Campaign]")
+    print("[SLOKern Optimization Campaign]")
     print(f"  Experiment ID: {spec.experiment_id}")
     print(f"  Runtime:       {serving_adapter.runtime_name}")
     print(f"  Model:         {serving_adapter.model_name}")

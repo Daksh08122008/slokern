@@ -6,13 +6,12 @@ Authority: Aligned with AGENTS.md Section 1, 3, 5, 6, and ROADMAP.md TASK-10
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import itertools
-import math
-from pathlib import Path
 import threading
 import time
-from typing import Any, Dict, List, Optional, Sequence, Union, TYPE_CHECKING
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Union
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import ExecutionStatus, FeasibilityVerdict, RankingObjective
@@ -26,7 +25,6 @@ from slokern.engine.serving.base import BaseServingAdapter
 
 if TYPE_CHECKING:
     from slokern.engine.runner.cancel import CancellationToken
-    from slokern.engine.runner.run_executor import SingleRunExecutor, SingleRunResult
 
 
 DEFAULT_SEARCH_SPACE = {

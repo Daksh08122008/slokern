@@ -4,11 +4,10 @@ Owner: Rajdeep
 Authority: Aligned with AGENTS.md Section 1, 6, 7, 10 and DEC-0014
 """
 
-import io
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import urllib.request
+from unittest.mock import patch
+
 import pytest
 
 from slokern.cli.commands.smoke_test import smoke_test_command
@@ -20,7 +19,6 @@ from slokern.contracts.enums import (
     VerificationState,
 )
 from slokern.contracts.evidence import RawRequestMeasurement
-from slokern.contracts.metrics import MetricSet
 from slokern.contracts.report import BaselineSummary, SearchSummary
 from slokern.contracts.spec import (
     ExperimentBudget,
@@ -30,7 +28,6 @@ from slokern.contracts.spec import (
     SLOSpec,
     WorkloadSpec,
 )
-from slokern.contracts.verification import VerificationRecord
 from slokern.core.search.budget import BudgetExhaustedError, BudgetLimiter
 from slokern.core.verification.protocol import run_independent_verification
 from slokern.engine.loadgen.runner import LoadGeneratorResult, LoadGeneratorRunner

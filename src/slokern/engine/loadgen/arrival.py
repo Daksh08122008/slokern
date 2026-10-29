@@ -4,9 +4,9 @@ Owner: Rajdeep (Historical design: Adriraj)
 Authority: Aligned with docs/experiment-methodology.md Section 2.2 and AGENTS.md Section 13
 """
 
-from dataclasses import dataclass
 import math
 import random
+from dataclasses import dataclass
 from typing import Iterator, List, Optional, Union
 
 from slokern.contracts.enums import ArrivalMode

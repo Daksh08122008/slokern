@@ -4,20 +4,22 @@ Owner: Rajdeep (Architecture & Implementation)
 Authority: Aligned with AGENTS.md Section 1, 3, 5, 7, 8 and DEC-0014
 """
 
-from datetime import datetime, timezone
 import json
-import os
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
-import uuid
 
+from slokern.common.security import (
+    assert_no_unredacted_credentials,
+    sanitize_credentials,
+    sanitize_report_artifact,
+)
 from slokern.contracts.config import CandidateConfig
-from slokern.contracts.enums import FeasibilityVerdict, VerificationState
+from slokern.contracts.enums import VerificationState
 from slokern.contracts.report import BaselineSummary, ReportArtifact, SearchSummary
-from slokern.contracts.search import SearchResult
 from slokern.contracts.spec import ExperimentSpec
 from slokern.contracts.verification import VerificationRecord
-from slokern.common.security import sanitize_report_artifact, sanitize_credentials, assert_no_unredacted_credentials
 
 
 def _now_iso() -> str:
@@ -66,7 +68,7 @@ def render_markdown_report(report: ReportArtifact) -> str:
     """
     lines: List[str] = []
 
-    lines.append(f"# SLOKern Optimization & Verification Report")
+    lines.append("# SLOKern Optimization & Verification Report")
     lines.append("")
     lines.append(f"> **Report ID:** `{report.report_id}`  ")
     lines.append(f"> **Generated At:** `{report.created_at}`  ")

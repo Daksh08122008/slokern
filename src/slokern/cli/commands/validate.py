@@ -1,6 +1,7 @@
 import sys
+
 from slokern.contracts.spec import ExperimentSpec
-from slokern.core.search.budget import validate_budget, BudgetValidationError
+from slokern.core.search.budget import BudgetValidationError, validate_budget
 
 # flake8: noqa: E501,F401,F811,E402,E302,E305,W293
 

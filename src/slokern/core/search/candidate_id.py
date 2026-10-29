@@ -5,7 +5,8 @@ Owner: Rajdeep (Historical design: Rohan)
 
 import hashlib
 import json
-from typing import Dict, Any
+from typing import Any, Dict
+
 
 def _normalize_key(k: Any) -> str:
     """

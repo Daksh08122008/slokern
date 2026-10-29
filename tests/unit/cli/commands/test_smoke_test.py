@@ -4,6 +4,7 @@ Owner: Rajdeep
 """
 
 from unittest.mock import MagicMock, patch
+
 from slokern.cli.commands.smoke_test import smoke_test_command
 from slokern.engine.serving.base import ConfigurationError, ServingResponse
 

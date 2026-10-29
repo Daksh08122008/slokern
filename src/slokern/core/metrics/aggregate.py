@@ -6,14 +6,15 @@ Authority: Aligned with docs/metrics.md and contracts/metrics.py
 
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Union
+
 from slokern.contracts.evidence import RawRequestMeasurement
 from slokern.contracts.metrics import MetricSet
 from slokern.core.metrics.latency import (
+    _ensure_measurement,
     extract_e2e_observations,
     extract_itl_observations,
     extract_ttft_observations,
     is_valid_completed_request,
-    _ensure_measurement,
 )
 from slokern.core.metrics.percentiles import calculate_percentiles
 from slokern.core.metrics.throughput import (

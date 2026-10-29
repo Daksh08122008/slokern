@@ -4,9 +4,10 @@ Owner: Rajdeep
 """
 
 from typing import List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
-from slokern.contracts.enums import FeasibilityVerdict, ReasonCode, EvidenceValidity
+from slokern.contracts.enums import EvidenceValidity, FeasibilityVerdict, ReasonCode
 
 
 class ConstraintEvaluation(BaseModel):

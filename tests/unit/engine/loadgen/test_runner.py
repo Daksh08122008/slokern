@@ -5,14 +5,15 @@ Owner: Rajdeep (Historical design: Adriraj)
 
 import asyncio
 from pathlib import Path
+
 import pytest
 
 from slokern.contracts.enums import ArrivalMode
-from slokern.contracts.evidence import RawRequestMeasurement
 from slokern.contracts.spec import WorkloadSpec
 from slokern.engine.loadgen.recorder import JSONLRecorder
-from slokern.engine.loadgen.runner import LoadGeneratorRunner, LoadGeneratorResult
+from slokern.engine.loadgen.runner import LoadGeneratorResult, LoadGeneratorRunner
 from slokern.engine.serving.fake import FakeServingAdapter
+
 
 def _can_bind_and_connect_loopback() -> bool:
     import socket

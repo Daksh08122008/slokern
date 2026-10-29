@@ -3,13 +3,14 @@ Purpose: Report and summary models.
 Owner: Rajdeep
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
-from slokern.contracts.spec import ExperimentSpec
 from slokern.contracts.config import CandidateConfig
-from slokern.contracts.verification import VerificationRecord
 from slokern.contracts.enums import FeasibilityVerdict
+from slokern.contracts.spec import ExperimentSpec
+from slokern.contracts.verification import VerificationRecord
 
 
 class BaselineSummary(BaseModel):

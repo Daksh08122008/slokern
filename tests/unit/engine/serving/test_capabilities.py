@@ -4,6 +4,7 @@ Owner: Rajdeep (Historical design: Aman)
 """
 
 import pytest
+
 from slokern.contracts.enums import ParameterStatus
 from slokern.engine.serving.capabilities import ParameterSpec, RuntimeCapabilities
 

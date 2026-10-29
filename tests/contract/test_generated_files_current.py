@@ -8,21 +8,22 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import List, Type
+
 import pytest
 from pydantic import BaseModel
 
 from slokern.contracts import (
-    WorkloadSpec,
-    SLOSpec,
-    ExperimentSpec,
     CandidateConfig,
-    RawRequestMeasurement,
-    MetricSet,
+    ExperimentSpec,
     FeasibilityResult,
+    MetricSet,
+    RawRequestMeasurement,
+    ReportArtifact,
     RunRecord,
     SearchResult,
+    SLOSpec,
     VerificationRecord,
-    ReportArtifact,
+    WorkloadSpec,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent

@@ -5,40 +5,40 @@ Owner: Rajdeep
 
 import json
 from typing import Any, Callable, Dict, List, Tuple, Type
+
 import pytest
 from pydantic import BaseModel, ValidationError
 
 from slokern.contracts import (
-    WorkloadSpec,
-    SLOSpec,
-    ExperimentSpec,
+    ArrivalMode,
+    BaselineSummary,
     CandidateConfig,
-    RawRequestMeasurement,
-    MetricSet,
+    CandidateSummary,
+    ConstraintEvaluation,
+    DriftAnalysis,
+    EvidenceValidity,
+    ExecutionStatus,
+    ExperimentBudget,
+    ExperimentSpec,
+    ExperimentVerificationPolicy,
     FeasibilityResult,
+    FeasibilityVerdict,
+    MetricSet,
+    ParameterStatus,
+    PercentileDistribution,
+    RankingObjective,
+    RawRequestMeasurement,
+    ReasonCode,
+    ReportArtifact,
     RunRecord,
     SearchResult,
-    VerificationRecord,
-    ReportArtifact,
-    SLOConstraint,
-    ExperimentBudget,
-    ExperimentVerificationPolicy,
-    PercentileDistribution,
-    ConstraintEvaluation,
-    CandidateSummary,
-    DriftAnalysis,
-    BaselineSummary,
     SearchSummary,
-    ArrivalMode,
-    ExecutionStatus,
-    EvidenceValidity,
-    FeasibilityVerdict,
+    SLOConstraint,
+    SLOSpec,
+    VerificationRecord,
     VerificationState,
-    RankingObjective,
-    ParameterStatus,
-    ReasonCode,
+    WorkloadSpec,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture factories for the 11 root models

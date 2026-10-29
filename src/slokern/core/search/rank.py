@@ -4,8 +4,8 @@ Owner: Rajdeep (Historical design: Rohan)
 """
 
 import math
-from typing import List, Optional
 from dataclasses import dataclass
+from typing import List, Optional
 
 from slokern.contracts.enums import FeasibilityVerdict, RankingObjective
 from slokern.contracts.metrics import MetricSet

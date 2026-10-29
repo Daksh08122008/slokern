@@ -4,9 +4,10 @@ Owner: Rajdeep (Historical design: Adriraj)
 Authority: Aligned with docs/experiment-methodology.md Section 5 and AGENTS.md Section 1, 4
 """
 
-from pathlib import Path
 import threading
-from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
+from typing import Any, Dict, List, Union
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.evidence import RawRequestMeasurement
@@ -59,8 +60,12 @@ class JSONLRecorder:
         self._error_count = 0
         self._active_error_count = 0
 
-        self._all_lags_ms: List[float] = []
-        self._active_lags_ms: List[float] = []
+        self._all_lags_sum: float = 0.0
+        self._all_lags_max: float = 0.0
+        self._all_lags_min: float = float('inf')
+
+        self._active_lags_sum: float = 0.0
+        self._active_lags_max: float = 0.0
 
     def record(self, measurement: Union[RawRequestMeasurement, Dict[str, Any]]) -> RawRequestMeasurement:
         """
@@ -91,7 +96,11 @@ class JSONLRecorder:
                 self._file.flush()
 
             self._total_count += 1
-            self._all_lags_ms.append(dispatch_lag_ms)
+            self._all_lags_sum += dispatch_lag_ms
+            if dispatch_lag_ms > self._all_lags_max:
+                self._all_lags_max = dispatch_lag_ms
+            if dispatch_lag_ms < self._all_lags_min:
+                self._all_lags_min = dispatch_lag_ms
 
             is_error = (event.http_status is not None and event.http_status != 200) or (event.error_type is not None)
 
@@ -99,7 +108,9 @@ class JSONLRecorder:
                 self._warmup_count += 1
             else:
                 self._active_count += 1
-                self._active_lags_ms.append(dispatch_lag_ms)
+                self._active_lags_sum += dispatch_lag_ms
+                if dispatch_lag_ms > self._active_lags_max:
+                    self._active_lags_max = dispatch_lag_ms
                 if event.is_valid:
                     self._active_valid_count += 1
                 if is_error:
@@ -115,15 +126,12 @@ class JSONLRecorder:
     def get_stats(self) -> RecorderStats:
         """Returns snapshot of running counters and dispatch delay statistics."""
         with self._lock:
-            all_lags = self._all_lags_ms
-            active_lags = self._active_lags_ms
+            mean_lag = (self._all_lags_sum / self._total_count) if self._total_count > 0 else 0.0
+            max_lag = self._all_lags_max if self._total_count > 0 else 0.0
+            min_lag = self._all_lags_min if self._total_count > 0 else 0.0
 
-            mean_lag = (sum(all_lags) / len(all_lags)) if all_lags else 0.0
-            max_lag = max(all_lags) if all_lags else 0.0
-            min_lag = min(all_lags) if all_lags else 0.0
-
-            active_mean_lag = (sum(active_lags) / len(active_lags)) if active_lags else 0.0
-            active_max_lag = max(active_lags) if active_lags else 0.0
+            active_mean_lag = (self._active_lags_sum / self._active_count) if self._active_count > 0 else 0.0
+            active_max_lag = self._active_lags_max if self._active_count > 0 else 0.0
 
             return RecorderStats(
                 total_count=self._total_count,
@@ -168,17 +176,17 @@ class JSONLRecorder:
     @property
     def mean_dispatch_lag_ms(self) -> float:
         with self._lock:
-            return round(sum(self._all_lags_ms) / len(self._all_lags_ms), 4) if self._all_lags_ms else 0.0
+            return round(self._all_lags_sum / self._total_count, 4) if self._total_count > 0 else 0.0
 
     @property
     def max_dispatch_lag_ms(self) -> float:
         with self._lock:
-            return round(max(self._all_lags_ms), 4) if self._all_lags_ms else 0.0
+            return round(self._all_lags_max, 4) if self._total_count > 0 else 0.0
 
     @property
     def min_dispatch_lag_ms(self) -> float:
         with self._lock:
-            return round(min(self._all_lags_ms), 4) if self._all_lags_ms else 0.0
+            return round(self._all_lags_min, 4) if self._total_count > 0 else 0.0
 
     @property
     def active_valid_count(self) -> int:
@@ -193,12 +201,12 @@ class JSONLRecorder:
     @property
     def active_mean_dispatch_lag_ms(self) -> float:
         with self._lock:
-            return round(sum(self._active_lags_ms) / len(self._active_lags_ms), 4) if self._active_lags_ms else 0.0
+            return round(self._active_lags_sum / self._active_count, 4) if self._active_count > 0 else 0.0
 
     @property
     def active_max_dispatch_lag_ms(self) -> float:
         with self._lock:
-            return round(max(self._active_lags_ms), 4) if self._active_lags_ms else 0.0
+            return round(self._active_lags_max, 4) if self._active_count > 0 else 0.0
 
     def close(self) -> None:
         """Flushes buffers and closes underlying file handle."""
@@ -224,7 +232,7 @@ class JSONLRecorder:
         if not path.exists():
             return records
         with open(path, "r", encoding="utf-8") as f:
-            for line_no, line in enumerate(f, start=1):
+            for _line_no, line in enumerate(f, start=1):
                 stripped = line.strip()
                 if stripped:
                     records.append(RawRequestMeasurement.model_validate_json(stripped))

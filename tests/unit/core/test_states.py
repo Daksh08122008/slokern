@@ -1,8 +1,13 @@
-import pytest
-from slokern.contracts.enums import ExecutionStatus, EvidenceValidity, FeasibilityVerdict, VerificationState
+from slokern.contracts.enums import (
+    EvidenceValidity,
+    ExecutionStatus,
+    FeasibilityVerdict,
+    VerificationState,
+)
 from slokern.contracts.run import RunRecord
 from slokern.contracts.verdict import FeasibilityResult
 from slokern.contracts.verification import VerificationRecord
+
 
 def test_enum_values_and_state_transitions():
     assert ExecutionStatus.PENDING == "PENDING"

@@ -7,11 +7,11 @@ import io
 import json
 import urllib.error
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import ParameterStatus
-from slokern.core.search.candidate_id import generate_candidate_id
 from slokern.engine.serving.base import ConfigurationError, ServingRequest
 from slokern.engine.serving.nebius import (
     NebiusServingAdapter,

@@ -1,12 +1,13 @@
 import math
+
 import pytest
 
+from slokern.contracts.enums import EvidenceValidity, FeasibilityVerdict, ReasonCode
 from slokern.contracts.metrics import MetricSet, PercentileDistribution
-from slokern.contracts.spec import SLOSpec, SLOConstraint
-from slokern.contracts.enums import FeasibilityVerdict, ReasonCode, EvidenceValidity
+from slokern.contracts.spec import SLOConstraint, SLOSpec
 from slokern.core.evaluator.evaluate import (
-    evaluate_slo,
     evaluate_constraint,
+    evaluate_slo,
     get_observed_value,
     get_reason_code_for_failure,
 )

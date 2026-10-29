@@ -3,7 +3,8 @@ Purpose: Requested vs applied configuration and candidate models with stable IDs
 Owner: Rajdeep
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.enums import ParameterStatus

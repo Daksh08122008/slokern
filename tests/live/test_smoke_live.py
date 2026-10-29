@@ -5,6 +5,7 @@ Authority: Aligned with AGENTS.md Section 1, 10 and ROADMAP.md TASK-09 / BLK-04
 """
 
 import os
+
 import pytest
 
 from slokern.contracts.config import CandidateConfig

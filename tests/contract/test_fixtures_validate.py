@@ -7,13 +7,13 @@ Authority: Aligned with AGENTS.md Section 4, 5, 10, 13 and docs/experiment-metho
 import json
 import math
 from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 from slokern.contracts.evidence import RawRequestMeasurement
 from slokern.core.metrics.aggregate import calculate_metrics
 from slokern.core.metrics.percentiles import calculate_percentiles
-
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent.parent / "fixtures"
 

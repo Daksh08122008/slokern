@@ -3,8 +3,8 @@ Purpose: Unit tests for engine/loadgen/recorder.
 Owner: Rajdeep (Historical design: Adriraj)
 """
 
-import json
 from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 

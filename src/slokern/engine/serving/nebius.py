@@ -6,24 +6,19 @@ Authority: Aligned with AGENTS.md Section 1, 3, 9, 12 and ROADMAP.md TASK-09
 
 import json
 import os
-import re
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, Optional, Union
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import ParameterStatus
 from slokern.engine.serving.base import (
     BaseServingAdapter,
     ConfigurationError,
-    ServingAdapterError,
-    ServingOOMError,
     ServingRequest,
     ServingResponse,
-    ServingServerError,
-    ServingTimeoutError,
     TokenChunk,
 )
 from slokern.engine.serving.capabilities import ParameterSpec, RuntimeCapabilities

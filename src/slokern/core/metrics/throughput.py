@@ -4,9 +4,10 @@ Owner: Rajdeep (Historical design: Adriraj)
 Authority: Aligned with docs/metrics.md Section 2.4-2.7 and contracts/metrics.py
 """
 
-from typing import Dict, Optional, Sequence, Tuple, Union, Any
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
+
 from slokern.contracts.evidence import RawRequestMeasurement
-from slokern.core.metrics.latency import is_valid_completed_request, _ensure_measurement
+from slokern.core.metrics.latency import _ensure_measurement, is_valid_completed_request
 
 
 def resolve_window_duration(

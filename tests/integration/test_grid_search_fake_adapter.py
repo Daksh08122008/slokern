@@ -1,12 +1,11 @@
 """Bounded grid search integration tests using explicitly synthetic DEMO DATA."""
 
-from pathlib import Path
 import threading
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import (
     ArrivalMode,
     ExecutionStatus,

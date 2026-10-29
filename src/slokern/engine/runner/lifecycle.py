@@ -5,7 +5,7 @@ Authority: Aligned with docs/architecture.md Section 3, docs/decision-policy.md,
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 from slokern.contracts.enums import ExecutionStatus
 
