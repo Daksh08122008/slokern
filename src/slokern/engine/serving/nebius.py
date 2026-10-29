@@ -99,7 +99,17 @@ class NebiusServingAdapter(BaseServingAdapter):
         super().__init__(model_name=resolved_model, runtime_name=runtime_name)
 
         self._api_key = api_key or os.environ.get("NEBIUS_API_KEY", "")
-        self.base_url = (base_url or os.environ.get("NEBIUS_BASE_URL", self.DEFAULT_BASE_URL)).rstrip("/")
+
+        raw_url = (base_url or os.environ.get("NEBIUS_BASE_URL", self.DEFAULT_BASE_URL)).rstrip("/")
+        parsed = urllib.parse.urlparse(raw_url)
+
+        if parsed.scheme not in ("http", "https"):
+            raise ConfigurationError(f"Invalid Nebius base_url '{raw_url}': scheme must be http or https")
+
+        if parsed.username or parsed.password or "@" in parsed.netloc:
+            raise ConfigurationError(f"URL credentials (userinfo) are prohibited in Nebius base_url '{raw_url}'")
+
+        self.base_url = raw_url
         self.timeout_s = timeout_s
         self.capabilities = capabilities or _build_nebius_capabilities(runtime_name, resolved_model)
 
