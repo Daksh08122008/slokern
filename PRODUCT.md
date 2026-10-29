@@ -8,7 +8,8 @@ web
 
 ## Users
 
-Primary users are **LLM Infrastructure & Platform Engineers** deploying, rightsizing, and operating production GPU serving clusters (such as vLLM on cloud accelerators including Nebius Cloud and NVIDIA GPUs). They operate under strict, business-critical latency SLAs (e.g., TTFT P95 ≤ 50 ms, Inter-Token Latency, and throughput floors) where tail-latency spikes degrade interactive user experience and over-provisioning GPUs wastes thousands of dollars in cloud spend.
+1. **LLM Infrastructure & Platform Engineers:** Deploying, rightsizing, and operating production inference serving clusters (vLLM on cloud accelerators including Nebius Cloud and NVIDIA GPUs, as well as local Ollama workstations). They operate under strict, business-critical latency SLAs (e.g., TTFT P95 ≤ 50 ms, Inter-Token Latency, and throughput floors) where tail-latency spikes degrade interactive user experience and over-provisioning GPUs wastes thousands of dollars in cloud spend.
+2. **Hackathon Judges & Technical Evaluators:** Reviewing verifiable LLM inference optimization, proof of verification independence, and deterministic evaluation in a crisp, 3-minute decision-first demo.
 
 ## Product Purpose
 
@@ -29,8 +30,8 @@ Unlike benchmark visualization tools or heuristic auto-scalers:
 ## Operating Context
 
 - **Workflow:** Define workload traffic shape (arrival rate, mean prompt/output tokens) → specify hard SLO constraints (TTFT P95, minimum throughput, error rate) → preflight smoke test → measure baseline and candidate configurations → evaluate feasibility → rank by cost/throughput → trigger independent verification rerun → generate tamper-evident engineering dossier.
-- **Environments & Runtime:** vLLM inference engine, NVIDIA A100/H100 GPUs, OpenAI-compatible serving endpoints, Linux containerized workers, and cloud infrastructure (Nebius Cloud).
-- **Interface Surface:** High-density, cyberpunk-inspired technical command center dashboard (React 19 + TypeScript + Vite) and CLI (`slokern verify`).
+- **Environments & Runtime:** vLLM inference engine, NVIDIA A100/H100 GPUs, Nebius Cloud serverless/VMs, local Ollama runtime (`qwen3:4b-instruct-2507-q4_K_M`), OpenAI-compatible serving endpoints, Linux containerized workers.
+- **Interface Surface:** High-density, Apple-grade macOS Pro Workstation dashboard (React 19 + TypeScript + Vite) and CLI (`slokern verify`, `slokern optimize`, `slokern smoke-test`).
 
 ## Capabilities and Constraints
 
@@ -50,9 +51,9 @@ Unlike benchmark visualization tools or heuristic auto-scalers:
 
 - **Deterministic Contracts:** Pydantic models in `src/slokern/contracts/` (`workload.py`, `slo.py`, `measurements.py`, `metrics.py`, `feasibility.py`).
 - **Core Engine:** Feasibility evaluator (`src/slokern/core/evaluator/`), deterministic ranker (`src/slokern/core/ranker/`), verification runner (`src/slokern/core/verification/`).
-- **Validated Test Suite:** 24 passing unit and contract tests in `tests/`.
-- **Demo Fixtures:** Realistic multi-run experiment records in `fixtures/demo/demo_experiment.json`.
-- **Verified Frontend:** High-density control plane in `frontend/src/App.tsx` and `frontend/src/styles.css` with zero console errors and clean responsive layouts down to 360px.
+- **Validated Test Suite:** 435 passing tests across 67 test files (`tests/unit/`, `tests/contract/`, `tests/cli/`), with contract schemas 100% verified.
+- **Demo Fixtures:** Realistic multi-run experiment records in `fixtures/demo/demo_experiment.json` and offline campaign validation artifacts.
+- **Verified Frontend:** High-density control plane in `frontend/src/` with zero console errors and clean responsive layouts down to 360px.
 - **Absences:** Live cloud GPU endpoints are not currently active in this workspace; all UI and benchmark runs in the local demonstration are honestly labeled `DEMO DATA`.
 
 ## Product Principles
@@ -69,3 +70,9 @@ Unlike benchmark visualization tools or heuristic auto-scalers:
 - Dual-layer reduced motion support: respects both OS-level `prefers-reduced-motion: reduce` and in-app `.reduce-motion` user preferences.
 - Accessible semantic names, ARIA states (`aria-pressed`, `aria-checked`, `aria-selected`, `aria-label`), keyboard scrubbing (Arrows, Home, End, Escape), and visible 2px neon focus rings.
 
+## Hardening & Resilience
+
+- **Fail-Safe Component Isolation:** Global `<ErrorBoundary>` wrapping active workspace views intercepts uncaught exceptions with clinical `EXECUTION_RENDER_ERROR` metadata disclosure and view recovery without crashing sidebar navigation or control-plane telemetry.
+- **Mathematical Boundary Defense:** Latency, throughput, and headroom formatters strictly guard against `NaN`, `Infinity`, negative durations, and IEEE 754 precision artifacts.
+- **Input Sanitization:** Workload & SLO configuration fields enforce numerical finiteness, positive rate floors, and integer stepping.
+- **Zero Antipattern Footprint:** 100% compliance with Impeccable detector checks (0 blocking, 0 advisory issues).

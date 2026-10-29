@@ -1,0 +1,354 @@
+:root {
+  /* Surfaces */
+  --canvas: #080A09;
+  --surface: #0E120F;
+  --raised: #151B15;
+  --elevated: #1D251E;
+  --hover: #1F281E;
+
+  /* Borders */
+  --border: #263124;
+  --border-strong: #384635;
+
+  /* Text & Typography */
+  --text-primary: #F0F3EF;
+  --text-secondary: #A0AAA0;
+  --text-tertiary: #7A857B;
+  --text-muted: #727D73;
+
+  /* Accents & Semantics */
+  --primary: #76B900;
+  --primary-bright: #95D500;
+  --warning: #E9B949;
+  --error: #FF5555;
+  --info: #8F9AA5;
+  --info-border: #394053;
+
+  /* Glass Layers */
+  --glass-chrome: rgba(14, 18, 15, 0.72);
+  --glass-float: rgba(29, 37, 30, 0.78);
+  --glass-hairline: rgba(240, 243, 239, 0.08);
+
+  /* Fonts - Apple Pro Workstation Stack */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'DM Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+
+  /* Typography Scale (Strict 11px floor) */
+  --text-stage: clamp(56px, 11vw, 136px);
+  --text-display: 32px;
+  --text-h1: 24px;
+  --text-h2: 18px;
+  --text-h3: 15px;
+  --text-body: 14px;
+  --text-caption: 12px;
+  --text-micro: 11px; /* Hard floor: no size below 11px */
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.75);
+  --glow-winner: 0 0 16px rgba(118, 185, 0, 0.28), 0 0 32px rgba(118, 185, 0, 0.12);
+
+  /* Spacing Scale & Density Parameter */
+  --p-density: 1;
+  --space-1: calc(4px * var(--p-density, 1));
+  --space-2: calc(8px * var(--p-density, 1));
+  --space-3: calc(12px * var(--p-density, 1));
+  --space-4: calc(16px * var(--p-density, 1));
+  --space-5: calc(20px * var(--p-density, 1));
+  --space-6: calc(24px * var(--p-density, 1));
+  --space-8: calc(32px * var(--p-density, 1));
+  --space-10: calc(40px * var(--p-density, 1));
+
+  /* Transitions */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 140ms;
+  --duration-normal: 220ms;
+  --duration-reveal: 1400ms;
+}
+
+/* Reduced Transparency Fallback */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-chrome: #0E120F;
+    --glass-float: #1D251E;
+    --glass-hairline: #263124;
+  }
+}
+
+/* High Contrast & Forced Colors */
+@media (forced-colors: active) {
+  :root {
+    --border: CanvasText;
+    --border-strong: CanvasText;
+    --primary: Highlight;
+    --text-primary: CanvasText;
+  }
+}
+
+/* Tabular number utility */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Typography Hierarchy & Polish */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+}
+
+p, .prose {
+  text-wrap: pretty;
+  max-width: 75ch;
+}
+
+/* Caret Color on Inputs */
+input, textarea, select {
+  caret-color: var(--primary-bright, #95D500);
+}
+
+/* Custom Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong, #384635) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong, #384635);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary, #7A857B);
+}
+
+/* ==========================================================================
+   Responsive Layout Topology: Grids, Spatial Insets & Container Rhythm
+   ========================================================================== */
+
+.tuning-lab-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(340px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .tuning-lab-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.verification-runs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.workloads-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* ==========================================================================
+   Motion System: Tactile Feedback, Spatial Continuity & Focal Reveals
+   ========================================================================== */
+
+/* Tactile Click Feedback */
+button:active,
+.btn-press:active {
+  transform: scale(0.98);
+  transition: transform 70ms ease-out;
+}
+
+/* Workspace View Entry Transition */
+.workspace-enter {
+  animation: view-enter 180ms var(--ease-out-expo) forwards;
+}
+
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide-Over Drawer Spatial Slide */
+.slide-over-backdrop {
+  animation: backdrop-enter 200ms ease-out forwards;
+}
+
+.slide-over-panel {
+  animation: drawer-enter 240ms var(--ease-out-expo) forwards;
+}
+
+@keyframes backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-enter {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Verified-Winner Reveal Sequence Keyframes (Section 7) */
+.verified-reveal-container.revealing .stage-meta-bar {
+  animation: reveal-meta-bar 320ms var(--ease-out-expo) forwards;
+}
+
+.verified-reveal-container.revealing .stage-numeral {
+  animation: reveal-numeral 460ms var(--ease-out-expo) 180ms backwards;
+}
+
+.verified-reveal-container.revealing.winner-glow {
+  animation: reveal-glow-on 380ms var(--ease-out-expo) forwards;
+}
+
+@keyframes reveal-meta-bar {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reveal-numeral {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reveal-glow-on {
+  from {
+    box-shadow: none;
+    border-color: var(--border-strong, #384635);
+  }
+  to {
+    box-shadow: var(--glow-winner);
+    border-color: var(--primary, #76B900);
+  }
+}
+
+/* ==========================================================================
+   View Transitions API & Shared-Element Morphing System (Overdrive Mode)
+   ========================================================================== */
+
+@supports (view-transition-name: none) {
+  ::view-transition-old(root) {
+    animation: 160ms var(--ease-out-expo) both vt-fade-out;
+  }
+
+  ::view-transition-new(root) {
+    animation: 200ms var(--ease-out-expo) both vt-fade-in;
+  }
+
+  /* Candidate Drawer Panel Shared Element Morph */
+  .slide-over-panel {
+    view-transition-name: candidate-drawer-panel;
+  }
+
+  ::view-transition-group(candidate-drawer-panel) {
+    animation-duration: 240ms;
+    animation-timing-function: var(--ease-out-expo);
+  }
+
+  /* Tuning Lab Inspector Panel Shared Element Morph */
+  .tuning-inspector-pane {
+    view-transition-name: tuning-inspector;
+  }
+
+  ::view-transition-group(tuning-inspector) {
+    animation-duration: 220ms;
+    animation-timing-function: var(--ease-out-expo);
+  }
+
+  /* Workspace View Shared Container */
+  .workspace-view-container {
+    view-transition-name: workspace-view;
+  }
+
+  ::view-transition-group(workspace-view) {
+    animation-duration: 200ms;
+    animation-timing-function: var(--ease-out-expo);
+  }
+}
+
+@keyframes vt-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Prefers Reduced Motion Safety */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+
+  .workspace-enter,
+  .slide-over-backdrop,
+  .slide-over-panel,
+  .verified-reveal-container,
+  .verified-reveal-container.revealing .stage-meta-bar,
+  .verified-reveal-container.revealing .stage-numeral,
+  .verified-reveal-container.revealing.winner-glow {
+    animation: none !important;
+    transition: opacity 120ms ease !important;
+    transform: none !important;
+  }
+
+  button:active,
+  .btn-press:active {
+    transform: none !important;
+  }
+}
