@@ -5,11 +5,14 @@ Owner: Rajdeep (Historical design: Rohan)
 
 import math
 import time
+
 import pytest
 
 from slokern.contracts.enums import ArrivalMode
 from slokern.contracts.spec import (
     ExperimentBudget as ContractExperimentBudget,
+)
+from slokern.contracts.spec import (
     ExperimentSpec,
     ExperimentVerificationPolicy,
     SLOSpec,

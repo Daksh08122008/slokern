@@ -4,7 +4,12 @@ Owner: Rajdeep
 """
 
 from slokern.cli.commands.report import report_command
-from slokern.contracts.enums import ArrivalMode, FeasibilityVerdict, RankingObjective, VerificationState
+from slokern.contracts.enums import (
+    ArrivalMode,
+    FeasibilityVerdict,
+    RankingObjective,
+    VerificationState,
+)
 from slokern.contracts.search import CandidateSummary, SearchResult
 from slokern.contracts.spec import (
     ExperimentBudget,

@@ -5,13 +5,12 @@ Authority: Aligned with docs/architecture.md Section 3, docs/experiment-methodol
 """
 
 import asyncio
-from datetime import datetime, timezone
-import json
-import os
-from pathlib import Path
 import re
-from typing import Any, Callable, Dict, List, Optional, Union
 import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.config import CandidateConfig
@@ -30,8 +29,8 @@ from slokern.core.evaluator.evaluate import evaluate_slo
 from slokern.core.metrics.aggregate import calculate_metrics
 from slokern.engine.loadgen.runner import LoadGeneratorRunner
 from slokern.engine.runner.cancel import CancellationToken, RunCancelledError
-from slokern.engine.runner.lifecycle import InvalidStateTransitionError, RunLifecycle
-from slokern.engine.serving.base import BaseServingAdapter, ConfigurationError, ServingAdapterError
+from slokern.engine.runner.lifecycle import RunLifecycle
+from slokern.engine.serving.base import BaseServingAdapter, ServingAdapterError
 
 
 def _now_iso() -> str:

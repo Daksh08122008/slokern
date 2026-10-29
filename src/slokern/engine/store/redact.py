@@ -6,6 +6,7 @@ Owner: Rajdeep
 import re
 from typing import Optional
 
+
 def sanitize_secret_message(message: str, secret_key: Optional[str] = None) -> str:
     """
     Redacts API keys, Bearer tokens, and secrets from error messages and logs.

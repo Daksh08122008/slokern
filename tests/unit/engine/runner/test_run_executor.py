@@ -3,10 +3,10 @@ Purpose: Unit tests for engine/runner/run_executor (TASK-08).
 Owner: Rajdeep (Architecture & Verification)
 """
 
-import json
 from pathlib import Path
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import (

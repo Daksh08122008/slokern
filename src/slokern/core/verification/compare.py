@@ -4,12 +4,12 @@ Owner: Rajdeep (Historical design: Daksh)
 Authority: Aligned with AGENTS.md Section 5, 7, and DEC-0014
 """
 
-from dataclasses import dataclass, field
 import math
-from typing import Dict, List, Literal, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, Literal, Optional, Tuple
 
 from slokern.contracts.metrics import MetricSet
-from slokern.contracts.spec import SLOConstraint, SLOSpec
+from slokern.contracts.spec import SLOSpec
 from slokern.contracts.verification import DriftAnalysis, MetricDriftComparison
 from slokern.core.evaluator.evaluate import evaluate_constraint, get_observed_value
 

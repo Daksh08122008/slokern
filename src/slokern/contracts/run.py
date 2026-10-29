@@ -3,7 +3,8 @@ Purpose: Run, run lifecycle, environment and provenance models.
 Owner: Rajdeep
 """
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.enums import ExecutionStatus

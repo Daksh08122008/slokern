@@ -1,10 +1,9 @@
-import pytest
-import re
-from slokern.common.security import sanitize_credentials
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../scripts')))
-from scan_secrets import PATTERNS, EXCLUSIONS
+from scan_secrets import EXCLUSIONS, PATTERNS
+
 
 def test_secret_scanner_synthetic_positive():
     """Asserts scanner catches fake synthetic tokens."""

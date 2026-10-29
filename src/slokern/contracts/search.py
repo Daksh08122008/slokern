@@ -3,7 +3,8 @@ Purpose: Search and candidate ranking result models.
 Owner: Rajdeep
 """
 
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.enums import FeasibilityVerdict, RankingObjective

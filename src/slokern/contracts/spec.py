@@ -3,7 +3,8 @@ Purpose: Workload, SLO, search-space, budget and experiment-spec models.
 Owner: Rajdeep
 """
 
-from typing import List, Literal, Optional, Dict, Any
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from slokern.contracts.enums import ArrivalMode

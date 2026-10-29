@@ -4,9 +4,8 @@ Owner: Rajdeep (Architecture & Implementation)
 Authority: Aligned with AGENTS.md Section 1, 3, 5, 8 and DEC-0014
 """
 
-import json
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Optional
 
 from slokern.contracts.config import CandidateConfig
@@ -63,7 +62,12 @@ def report_command(
         else:
             # Construct minimal fallback spec for reporting if file was moved
             from slokern.contracts.enums import ArrivalMode
-            from slokern.contracts.spec import ExperimentBudget, ExperimentVerificationPolicy, SLOSpec, WorkloadSpec
+            from slokern.contracts.spec import (
+                ExperimentBudget,
+                ExperimentVerificationPolicy,
+                SLOSpec,
+                WorkloadSpec,
+            )
 
             spec = ExperimentSpec(
                 experiment_id=search_result.experiment_id,
@@ -162,7 +166,7 @@ def report_command(
     target_dir = Path(output_dir) if output_dir else exp_path
     json_path, md_path = write_report_artifacts(report, target_dir)
 
-    print(f"[OK] Report successfully published:")
+    print("[OK] Report successfully published:")
     print(f"  Report Artifact (JSON): {json_path}")
     print(f"  Markdown Report:        {md_path}")
     return 0

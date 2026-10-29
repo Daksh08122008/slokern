@@ -4,15 +4,14 @@ Owner: Rajdeep (Historical design: Daksh)
 Authority: Aligned with AGENTS.md Section 1, 5, 7 and DEC-0014
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Optional
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import VerificationState
 from slokern.contracts.search import SearchResult
 from slokern.contracts.spec import ExperimentSpec
-from slokern.core.search.candidate_id import generate_candidate_id
 from slokern.core.verification.protocol import run_independent_verification
 from slokern.engine.serving.base import ConfigurationError
 from slokern.engine.serving.factory import create_serving_adapter
@@ -91,7 +90,7 @@ def verify_command(
         environment_fingerprint={},
     )
 
-    print(f"[SLOKern Independent Verification]")
+    print("[SLOKern Independent Verification]")
     print(f"  Experiment ID:        {spec.experiment_id}")
     print(f"  Selected Winner ID:   {winner_id}")
     print(f"  Serving Adapter:      {serving_adapter.runtime_name} ({serving_adapter.model_name})")

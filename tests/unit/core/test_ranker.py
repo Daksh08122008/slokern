@@ -1,9 +1,9 @@
-import pytest
 
-from slokern.core.search.candidate_id import generate_candidate_id
-from slokern.core.search.rank import EvaluatedCandidate, rank_candidates
 from slokern.contracts.enums import FeasibilityVerdict, RankingObjective
 from slokern.contracts.metrics import MetricSet, PercentileDistribution
+from slokern.core.search.candidate_id import generate_candidate_id
+from slokern.core.search.rank import EvaluatedCandidate, rank_candidates
+
 
 def create_mock_metric_set(run_id: str):
     return MetricSet(

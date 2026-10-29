@@ -7,10 +7,10 @@ Authority: docs/decision-policy.md, docs/metrics.md, AGENTS.md Section 5 & 13
 import math
 from typing import List
 
+from slokern.contracts.enums import EvidenceValidity, FeasibilityVerdict, ReasonCode
 from slokern.contracts.metrics import MetricSet
 from slokern.contracts.spec import SLOSpec
-from slokern.contracts.verdict import FeasibilityResult, ConstraintEvaluation
-from slokern.contracts.enums import FeasibilityVerdict, ReasonCode, EvidenceValidity
+from slokern.contracts.verdict import ConstraintEvaluation, FeasibilityResult
 from slokern.contracts.versions import POLICY_VERSION
 
 

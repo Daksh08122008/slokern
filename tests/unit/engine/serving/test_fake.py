@@ -5,10 +5,11 @@ Authority: Aligned with AGENTS.md Section 1, Section 8, and ROADMAP.md TASK-05
 """
 
 import pytest
+
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import ParameterStatus
-from slokern.engine.serving.base import ServingRequest, TokenChunk, ServingResponse
-from slokern.engine.serving.fake import FakeServingAdapter, FailureInjectionConfig
+from slokern.engine.serving.base import ServingRequest
+from slokern.engine.serving.fake import FailureInjectionConfig, FakeServingAdapter
 
 
 def test_fake_adapter_initialization_and_fingerprint():
@@ -558,7 +559,7 @@ def test_fake_adapter_strict_mode_rejects_invalid_params():
 
 
 def test_fake_adapter_failure_injection_raise_on_failure_exceptions():
-    from slokern.engine.serving.base import ServingOOMError, ServingTimeoutError, ServingServerError
+    from slokern.engine.serving.base import ServingOOMError, ServingServerError, ServingTimeoutError
 
     # Forced OOM with raise_on_failure=True
     adapter_oom = FakeServingAdapter(

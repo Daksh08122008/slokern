@@ -4,7 +4,8 @@ Owner: Rajdeep (Historical design: Rohan)
 """
 
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
+
 import pytest
 
 from slokern.contracts.config import CandidateConfig
@@ -362,7 +363,11 @@ def test_grid_search_halts_on_unverified_capabilities(
 def test_grid_search_controller_run_halts_on_ollama_and_nebius(tmp_path: Path):
     """GridSearchController.run() halts immediately citing BLK-17 for both Ollama and Nebius."""
     from slokern.contracts.enums import ArrivalMode
-    from slokern.contracts.spec import ExperimentBudget, ExperimentSpec, ExperimentVerificationPolicy
+    from slokern.contracts.spec import (
+        ExperimentBudget,
+        ExperimentSpec,
+        ExperimentVerificationPolicy,
+    )
     from slokern.engine.serving.nebius import NebiusServingAdapter
     from slokern.engine.serving.ollama import OllamaServingAdapter
 

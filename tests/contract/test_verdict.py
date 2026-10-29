@@ -1,8 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from slokern.contracts.enums import FeasibilityVerdict, ReasonCode, EvidenceValidity
+from slokern.contracts.enums import EvidenceValidity, FeasibilityVerdict, ReasonCode
 from slokern.contracts.verdict import ConstraintEvaluation, FeasibilityResult
+
 
 def test_constraint_evaluation_valid() -> None:
     eval = ConstraintEvaluation(

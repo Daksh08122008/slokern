@@ -4,8 +4,6 @@ Owner: Rajdeep
 Authority: AGENTS.md Section 5, 7, 10
 """
 
-import math
-import pytest
 
 from slokern.contracts.metrics import MetricSet, PercentileDistribution
 from slokern.contracts.spec import SLOConstraint, SLOSpec

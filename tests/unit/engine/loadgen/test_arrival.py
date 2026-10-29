@@ -4,11 +4,12 @@ Owner: Rajdeep (Historical design: Adriraj)
 """
 
 import math
+
 import pytest
 
 from slokern.contracts.enums import ArrivalMode
 from slokern.contracts.spec import WorkloadSpec
-from slokern.engine.loadgen.arrival import ArrivalSchedule, ArrivalSlot
+from slokern.engine.loadgen.arrival import ArrivalSchedule
 
 
 def test_constant_arrival_slots_count_and_intervals():
@@ -108,7 +109,7 @@ def test_poisson_arrival_seed_reproducibility():
 
     assert len(slots1) > 0
     assert len(slots1) == len(slots2)
-    for s1, s2 in zip(slots1, slots2):
+    for s1, s2 in zip(slots1, slots2, strict=False):
         assert s1.index == s2.index
         assert s1.is_warmup == s2.is_warmup
         assert math.isclose(s1.scheduled_at, s2.scheduled_at, abs_tol=1e-9)

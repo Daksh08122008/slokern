@@ -4,7 +4,8 @@ Owner: Rajdeep (Historical design: Adriraj)
 Authority: Aligned with docs/metrics.md Section 2.6 and contracts/metrics.py
 """
 
-from typing import Dict, Optional, Sequence, Tuple, Union, Any
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
+
 from slokern.contracts.evidence import RawRequestMeasurement
 from slokern.core.metrics.latency import _ensure_measurement
 from slokern.core.metrics.throughput import resolve_window_duration

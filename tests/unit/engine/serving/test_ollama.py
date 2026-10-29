@@ -4,12 +4,11 @@ Owner: Rajdeep (Architecture & Implementation)
 Authority: Aligned with DEC-0014 and AGENTS.md Section 1, 3, 9, 12
 """
 
-import io
 import json
-import os
 import urllib.error
 import urllib.request
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from slokern.contracts.config import CandidateConfig

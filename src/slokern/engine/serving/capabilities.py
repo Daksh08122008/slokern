@@ -4,8 +4,9 @@ Owner: Rajdeep (Historical design: Aman)
 """
 
 import math
-from typing import Dict, Any, List, Optional, Tuple
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing import Any, Dict, List, Optional, Tuple
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from slokern.contracts.enums import ParameterStatus
 

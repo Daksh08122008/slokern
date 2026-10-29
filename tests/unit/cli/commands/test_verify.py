@@ -3,10 +3,15 @@ Purpose: Unit tests for verify CLI command.
 Owner: Rajdeep (Historical design: Daksh)
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from slokern.cli.commands.verify import verify_command
-from slokern.contracts.enums import ArrivalMode, FeasibilityVerdict, RankingObjective, VerificationState
+from slokern.contracts.enums import (
+    ArrivalMode,
+    FeasibilityVerdict,
+    RankingObjective,
+    VerificationState,
+)
 from slokern.contracts.search import CandidateSummary, SearchResult
 from slokern.contracts.spec import (
     ExperimentBudget,

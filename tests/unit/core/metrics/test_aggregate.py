@@ -6,6 +6,7 @@ Authority: Aligned with docs/metrics.md and contracts/metrics.py
 
 import json
 from pathlib import Path
+
 import pytest
 
 from slokern.contracts.evidence import RawRequestMeasurement

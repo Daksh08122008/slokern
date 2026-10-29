@@ -9,7 +9,6 @@ This test suite independently audits:
 3. Evidence integrity: contaminated load, missing metrics, and invalid values (NaN, negative latency).
 """
 
-import math
 import pytest
 
 from slokern.contracts.enums import (

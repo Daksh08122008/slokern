@@ -3,13 +3,11 @@ Purpose: Unit tests for optimize CLI command.
 Owner: Rajdeep
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from slokern.cli.commands.optimize import optimize_command
 from slokern.contracts.enums import ArrivalMode, FeasibilityVerdict, RankingObjective
 from slokern.contracts.search import CandidateSummary, SearchResult
-from slokern.core.search.grid import GridSearchOutcome
 from slokern.contracts.spec import (
     ExperimentBudget,
     ExperimentSpec,
@@ -17,6 +15,7 @@ from slokern.contracts.spec import (
     SLOSpec,
     WorkloadSpec,
 )
+from slokern.core.search.grid import GridSearchOutcome
 
 
 def make_valid_spec():

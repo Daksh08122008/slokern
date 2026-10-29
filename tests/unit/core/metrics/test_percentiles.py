@@ -6,6 +6,7 @@ Authority: Aligned with docs/metrics.md Section 3 and contracts/metrics.py
 
 import json
 from pathlib import Path
+
 import pytest
 
 from slokern.contracts.metrics import PercentileDistribution

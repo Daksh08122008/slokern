@@ -1,10 +1,17 @@
+
 import pytest
-from typing import Any
 from pydantic import ValidationError
-from slokern.contracts.report import BaselineSummary, SearchSummary, ReportArtifact
-from slokern.contracts.enums import FeasibilityVerdict
-from slokern.contracts.spec import ExperimentSpec, WorkloadSpec, SLOSpec, ExperimentBudget, ExperimentVerificationPolicy
-from slokern.contracts.enums import ArrivalMode
+
+from slokern.contracts.enums import ArrivalMode, FeasibilityVerdict
+from slokern.contracts.report import BaselineSummary, ReportArtifact, SearchSummary
+from slokern.contracts.spec import (
+    ExperimentBudget,
+    ExperimentSpec,
+    ExperimentVerificationPolicy,
+    SLOSpec,
+    WorkloadSpec,
+)
+
 
 def make_workload_spec() -> WorkloadSpec:
     return WorkloadSpec(

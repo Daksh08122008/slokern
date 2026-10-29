@@ -1,4 +1,3 @@
-import pydantic
 """
 Purpose: Shared canonical enumerations: lifecycle state domains, verdicts, objectives, and reason codes.
 Owner: Rajdeep (Architecture)

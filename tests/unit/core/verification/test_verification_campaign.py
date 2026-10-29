@@ -6,6 +6,7 @@ Authority: AGENTS.md Section 5, 7, 10
 
 import json
 from pathlib import Path
+
 import pytest
 
 from slokern.contracts.config import CandidateConfig
@@ -23,10 +24,8 @@ from slokern.contracts.run import RunRecord
 from slokern.contracts.search import CandidateSummary, SearchResult
 from slokern.contracts.spec import SLOConstraint, SLOSpec, WorkloadSpec
 from slokern.contracts.verdict import ConstraintEvaluation, FeasibilityResult
-from slokern.core.verification.compare import DriftPolicy
 from slokern.core.verification.protocol import (
     VerificationCampaignError,
-    run_independent_verification,
     verify_search_campaign,
 )
 from slokern.engine.runner.run_executor import SingleRunResult
@@ -373,9 +372,13 @@ def test_grid_search_controller_run_full_campaign_executes_run_6(tmp_path: Path)
     Verifies that Run 6 recomputes metrics, checks drift, leaves search runs unchanged,
     and returns verification_record.
     """
+    from slokern.contracts.spec import (
+        ExperimentBudget,
+        ExperimentSpec,
+        ExperimentVerificationPolicy,
+    )
     from slokern.core.search.grid import GridSearchController
     from slokern.engine.serving.fake import FakeServingAdapter
-    from slokern.contracts.spec import ExperimentBudget, ExperimentVerificationPolicy, ExperimentSpec
 
     adapter = FakeServingAdapter(simulate_delay=False)
     exp_id = "exp-full-campaign-6runs"

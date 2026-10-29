@@ -4,9 +4,10 @@ Owner: Rajdeep
 """
 
 from unittest.mock import patch
+
 import pytest
 
-from slokern.cli.main import main, build_parser
+from slokern.cli.main import build_parser, main
 
 
 def test_build_parser():

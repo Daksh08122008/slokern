@@ -4,10 +4,10 @@ Owner: Rajdeep
 Authority: Aligned with AGENTS.md Section 1, Section 6, and ROADMAP.md TASK-10
 """
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from slokern.contracts.config import CandidateConfig
 from slokern.core.search.candidate_id import generate_candidate_id
-
 
 BOUNDED_SEARCH_SPACE_2X2: Dict[str, List[int]] = {
     "max_num_batched_tokens": [1024, 2048],

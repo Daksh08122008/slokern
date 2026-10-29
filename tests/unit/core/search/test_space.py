@@ -3,11 +3,9 @@ Purpose: Unit tests for core/search/space: 2x2 bounded search space definition a
 Owner: Rajdeep (Historical design: Rohan)
 """
 
-import pytest
 from slokern.contracts.config import CandidateConfig
 from slokern.core.search.candidate_id import generate_candidate_id
 from slokern.core.search.space import (
-    BOUNDED_SEARCH_SPACE_2X2,
     generate_2x2_candidates,
     get_search_space_dimensions,
     validate_candidate_settings,

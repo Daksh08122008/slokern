@@ -4,8 +4,9 @@ Owner: Rajdeep (Historical design: Adriraj)
 Authority: Aligned with docs/metrics.md Section 3 and contracts/metrics.py
 """
 
-from typing import Optional, Sequence
 import math
+from typing import Optional, Sequence
+
 from slokern.contracts.metrics import PercentileDistribution
 
 

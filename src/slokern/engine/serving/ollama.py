@@ -7,19 +7,17 @@ Authority: Aligned with AGENTS.md Section 1, 3, 9, 12 and DEC-0014
 import ipaddress
 import json
 import os
-import re
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, Optional, Union
 
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import ParameterStatus
 from slokern.engine.serving.base import (
     BaseServingAdapter,
     ConfigurationError,
-    ServingAdapterError,
     ServingRequest,
     ServingResponse,
     TokenChunk,
@@ -212,7 +210,7 @@ class OllamaServingAdapter(BaseServingAdapter):
                 data = json.loads(body)
                 models = data.get("models", [])
                 target = self.model_name.lower()
-                target_base = target.split(":")[0]
+                target.split(":")[0]
 
                 for m in models:
                     name = str(m.get("name", "")).lower()
