@@ -2,7 +2,7 @@ import React from 'react';
 import type { ReasonCode } from '../../types/contracts';
 
 interface ReasonBoxProps {
-  reasonCode: ReasonCode | string;
+  reasonCode?: ReasonCode | string;
   detailText?: string;
   isPassing?: boolean;
 }
@@ -36,7 +36,7 @@ export const ReasonBox: React.FC<ReasonBoxProps> = ({
           letterSpacing: '0.04em',
         }}
       >
-        Reason Code: {reasonCode}
+        {reasonCode ? `Reason Code: ${reasonCode}` : 'Evaluator reason code unavailable'}
       </div>
       {detailText && (
         <div style={{ fontSize: '12px', color: 'var(--text-primary, #F0F3EF)', lineHeight: 1.4 }}>

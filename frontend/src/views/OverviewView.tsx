@@ -12,10 +12,13 @@ import { formatNumber, formatLatency } from '../lib/format';
 import type { HeadroomResult } from '../lib/format';
 import type { VerificationDerivationResult } from '../lib/status';
 import type { UICandidate, UIExperiment } from '../lib/adapters/viewModel';
-import type { SmokeTestArtifactResponse, RuntimeProfileResponse } from '../types/contracts';
+import { mapSmokeTestEvidence } from '../lib/adapters/viewModel';
+import type { SmokeTestArtifactResponse, RuntimeProfileResponse, PercentileDistribution } from '../types/contracts';
 
 interface OverviewViewProps {
   recommendedCandidate: UICandidate;
+  hasFeasibleCandidate: boolean;
+  hasSelectedFeasibleWinner: boolean;
   baselineCandidate: UICandidate;
   candidates: UICandidate[];
   bindingHeadroom: HeadroomResult | null;
@@ -31,6 +34,8 @@ interface OverviewViewProps {
 
 export const OverviewView: React.FC<OverviewViewProps> = ({
   recommendedCandidate,
+  hasFeasibleCandidate,
+  hasSelectedFeasibleWinner,
   baselineCandidate,
   candidates,
   bindingHeadroom,
@@ -66,10 +71,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const smokeTtft = smokeTest?.probe_request?.ttft_ms ?? 813.8;
-  const smokeTotalLat = smokeTest?.probe_request?.total_latency_ms ?? 813.8;
-  const smokeModel = smokeTest?.model || 'nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B';
-  const smokeHost = smokeTest?.endpoint_host || 'api.tokenfactory.nebius.com';
+  const smokeEvidenceData = mapSmokeTestEvidence(smokeTest);
+  const smokeTtft = smokeEvidenceData.ttftMs;
+  const smokeTotalLat = smokeEvidenceData.totalLatencyMs;
+  const smokeModel = smokeTest?.model || 'Unavailable';
+  const smokeHost = smokeTest?.endpoint_host || 'Unavailable';
+  const smokeEvidence = smokeEvidenceData.evidenceClassification;
 
   return (
     <div className="view-overview workspace-enter" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -92,7 +99,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             <DemoDataChip size="sm" />
           </div>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary, #A0AAA0)', lineHeight: 1.45, textWrap: 'pretty', maxWidth: '75ch' }}>
-            Experiment: <span style={{ color: 'var(--text-primary, #F0F3EF)', fontFamily: 'var(--font-mono, monospace)' }}>{activeExperiment?.id || 'exp-audit-offline-campaign'}</span> · Poisson arrival @ 10 rps · Winner: <span style={{ color: 'var(--primary-bright, #95D500)', fontFamily: 'var(--font-mono, monospace)', fontWeight: 600 }}>{recommendedCandidate.id}</span>
+            Experiment: <span style={{ color: 'var(--text-primary, #F0F3EF)', fontFamily: 'var(--font-mono, monospace)' }}>{activeExperiment?.id || 'exp-audit-offline-campaign'}</span> · {activeExperiment?.arrivalMode ? `${activeExperiment.arrivalMode} arrival @ ${activeExperiment.targetOfferedRateRps ?? '—'} rps` : 'Arrival metadata unavailable'} · {hasSelectedFeasibleWinner ? <>Winner: <span style={{ color: 'var(--primary-bright, #95D500)', fontFamily: 'var(--font-mono, monospace)', fontWeight: 600 }}>{recommendedCandidate.id}</span></> : hasFeasibleCandidate ? <strong>Feasible candidates exist; selected winner unavailable</strong> : <strong>No feasible candidate</strong>}
           </p>
         </div>
 
@@ -151,7 +158,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               }}
             >
               <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-bright, #95D500)' }} />
-              LIVE SMOKE TEST
+              {smokeEvidence} SMOKE TEST
             </span>
             <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--text-primary, #F0F3EF)', fontFamily: 'var(--font-mono, monospace)' }}>
               Nebius Token Factory · {smokeModel}
@@ -176,7 +183,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                 border: '1px solid rgba(233, 185, 73, 0.3)',
               }}
             >
-              LIVE BASELINE NOT YET RECORDED
+              {smokeTest?.status === 'PASSED' && smokeEvidence === 'LIVE' ? 'LIVE BASELINE RECORDED' : 'LIVE BASELINE NOT RECORDED'}
             </span>
           </div>
         </div>
@@ -185,7 +192,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <div style={{ padding: '10px 14px', backgroundColor: 'var(--raised, #151B15)', border: '1px solid var(--border, #263124)', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>SMOKE PROBE TTFT</div>
             <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono, monospace)', color: 'var(--primary-bright, #95D500)', marginTop: '2px' }}>
-              {smokeTtft.toFixed(1)} ms
+              {smokeTtft != null ? `${smokeTtft.toFixed(1)} ms` : '—'}
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-muted, #727D73)', marginTop: '2px' }}>Single probe measurement</div>
           </div>
@@ -193,17 +200,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <div style={{ padding: '10px 14px', backgroundColor: 'var(--raised, #151B15)', border: '1px solid var(--border, #263124)', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>TOTAL PROBE LATENCY</div>
             <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-primary, #F0F3EF)', marginTop: '2px' }}>
-              {smokeTotalLat.toFixed(1)} ms
+              {smokeTotalLat != null ? `${smokeTotalLat.toFixed(1)} ms` : '—'}
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted, #727D73)', marginTop: '2px' }}>Input: 5 tok · Output: 1 tok</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted, #727D73)', marginTop: '2px' }}>Input: {smokeEvidenceData.inputTokens ?? '—'} tok · Output: {smokeEvidenceData.outputTokens ?? '—'} tok</div>
           </div>
 
           <div style={{ padding: '10px 14px', backgroundColor: 'var(--raised, #151B15)', border: '1px solid var(--border, #263124)', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>STREAMING PROBE</div>
             <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono, monospace)', color: 'var(--primary-bright, #95D500)', marginTop: '2px' }}>
-              HTTP 200 OK
+              {smokeEvidenceData.streamStatus}
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted, #727D73)', marginTop: '2px' }}>Streaming chunk verified · LIVE</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted, #727D73)', marginTop: '2px' }}>{smokeEvidenceData.streamChunkCount != null ? `${smokeEvidenceData.streamChunkCount} chunks · first TTFT ${smokeEvidenceData.streamFirstChunkTtftMs?.toFixed(1) ?? '—'} ms` : 'Streaming evidence unavailable'}</div>
           </div>
 
           <div style={{ padding: '10px 14px', backgroundColor: 'var(--raised, #151B15)', border: '1px solid var(--border, #263124)', borderRadius: '4px' }}>
@@ -218,12 +225,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       {/* Stage Hero with 1.4s Reveal Effect */}
       <VerifiedReveal isVerified={isVerified} replayKey={replayKey}>
         <StageHero
-          candidateName={recommendedCandidate.name}
-          candidateId={recommendedCandidate.id}
+          candidateName={hasSelectedFeasibleWinner ? recommendedCandidate.name : hasFeasibleCandidate ? 'Selected winner unavailable' : 'No feasible candidate'}
+          candidateId={hasSelectedFeasibleWinner ? recommendedCandidate.id : 'NO WINNER'}
           runtimeModel="Meta-Llama-3-8B-Instruct · vLLM (DEMO DATA · OFFLINE OPTIMIZATION)"
           bindingHeadroom={bindingHeadroom}
           verificationStatus={verificationStatus}
-          throughputDelta="160 tokens/s output throughput · Highest among FEASIBLE tested candidates"
+          throughputDelta={hasSelectedFeasibleWinner ? `${formatNumber(recommendedCandidate.throughput, 1)} tokens/s output throughput · Evaluator selected feasible candidate` : hasFeasibleCandidate ? 'Feasible candidates exist, but no selected winner was recorded' : 'No feasible candidate in the tested campaign'}
           onOpenDetails={() => onOpenCandidateDrawer(recommendedCandidate)}
           onReplay={() => setReplayKey((k: number) => k + 1)}
         />
@@ -246,10 +253,10 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             <span style={{ fontSize: '12px', fontWeight: 700, fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-primary, #F0F3EF)', textTransform: 'uppercase' }}>
               Optimization Search Budget & Stopping Reason
             </span>
-            <Badge tone="neutral" size="sm">5 / 5 Candidate Evaluations Consumed</Badge>
+            <Badge tone="neutral" size="sm">{activeExperiment?.candidateEvaluationsCount ?? candidates.length} / {activeExperiment?.candidateBudget ?? candidates.length} evaluations consumed</Badge>
           </div>
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>
-            Stopping Reason: <span style={{ color: 'var(--primary-bright, #95D500)', fontWeight: 600 }}>space_exhausted</span> (2×2 parameter matrix bounded)
+            Stopping Reason: <span style={{ color: 'var(--primary-bright, #95D500)', fontWeight: 600 }}>{activeExperiment?.stoppingReason ?? 'Unavailable'}</span> ({activeExperiment?.searchSpaceCandidateCount ?? '—'} parameter configurations + baseline)
           </span>
         </div>
 
@@ -269,13 +276,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               }}
             >
               <div style={{ color: c.tag === 'WINNER' ? 'var(--primary-bright, #95D500)' : 'var(--text-muted, #727D73)', fontSize: '10px', fontWeight: 700 }}>
-                {c.tag === 'WINNER' ? 'WINNER · RUN 1' : `RUN ${i + 1}`}
+              {c.tag === 'WINNER' && c.feasible ? 'WINNER' : `RUN ${i + 1}`}
               </div>
               <div style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600, marginTop: '2px' }}>
                 {c.id}
               </div>
               <div style={{ color: 'var(--text-secondary, #A0AAA0)', fontSize: '10px', marginTop: '2px' }}>
-                {c.throughput.toFixed(1)} tok/s · {c.feasibilityVerdict}
+                {formatNumber(c.throughput, 1)} tok/s · {c.feasibilityVerdict}
               </div>
             </div>
           ))}
@@ -287,24 +294,24 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <MetricCard
           label="TTFT (P95 First-Token)"
           value={formatLatency(recommendedCandidate.ttftP95)}
-          tone={recommendedCandidate.ttftP95 <= 2500 ? 'success' : 'danger'}
-          delta={`+${(2500 - recommendedCandidate.ttftP95).toFixed(1)} ms margin`}
-          subtext="Hard ceiling: 2500.0 ms (Observed: 14.2 ms)"
+          tone={recommendedCandidate.ttftP95 == null ? 'warning' : recommendedCandidate.ttftP95 <= 2500 ? 'success' : 'danger'}
+          delta={recommendedCandidate.ttftP95 == null ? 'Metric unavailable' : `+${(2500 - recommendedCandidate.ttftP95).toFixed(1)} ms margin`}
+          subtext={`Hard ceiling: ${activeExperiment?.sloConstraints?.find((constraint) => constraint.metric_name === 'ttft_ms')?.threshold ?? '—'} ms · Observed: ${formatLatency(recommendedCandidate.ttftP95)}`}
         />
 
         <MetricCard
           label="ITL (P95 Inter-Token)"
           value={formatLatency(recommendedCandidate.itlP95)}
-          tone={recommendedCandidate.itlP95 <= 30 ? 'success' : 'danger'}
-          delta={`+${(30 - recommendedCandidate.itlP95).toFixed(1)} ms margin`}
-          subtext="Hard ceiling: 30.0 ms (Observed: 8.1 ms)"
+          tone={recommendedCandidate.itlP95 == null ? 'warning' : recommendedCandidate.itlP95 <= 30 ? 'success' : 'danger'}
+          delta={recommendedCandidate.itlP95 == null ? 'Metric unavailable' : `Observed p95; SLO checks p50`}
+          subtext="Observed metric; campaign SLO applies to ITL p50"
         />
 
         <MetricCard
           label="Output Token Throughput"
-          value={`${recommendedCandidate.throughput.toFixed(1)} tok/s`}
-          tone="success"
-          delta="Top feasible candidate"
+          value={`${formatNumber(recommendedCandidate.throughput, 1)} tok/s`}
+          tone={recommendedCandidate.throughput == null ? 'warning' : 'success'}
+          delta={hasFeasibleCandidate ? 'Evaluator selected feasible candidate' : 'No feasible candidate'}
           subtext="Ranking objective metric"
         />
 
@@ -341,34 +348,31 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <SloGauge
-              label="Time to First Token (TTFT)"
-              measured={recommendedCandidate.ttftP95}
-              threshold={2500.0}
-              unit="ms"
-              isUpperBound={true}
-              statistic="p95"
-            />
-            <SloGauge
-              label="Inter-Token Latency (ITL)"
-              measured={recommendedCandidate.itlP95}
-              threshold={30.0}
-              unit="ms"
-              isUpperBound={true}
-              statistic="p95"
-            />
-            <SloGauge
-              label="End-to-End Latency"
-              measured={recommendedCandidate.p95}
-              threshold={500.0}
-              unit="ms"
-              isUpperBound={true}
-              statistic="p95"
-            />
+            {(activeExperiment?.sloConstraints ?? []).map((constraint) => {
+              const distributions: Record<string, PercentileDistribution | undefined> = {
+                ttft_ms: recommendedCandidate.metricSet?.ttft_ms ?? { p95: recommendedCandidate.ttftP95 },
+                itl_ms: recommendedCandidate.metricSet?.itl_ms ?? { p95: recommendedCandidate.itlP95 },
+                e2e_latency_ms: recommendedCandidate.metricSet?.e2e_latency_ms ?? { p95: recommendedCandidate.e2eP95 },
+              };
+              const observed = constraint.metric_name === 'error_rate'
+                ? recommendedCandidate.metricSet?.error_rate ?? (recommendedCandidate.error != null ? recommendedCandidate.error / 100 : undefined)
+                : distributions[constraint.metric_name]?.[constraint.statistic as keyof PercentileDistribution];
+              return observed == null ? null : (
+                <SloGauge
+                  key={`${constraint.metric_name}.${constraint.statistic}`}
+                  label={constraint.metric_name}
+                  measured={observed}
+                  threshold={constraint.threshold}
+                  unit={constraint.unit}
+                  isUpperBound={constraint.operator === '<=' || constraint.operator === '<'}
+                  statistic={constraint.statistic}
+                />
+              );
+            })}
           </div>
 
           <ReasonBox
-            reasonCode="HARD_CONSTRAINTS_PASSED"
+            reasonCode={recommendedCandidate.reasonCodes?.[0]}
             detailText={recommendedCandidate.reason}
             isPassing={recommendedCandidate.feasible}
           />
@@ -391,39 +395,39 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               Head-to-Head Telemetry Delta
             </h2>
             <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>
-              Reference vs Selected ({recommendedCandidate.id})
+              {hasSelectedFeasibleWinner ? `Baseline ${baselineCandidate.id} vs Selected ${recommendedCandidate.id}` : 'No selected feasible candidate for comparison'}
             </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <HeadToHeadDelta
+            {hasSelectedFeasibleWinner && baselineCandidate.ttftP95 != null && recommendedCandidate.ttftP95 != null && <HeadToHeadDelta
               label="TTFT P95 Latency"
               baselineVal={baselineCandidate.ttftP95}
               candidateVal={recommendedCandidate.ttftP95}
               unit="ms"
               isLowerBetter={true}
-            />
-            <HeadToHeadDelta
+            />}
+            {hasSelectedFeasibleWinner && baselineCandidate.itlP95 != null && recommendedCandidate.itlP95 != null && <HeadToHeadDelta
               label="ITL P95 Latency"
               baselineVal={baselineCandidate.itlP95}
               candidateVal={recommendedCandidate.itlP95}
               unit="ms"
               isLowerBetter={true}
-            />
-            <HeadToHeadDelta
-              label="End-to-End Latency"
-              baselineVal={baselineCandidate.p95}
-              candidateVal={recommendedCandidate.p95}
+            />}
+            {hasSelectedFeasibleWinner && baselineCandidate.e2eP95 != null && recommendedCandidate.e2eP95 != null && <HeadToHeadDelta
+              label="End-to-End P95 Latency"
+              baselineVal={baselineCandidate.e2eP95}
+              candidateVal={recommendedCandidate.e2eP95}
               unit="ms"
               isLowerBetter={true}
-            />
-            <HeadToHeadDelta
+            />}
+            {hasSelectedFeasibleWinner && baselineCandidate.throughput != null && recommendedCandidate.throughput != null && <HeadToHeadDelta
               label="Output Token Throughput"
               baselineVal={baselineCandidate.throughput}
               candidateVal={recommendedCandidate.throughput}
               unit="tok/s"
               isLowerBetter={false}
-            />
+            />}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid var(--border, #263124)' }}>
@@ -491,9 +495,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <TradeoffPlot
           candidates={candidates}
           selectedCandidateId={recommendedCandidate.id}
+          baselineCandidateId={baselineCandidate.id}
           onSelectCandidate={onOpenCandidateDrawer}
-          latencyCeilingMs={2500}
-          throughputFloorTps={50}
         />
       </div>
     </div>

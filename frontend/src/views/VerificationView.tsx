@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Badge } from '../components/common/Badge';
 import { DemoDataChip } from '../components/common/DemoDataChip';
 import { DriftGateBar } from '../components/charts/DriftGateBar';
-import { formatNumber, formatLatency } from '../lib/format';
+import { formatNumber } from '../lib/format';
 import type { VerificationDerivationResult } from '../lib/status';
 import type { UICandidate } from '../lib/adapters/viewModel';
+import { mapVerificationComparisons } from '../lib/adapters/viewModel';
 import type { VerificationRecord } from '../types/contracts';
 import { fetchRunTrace } from '../api/client';
 
@@ -14,6 +15,19 @@ interface VerificationViewProps {
   verificationRecord?: VerificationRecord | null;
   searchRunId?: string;
   verificationRunId?: string;
+  arrivalMode?: string | null;
+  durationMultiplier?: number | null;
+}
+
+interface ComparisonMetric {
+  name: string;
+  searchVal: number;
+  verifyVal: number;
+  drift: number;
+  tolerance: number;
+  unit: string;
+  format: (value: number) => string;
+  passed: boolean;
 }
 
 export const VerificationView: React.FC<VerificationViewProps> = ({
@@ -22,6 +36,8 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
   verificationRecord,
   searchRunId = 'run-83697f4a197e',
   verificationRunId = 'PENDING (NOT YET RECORDED)',
+  arrivalMode,
+  durationMultiplier,
 }) => {
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -29,60 +45,21 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
   const isVerified = verificationRecord
     ? verificationRecord.verification_verdict === 'VERIFIED'
     : verificationStatus.isVerifiedWinner;
-
+  const verificationFailed = verificationRecord?.verification_verdict === 'VERIFICATION_FAILED';
   const isPending =
     (verificationRecord?.verification_verdict as any) === 'INDEPENDENT VERIFICATION PENDING' ||
     !verificationRunId ||
     verificationRunId.includes('PENDING');
+  const verificationLabel = isPending
+    ? 'INDEPENDENT VERIFICATION PENDING'
+    : isVerified
+      ? 'VERIFIED'
+      : verificationFailed ? 'VERIFICATION FAILED' : 'VERIFICATION INCONCLUSIVE';
 
-  // Comparison metrics between search run and independent verification rerun
-  const metricsComparison = [
-    {
-      name: 'Time to First Token (TTFT P95)',
-      searchVal: recommendedCandidate.ttftP95,
-      verifyVal: isPending ? recommendedCandidate.ttftP95 : recommendedCandidate.ttftP95 + 1.2,
-      drift: isPending ? 0.0 : 1.2,
-      tolerance: 3.0,
-      unit: 'ms',
-      format: (v: number) => formatLatency(v),
-    },
-    {
-      name: 'Inter-Token Latency (ITL P95)',
-      searchVal: recommendedCandidate.itlP95,
-      verifyVal: isPending ? recommendedCandidate.itlP95 : recommendedCandidate.itlP95 + 0.4,
-      drift: isPending ? 0.0 : 0.4,
-      tolerance: 1.5,
-      unit: 'ms',
-      format: (v: number) => formatLatency(v),
-    },
-    {
-      name: 'End-to-End Latency (P95)',
-      searchVal: recommendedCandidate.p95,
-      verifyVal: isPending ? recommendedCandidate.p95 : recommendedCandidate.p95 + 1.1,
-      drift: isPending ? 0.0 : 1.1,
-      tolerance: 4.0,
-      unit: 'ms',
-      format: (v: number) => formatLatency(v),
-    },
-    {
-      name: 'Output Token Throughput',
-      searchVal: recommendedCandidate.throughput,
-      verifyVal: isPending ? recommendedCandidate.throughput : recommendedCandidate.throughput,
-      drift: 0.0,
-      tolerance: 3.0,
-      unit: 'tok/s',
-      format: (v: number) => `${v.toFixed(1)} tok/s`,
-    },
-    {
-      name: 'Request Error Rate',
-      searchVal: recommendedCandidate.error,
-      verifyVal: isPending ? recommendedCandidate.error : recommendedCandidate.error,
-      drift: 0.0,
-      tolerance: 0.20,
-      unit: '%',
-      format: (v: number) => `${formatNumber(v, 2)}%`,
-    },
-  ];
+  const availableMetrics: ComparisonMetric[] = mapVerificationComparisons(verificationRecord).map((comparison) => ({
+    ...comparison,
+    format: (value: number) => `${formatNumber(value, 2)} ${comparison.unit}`,
+  }));
 
   const handleDownloadTrace = async () => {
     setDownloading(true);
@@ -174,8 +151,8 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Badge tone={isPending ? 'warning' : isVerified ? 'verified' : 'infeasible'} size="md">
-              {isPending ? 'INDEPENDENT VERIFICATION PENDING' : isVerified ? 'VERIFIED' : 'VERIFICATION_FAILED'}
+            <Badge tone={isPending ? 'warning' : isVerified ? 'verified' : verificationFailed ? 'infeasible' : 'neutral'} size="md">
+              {verificationLabel}
             </Badge>
             <span style={{ fontSize: '14px', fontWeight: 650, color: 'var(--text-primary, #F0F3EF)' }}>
               Candidate: {recommendedCandidate.id} · {recommendedCandidate.name}
@@ -183,7 +160,7 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
           </div>
 
           <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>
-            Protocol: 2× duration rerun · Constant/Poisson arrival · Distinct Run ID
+              Protocol: {durationMultiplier != null && arrivalMode ? `${durationMultiplier}× duration · ${arrivalMode} arrival · ` : 'Protocol metadata unavailable · '}Distinct Run ID
           </div>
         </div>
 
@@ -194,7 +171,7 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
             <div style={{ color: 'var(--text-muted, #727D73)', fontSize: '11px', marginBottom: '4px' }}>ORIGINAL SEARCH RUN ID</div>
             <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary, #F0F3EF)' }}>{searchRunId}</div>
             <div style={{ color: 'var(--text-secondary, #A0AAA0)', fontSize: '11px', marginTop: '4px' }}>
-              Completed in campaign · Candidate: {recommendedCandidate.id} (160 tok/s)
+              Completed in campaign · Candidate: {recommendedCandidate.id} ({formatNumber(recommendedCandidate.throughput, 1)} tok/s)
             </div>
           </div>
 
@@ -227,7 +204,7 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
           Declared Drift Gate Meters
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-          {metricsComparison.map((m) => (
+          {availableMetrics.map((m) => (
             <DriftGateBar
               key={m.name}
               metricName={m.name.split('(')[0].trim()}
@@ -254,7 +231,7 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
             Empirical Drift Telemetry Audit Table
           </h2>
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>
-            Gate: declared absolute tolerances
+          {availableMetrics.length ? 'Gate: persisted tolerances' : 'No persisted drift comparisons available'}
           </span>
         </div>
 
@@ -271,7 +248,10 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
               </tr>
             </thead>
             <tbody>
-              {metricsComparison.map((m) => (
+              {availableMetrics.length === 0 && (
+                <tr><td colSpan={6} style={{ padding: '14px 12px', color: 'var(--text-muted, #727D73)' }}>No independent verification comparison artifact is available.</td></tr>
+              )}
+              {availableMetrics.map((m) => (
                 <tr key={m.name} style={{ borderBottom: '1px solid var(--border, #263124)' }}>
                   <td style={{ padding: '10px 12px', color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{m.name}</td>
                   <td style={{ padding: '10px 12px', color: 'var(--text-secondary, #A0AAA0)' }}>{m.format(m.searchVal)}</td>
@@ -283,8 +263,8 @@ export const VerificationView: React.FC<VerificationViewProps> = ({
                   </td>
                   <td style={{ padding: '10px 12px', color: 'var(--text-muted, #727D73)' }}>±{m.tolerance} {m.unit}</td>
                   <td style={{ padding: '10px 12px' }}>
-                    <Badge tone={isPending ? 'warning' : 'verified'} size="sm">
-                      {isPending ? 'PENDING' : 'PASSED'}
+                    <Badge tone={isPending ? 'warning' : m.passed ? 'verified' : 'infeasible'} size="sm">
+                      {isPending ? 'PENDING' : m.passed ? 'PASSED' : 'FAILED'}
                     </Badge>
                   </td>
                 </tr>

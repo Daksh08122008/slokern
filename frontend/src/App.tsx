@@ -17,6 +17,7 @@ import { deriveVerifiedWinner } from './lib/status';
 import { computeBindingConstraintHeadroom, formatLatency, formatNumber } from './lib/format';
 import { runWithViewTransition } from './lib/motion';
 import type { UICandidate, UIExperiment } from './lib/adapters/viewModel';
+import { selectFeasibleRecommendation } from './lib/adapters/viewModel';
 import type {
   VerificationRecord,
   SLOConstraint,
@@ -246,30 +247,31 @@ export function App() {
           batch: 4,
           concurrency: 32,
           kvCache: 'AUTO',
-          p50: 14.0,
-          p95: 14.2,
-          p99: 14.2,
+          p50: 12.4,
+          p95: 12.5,
+          p99: 12.5,
           throughput: 160.0,
           error: 0.0,
           gpu: 90,
           feasible: true,
           feasibilityVerdict: 'FEASIBLE',
           evidenceValidity: 'VALID',
-          reason: 'Meets all declared hard constraints with 2485.8 ms TTFT headroom.',
+          reason: 'All hard constraints satisfied.',
           tag: 'WINNER',
-          ttftP95: 14.2,
+          ttftP95: 12.5,
           itlP95: 8.1,
+          e2eP95: 133.5,
         },
         {
           id: '370359a9c14b',
           name: 'Candidate 370359a9',
-          subtitle: 'Run run-370a3c4cf59f · max_seqs=32',
-          batch: 4,
-          concurrency: 32,
+          subtitle: 'Run run-370a3c4cf59f · max_seqs=16',
+          batch: 2,
+          concurrency: 16,
           kvCache: 'AUTO',
-          p50: 14.0,
-          p95: 14.2,
-          p99: 14.2,
+          p50: 12.4,
+          p95: 12.5,
+          p99: 12.6,
           throughput: 160.0,
           error: 0.0,
           gpu: 90,
@@ -278,14 +280,15 @@ export function App() {
           evidenceValidity: 'VALID',
           reason: 'Meets all declared hard constraints.',
           tag: 'FEASIBLE',
-          ttftP95: 14.2,
-          itlP95: 8.1,
+          ttftP95: 12.5,
+          itlP95: 8.0,
+          e2eP95: 133.2,
         },
         {
           id: '369e9bc42eb7',
           name: 'Candidate 369e9bc4',
           subtitle: 'Run run-d80541ee06d8 · max_seqs=64',
-          batch: 4,
+          batch: 2,
           concurrency: 64,
           kvCache: 'AUTO',
           p50: 14.0,
@@ -301,6 +304,7 @@ export function App() {
           tag: 'FEASIBLE',
           ttftP95: 14.2,
           itlP95: 8.1,
+          e2eP95: 135.8,
         },
         {
           id: '565eb88bb613',
@@ -309,9 +313,9 @@ export function App() {
           batch: 2,
           concurrency: 32,
           kvCache: 'AUTO',
-          p50: 14.0,
-          p95: 14.2,
-          p99: 14.2,
+          p50: 12.5,
+          p95: 12.6,
+          p99: 12.6,
           throughput: 160.0,
           error: 0.0,
           gpu: 90,
@@ -322,6 +326,7 @@ export function App() {
           tag: 'FEASIBLE',
           ttftP95: 14.2,
           itlP95: 8.1,
+          e2eP95: 133.3,
         },
         {
           id: 'c3d86d00124b',
@@ -343,6 +348,7 @@ export function App() {
           tag: 'FEASIBLE',
           ttftP95: 14.2,
           itlP95: 8.1,
+          e2eP95: 136.1,
         },
       ];
     }
@@ -353,7 +359,8 @@ export function App() {
         feasible: false,
         feasibilityVerdict: 'INFEASIBLE' as const,
         tag: 'INFEASIBLE',
-        reason: 'P95 latency exceeds declared hard ceiling by 18 ms.',
+        reason: 'DEMO DATA: This scenario overrides feasibility for presentation; it is not an evaluator result.',
+        reasonCodes: [],
       }));
     }
 
@@ -368,13 +375,16 @@ export function App() {
     return sourceCandidates;
   }, [apiCandidates, scenario]);
 
-  const recommendedCandidate = useMemo(() => {
-    return candidates.find((c) => c.tag === 'WINNER') || candidates[0];
-  }, [candidates]);
+  const feasibleRecommendation = useMemo(() => selectFeasibleRecommendation(candidates), [candidates]);
+  const recommendedCandidate = feasibleRecommendation ?? candidates[0];
+  const hasFeasibleCandidate = candidates.some((candidate) => candidate.feasible);
+  const hasSelectedFeasibleWinner = feasibleRecommendation !== null;
 
   const baselineCandidate = useMemo(() => {
-    return candidates.find((c) => c.id === '15594344d2bf') || candidates[0];
-  }, [candidates]);
+    const baselineCandidateId = experimentsList.find((experiment) => experiment.id === activeExperimentId)?.baselineCandidateId
+      ?? '15594344d2bf';
+    return candidates.find((c) => c.id === baselineCandidateId) || candidates[0];
+  }, [candidates, experimentsList, activeExperimentId]);
 
   // Active UI Experiment object
   const activeExperiment: UIExperiment = useMemo(() => {
@@ -384,20 +394,34 @@ export function App() {
     return {
       id: 'exp-audit-offline-campaign',
       run: 'run-83697f4a197e',
-      workload: 'chat-completions-prod',
+      workload: 'audit-offline-workload',
       model: 'meta-llama/Meta-Llama-3-8B-Instruct',
       state: 'Completed',
       feasibility: 'Feasible',
       verification: 'Pending',
       updated: '2026-10-30 03:42 UTC',
       candidateId: '15594344d2bf',
-      durationSeconds: 60,
+      durationSeconds: 2,
+      verificationDurationMultiplier: 1.0,
       requestedRateRps: 10.0,
       achievedRateRps: 10.0,
       measurementValidity: 'VALID',
       clientSaturation: false,
       errorRatePct: 0.0,
-      exclusionsCount: 5,
+      exclusionsCount: 10,
+      baselineCandidateId: '15594344d2bf',
+      arrivalMode: 'constant',
+      targetOfferedRateRps: 10.0,
+      sloConstraints: [
+        { metric_name: 'ttft_ms', statistic: 'p95', threshold: 2500, unit: 'ms', operator: '<=' },
+        { metric_name: 'itl_ms', statistic: 'p50', threshold: 30, unit: 'ms', operator: '<=' },
+        { metric_name: 'error_rate', statistic: 'mean', threshold: 0.05, unit: 'fraction', operator: '<=' },
+      ],
+      candidateEvaluationsCount: 5,
+      candidateBudget: 5,
+      searchSpaceCandidateCount: 4,
+      stoppingReason: 'space_exhausted',
+      rankingObjective: 'max_throughput_under_slo',
     };
   }, [experimentsList, activeExperimentId]);
 
@@ -472,24 +496,17 @@ export function App() {
   }, [recommendedCandidate, effectiveVerificationRecord, verificationRecord, scenario]);
 
   // Binding Headroom
-  const constraints: SLOConstraint[] = useMemo(
-    () => [
-      { metric_name: 'ttft_ms', statistic: 'p95', threshold: 2500.0, unit: 'ms', operator: '<=' },
-      { metric_name: 'itl_ms', statistic: 'p95', threshold: 30.0, unit: 'ms', operator: '<=' },
-      { metric_name: 'p95', statistic: 'p95', threshold: 500.0, unit: 'ms', operator: '<=' },
-      { metric_name: 'throughput', statistic: 'p95', threshold: 50.0, unit: 'requests/s', operator: '>=' },
-      { metric_name: 'error', statistic: 'p95', threshold: 0.05, unit: 'fraction', operator: '<=' },
-    ],
-    []
-  );
+  const constraints: SLOConstraint[] = activeExperiment.sloConstraints ?? [];
 
-  const measuredValues = useMemo(
+  const measuredValues = useMemo<Record<string, number>>(
     () => ({
-      'ttft_ms.p95': recommendedCandidate.ttftP95,
-      'itl_ms.p95': recommendedCandidate.itlP95,
-      'p95.p95': recommendedCandidate.p95,
-      'throughput.p95': recommendedCandidate.throughput,
-      'error.p95': recommendedCandidate.error / 100,
+      ...(recommendedCandidate.ttftP95 != null ? { 'ttft_ms.p95': recommendedCandidate.ttftP95 } : {}),
+      ...((recommendedCandidate.metricSet?.itl_ms?.p50 ?? recommendedCandidate.itlP95) != null
+        ? { 'itl_ms.p50': recommendedCandidate.metricSet?.itl_ms?.p50 ?? recommendedCandidate.itlP95 as number }
+        : {}),
+      ...((recommendedCandidate.metricSet?.error_rate ?? recommendedCandidate.error) != null
+        ? { 'error_rate.mean': recommendedCandidate.metricSet?.error_rate ?? (recommendedCandidate.error as number) / 100 }
+        : {}),
     }),
     [recommendedCandidate]
   );
@@ -589,6 +606,8 @@ export function App() {
             {currentWorkspace === 'Overview' && (
               <OverviewView
                 recommendedCandidate={recommendedCandidate}
+                hasFeasibleCandidate={hasFeasibleCandidate}
+                hasSelectedFeasibleWinner={hasSelectedFeasibleWinner}
                 baselineCandidate={baselineCandidate}
                 candidates={candidates}
                 bindingHeadroom={bindingHeadroom}
@@ -624,6 +643,7 @@ export function App() {
                 candidates={candidates}
                 baselineCandidate={baselineCandidate}
                 selectedCandidateId={selectedCandidateId}
+                rankingObjective={activeExperiment.rankingObjective}
                 onSelectCandidate={(c) => {
                   runWithViewTransition(() => {
                     setSelectedCandidateId(c.id);
@@ -638,8 +658,10 @@ export function App() {
                 recommendedCandidate={recommendedCandidate}
                 verificationStatus={verificationStatus}
                 verificationRecord={verificationRecord}
-                searchRunId="run-83697f4a197e"
-                verificationRunId="PENDING (NOT YET RECORDED)"
+                searchRunId={verificationRecord?.original_run_id ?? activeExperiment.run}
+                verificationRunId={verificationRecord?.verification_run_id ?? 'PENDING (NOT YET RECORDED)'}
+                arrivalMode={activeExperiment.arrivalMode}
+                durationMultiplier={activeExperiment.verificationDurationMultiplier}
               />
             )}
 
@@ -693,19 +715,19 @@ export function App() {
               <div style={{ color: 'var(--text-secondary, #A0AAA0)', fontWeight: 600 }}>RUNTIME SETTINGS</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '3px' }}>
                 <span>Max Concurrency</span>
-                <span>{inspectCandidate.concurrency} streams</span>
+                <span>{formatNumber(inspectCandidate.concurrency, 0)} streams</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '3px' }}>
                 <span>Batch Tokens</span>
-                <span>{inspectCandidate.batch * 512} tokens</span>
+                <span>{inspectCandidate.batch != null ? `${inspectCandidate.batch * 512} tokens` : '—'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '3px' }}>
                 <span>KV Cache Dtype</span>
-                <span>{inspectCandidate.kvCache}</span>
+                <span>{inspectCandidate.kvCache ?? '—'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '3px' }}>
                 <span>GPU Memory Load</span>
-                <span>0.90 ({inspectCandidate.gpu}% VRAM)</span>
+                <span>{inspectCandidate.gpu != null ? `${formatNumber(inspectCandidate.gpu / 100, 2)} (${inspectCandidate.gpu}% VRAM)` : '—'}</span>
               </div>
             </div>
 
@@ -721,7 +743,7 @@ export function App() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '3px' }}>
                 <span>Output Token Throughput</span>
-                <span>{inspectCandidate.throughput.toFixed(1)} tok/s</span>
+                <span>{formatNumber(inspectCandidate.throughput, 1)} tok/s</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '3px' }}>
                 <span>Error Rate</span>
@@ -762,13 +784,13 @@ export function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                 <span>Offered / Achieved Load</span>
                 <span style={{ fontWeight: 600 }}>
-                  {(inspectExperiment.requestedRateRps ?? 10.0).toFixed(1)} / {(inspectExperiment.achievedRateRps ?? 10.0).toFixed(1)} rps
+                  {inspectExperiment.requestedRateRps?.toFixed(1) ?? '—'} / {inspectExperiment.achievedRateRps?.toFixed(1) ?? '—'} rps
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                 <span>Measurement Validity</span>
                 <span style={{ color: 'var(--primary-bright, #95D500)', fontWeight: 600 }}>
-                  {inspectExperiment.measurementValidity ?? 'VALID'}
+                  {inspectExperiment.measurementValidity ?? 'Unavailable'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>

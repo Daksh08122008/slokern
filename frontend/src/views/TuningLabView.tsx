@@ -11,24 +11,33 @@ interface TuningLabViewProps {
   candidates: UICandidate[];
   baselineCandidate: UICandidate;
   selectedCandidateId: string;
+  rankingObjective?: string | null;
   onSelectCandidate: (candidate: UICandidate) => void;
   onOpenCandidateDrawer: (candidate: UICandidate) => void;
 }
 
 export const TuningLabView: React.FC<TuningLabViewProps> = ({
   candidates,
-  baselineCandidate: _baselineCandidate,
+  baselineCandidate,
   selectedCandidateId,
+  rankingObjective,
   onSelectCandidate,
   onOpenCandidateDrawer,
 }) => {
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   const { paretoIds } = React.useMemo(() => identifyParetoFrontier(candidates), [candidates]);
-  const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0];
+  const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates.find((c) => c.feasible) || candidates[0];
+  const hasFeasibleCandidate = candidates.some((candidate) => candidate.feasible);
 
   const handleCopyCliFlags = () => {
-    const flags = `--max-num-seqs ${selectedCandidate.concurrency} --max-num-batched-tokens ${selectedCandidate.batch * 512} --kv-cache-dtype ${selectedCandidate.kvCache.toLowerCase()} --gpu-memory-utilization 0.90`;
+    const flags = [
+      selectedCandidate.concurrency != null ? `--max-num-seqs ${selectedCandidate.concurrency}` : null,
+      selectedCandidate.batch != null ? `--max-num-batched-tokens ${selectedCandidate.batch * 512}` : null,
+      selectedCandidate.kvCache ? `--kv-cache-dtype ${selectedCandidate.kvCache.toLowerCase()}` : null,
+      selectedCandidate.gpu != null ? `--gpu-memory-utilization ${(selectedCandidate.gpu / 100).toFixed(2)}` : null,
+    ].filter(Boolean).join(' ');
+    if (!flags) return;
     navigator.clipboard.writeText(flags);
     setCopyFeedback(true);
     setTimeout(() => setCopyFeedback(false), 2000);
@@ -46,7 +55,7 @@ export const TuningLabView: React.FC<TuningLabViewProps> = ({
             <DemoDataChip size="sm" />
           </div>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary, #A0AAA0)', lineHeight: 1.45, textWrap: 'pretty', maxWidth: '75ch' }}>
-            Comparing {candidates.length} bounded serving profiles against baseline reference · Search objective: <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-primary, #F0F3EF)' }}>max_throughput_under_slo</span> · DEMO DATA · OFFLINE OPTIMIZATION
+            {hasFeasibleCandidate ? 'Comparing' : 'No feasible candidate'} · {candidates.length} bounded serving profiles against baseline reference · Search objective: <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-primary, #F0F3EF)' }}>{rankingObjective ?? 'Unavailable'}</span> · DEMO DATA · OFFLINE OPTIMIZATION
           </p>
         </div>
       </div>
@@ -59,9 +68,8 @@ export const TuningLabView: React.FC<TuningLabViewProps> = ({
           <TradeoffPlot
             candidates={candidates}
             selectedCandidateId={selectedCandidate.id}
+          baselineCandidateId={baselineCandidate.id}
             onSelectCandidate={onSelectCandidate}
-            latencyCeilingMs={2500}
-            throughputFloorTps={50}
           />
 
           {/* Candidate Matrix List */}
@@ -138,11 +146,11 @@ export const TuningLabView: React.FC<TuningLabViewProps> = ({
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', fontSize: '11px', fontFamily: 'var(--font-mono, monospace)' }}>
                     <div style={{ padding: '4px 6px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                       <span style={{ color: 'var(--text-muted, #727D73)' }}>Seqs: </span>
-                      <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{c.concurrency}</span>
+                      <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{formatNumber(c.concurrency, 0)}</span>
                     </div>
                     <div style={{ padding: '4px 6px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                       <span style={{ color: 'var(--text-muted, #727D73)' }}>Batch: </span>
-                      <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{c.batch * 512} tok</span>
+                      <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{c.batch != null ? `${c.batch * 512} tok` : '—'}</span>
                     </div>
                     <div style={{ padding: '4px 6px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                       <span style={{ color: 'var(--text-muted, #727D73)' }}>TTFT P95: </span>
@@ -150,7 +158,7 @@ export const TuningLabView: React.FC<TuningLabViewProps> = ({
                     </div>
                     <div style={{ padding: '4px 6px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                       <span style={{ color: 'var(--text-muted, #727D73)' }}>Throughput: </span>
-                      <span style={{ color: 'var(--primary-bright, #95D500)', fontWeight: 700 }}>{c.throughput.toFixed(1)} tok/s</span>
+                      <span style={{ color: 'var(--primary-bright, #95D500)', fontWeight: 700 }}>{formatNumber(c.throughput, 1)} tok/s</span>
                     </div>
                   </div>
                 </div>
@@ -197,7 +205,7 @@ export const TuningLabView: React.FC<TuningLabViewProps> = ({
 
           {/* Reason Code Clinical Box */}
           <ReasonBox
-            reasonCode={selectedCandidate.feasible ? 'HARD_CONSTRAINTS_PASSED' : 'P95_LATENCY_EXCEEDED'}
+            reasonCode={selectedCandidate.reasonCodes?.[0]}
             detailText={selectedCandidate.reason}
             isPassing={selectedCandidate.feasible}
           />
@@ -210,22 +218,22 @@ export const TuningLabView: React.FC<TuningLabViewProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', fontFamily: 'var(--font-mono, monospace)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                 <span style={{ color: 'var(--text-secondary, #A0AAA0)' }}>Max Concurrency (max_num_seqs)</span>
-                <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{selectedCandidate.concurrency} streams</span>
+                <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{formatNumber(selectedCandidate.concurrency, 0)} streams</span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                 <span style={{ color: 'var(--text-secondary, #A0AAA0)' }}>Batch Tokens (max_num_batched_tokens)</span>
-                <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{selectedCandidate.batch * 512} tokens</span>
+                <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{selectedCandidate.batch != null ? `${selectedCandidate.batch * 512} tokens` : '—'}</span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                 <span style={{ color: 'var(--text-secondary, #A0AAA0)' }}>KV Cache Dtype</span>
-                <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{selectedCandidate.kvCache}</span>
+                <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{selectedCandidate.kvCache ?? '—'}</span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                 <span style={{ color: 'var(--text-secondary, #A0AAA0)' }}>GPU Memory Load</span>
-                <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{selectedCandidate.gpu}% VRAM</span>
+                <span style={{ color: 'var(--text-primary, #F0F3EF)', fontWeight: 600 }}>{selectedCandidate.gpu != null ? `${selectedCandidate.gpu}% VRAM` : '—'}</span>
               </div>
             </div>
           </div>
@@ -253,7 +261,7 @@ export const TuningLabView: React.FC<TuningLabViewProps> = ({
               <div style={{ padding: '8px', backgroundColor: 'var(--raised, #151B15)', borderRadius: '3px' }}>
                 <span style={{ color: 'var(--text-muted, #727D73)' }}>OUTPUT THROUGHPUT</span>
                 <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary-bright, #95D500)', marginTop: '2px' }}>
-                  {selectedCandidate.throughput.toFixed(1)} tok/s
+                  {formatNumber(selectedCandidate.throughput, 1)} tok/s
                 </div>
               </div>
 

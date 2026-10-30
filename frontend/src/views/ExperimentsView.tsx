@@ -160,10 +160,10 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({
               <tbody>
                 {filtered.map((exp, idx) => {
                   const isScrubberActive = selectedScrubberRun === exp.run;
-                  const reqRate = exp.requestedRateRps ?? 16.0;
-                  const achRate = exp.achievedRateRps ?? (exp.state === 'Completed' ? 15.9 : 0.0);
-                  const validity = exp.measurementValidity ?? 'VALID';
-                  const isSaturated = exp.clientSaturation ?? false;
+                  const reqRate = exp.requestedRateRps;
+                  const achRate = exp.achievedRateRps;
+                  const validity = exp.measurementValidity ?? 'Unavailable';
+                  const isSaturated = exp.clientSaturation;
 
                   return (
                     <tr
@@ -212,10 +212,10 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({
                         {exp.candidateId}
                       </td>
                       <td style={{ padding: '10px 16px', color: 'var(--text-primary, #F0F3EF)' }}>
-                        <span>{reqRate.toFixed(1)}</span>
+                        <span>{reqRate?.toFixed(1) ?? '—'}</span>
                         <span style={{ color: 'var(--text-muted, #727D73)', margin: '0 4px' }}>/</span>
-                        <span style={{ color: achRate >= reqRate * 0.95 ? 'var(--primary-bright, #95D500)' : 'var(--warning, #E9B949)', fontWeight: 600 }}>
-                          {achRate.toFixed(1)} rps
+                        <span style={{ color: achRate != null && reqRate != null && achRate >= reqRate * 0.95 ? 'var(--primary-bright, #95D500)' : 'var(--warning, #E9B949)', fontWeight: 600 }}>
+                          {achRate?.toFixed(1) ?? '—'} rps
                         </span>
                       </td>
                       <td style={{ padding: '10px 16px' }}>
@@ -225,7 +225,7 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({
                       </td>
                       <td style={{ padding: '10px 16px' }}>
                         <span style={{ color: isSaturated ? 'var(--error, #FF5555)' : 'var(--text-muted, #727D73)' }}>
-                          {isSaturated ? 'SATURATED' : 'NOMINAL'}
+                          {isSaturated == null ? 'UNKNOWN' : isSaturated ? 'SATURATED' : 'NOMINAL'}
                         </span>
                       </td>
                       <td style={{ padding: '10px 16px' }}>

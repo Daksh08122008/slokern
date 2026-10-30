@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --experimental-strip-types --test test/status.test.ts"
+    "test": "node --experimental-strip-types --test test/status.test.ts test/decisionIntegrity.test.ts"
   },
   "dependencies": {
     "react": "^19.1.0",

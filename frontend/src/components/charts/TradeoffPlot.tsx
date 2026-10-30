@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import type { UICandidate } from '../../lib/adapters/viewModel';
-import { formatLatency, formatThroughput } from '../../lib/format';
+import { formatLatency, formatNumber } from '../../lib/format';
 
 interface TradeoffPlotProps {
   candidates: UICandidate[];
   selectedCandidateId: string;
   onSelectCandidate: (candidate: UICandidate) => void;
-  latencyCeilingMs?: number;
-  throughputFloorTps?: number;
+  baselineCandidateId?: string;
 }
 
 export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
   candidates,
   selectedCandidateId,
   onSelectCandidate,
-  latencyCeilingMs = 50,
-  throughputFloorTps = 50,
+  baselineCandidateId,
 }) => {
   const [hoveredCandidate, setHoveredCandidate] = useState<UICandidate | null>(null);
 
@@ -26,13 +24,21 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
 
-  // Domain scales
-  // X: Latency 15ms -> 80ms
-  const xMin = 15;
-  const xMax = 80;
-  // Y: Throughput 35k -> 85k tok/s
-  const yMin = 35;
-  const yMax = 85;
+  const plottedCandidates = candidates.filter((candidate) => candidate.p95 != null && candidate.throughput != null);
+  const latencyValues = plottedCandidates.map((candidate) => candidate.p95 as number);
+  const throughputValues = plottedCandidates.map((candidate) => candidate.throughput as number);
+  const latencyMin = latencyValues.length ? Math.min(...latencyValues) : 0;
+  const latencyMax = latencyValues.length ? Math.max(...latencyValues) : 1;
+  const throughputMin = throughputValues.length ? Math.min(...throughputValues) : 0;
+  const throughputMax = throughputValues.length ? Math.max(...throughputValues) : 1;
+  const xPadding = Math.max((latencyMax - latencyMin) * 0.15, Math.abs(latencyMin) * 0.05, 0.5);
+  const yPadding = Math.max((throughputMax - throughputMin) * 0.15, Math.abs(throughputMin) * 0.05, 1);
+  const xMin = latencyMin - xPadding;
+  const xMax = latencyMax + xPadding;
+  const yMin = Math.max(0, throughputMin - yPadding);
+  const yMax = throughputMax + yPadding;
+  const xTicks = Array.from({ length: 5 }, (_, index) => xMin + ((xMax - xMin) * index) / 4);
+  const yTicks = Array.from({ length: 5 }, (_, index) => yMin + ((yMax - yMin) * index) / 4);
 
   const scaleX = (val: number) => {
     const clamped = Math.max(xMin, Math.min(xMax, val));
@@ -44,8 +50,6 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
     return margin.top + plotHeight - ((clamped - yMin) / (yMax - yMin)) * plotHeight;
   };
 
-  const ceilingX = scaleX(latencyCeilingMs);
-  const floorY = scaleY(throughputFloorTps);
 
   return (
     <div
@@ -63,8 +67,8 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
           <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 650, color: 'var(--text-primary, #F0F3EF)' }}>
             2D Latency vs. Throughput Trade-off
           </h3>
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>
-            Empirical measured points only · Zero interpolated curves
+            <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #727D73)' }}>
+            Persisted metrics only · axes fit the available candidate measurements
           </span>
         </div>
 
@@ -94,29 +98,8 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
         role="img"
         aria-label="2D Latency vs Throughput Tradeoff Chart"
       >
-        {/* Feasible Zone Shading (Top-Left: latency <= ceiling, throughput >= floor) */}
-        <rect
-          x={margin.left}
-          y={margin.top}
-          width={Math.max(0, ceilingX - margin.left)}
-          height={Math.max(0, floorY - margin.top)}
-          fill="rgba(118, 185, 0, 0.04)"
-          stroke="rgba(118, 185, 0, 0.12)"
-          strokeDasharray="3 3"
-        />
-        <text
-          x={margin.left + 8}
-          y={margin.top + 16}
-          fill="rgba(118, 185, 0, 0.5)"
-          fontSize="11px"
-          fontFamily="var(--font-mono, monospace)"
-          fontWeight={600}
-        >
-          FEASIBLE REGION
-        </text>
-
         {/* Grid lines */}
-        {[20, 30, 40, 50, 60, 70].map((xVal) => (
+        {xTicks.map((xVal) => (
           <line
             key={`grid-x-${xVal}`}
             x1={scaleX(xVal)}
@@ -130,7 +113,7 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
           />
         ))}
 
-        {[40, 50, 60, 70, 80].map((yVal) => (
+        {yTicks.map((yVal) => (
           <line
             key={`grid-y-${yVal}`}
             x1={margin.left}
@@ -143,48 +126,6 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
             opacity={0.4}
           />
         ))}
-
-        {/* SLO Latency Ceiling line */}
-        <line
-          x1={ceilingX}
-          y1={margin.top}
-          x2={ceilingX}
-          y2={margin.top + plotHeight}
-          stroke="var(--error, #FF5555)"
-          strokeWidth={1.5}
-          strokeDasharray="4 3"
-        />
-        <text
-          x={ceilingX + 4}
-          y={margin.top + 28}
-          fill="var(--error, #FF5555)"
-          fontSize="11px"
-          fontFamily="var(--font-mono, monospace)"
-          fontWeight={600}
-        >
-          P95 CEILING ({latencyCeilingMs} ms)
-        </text>
-
-        {/* SLO Throughput Floor line */}
-        <line
-          x1={margin.left}
-          y1={floorY}
-          x2={margin.left + plotWidth}
-          y2={floorY}
-          stroke="var(--warning, #E9B949)"
-          strokeWidth={1.5}
-          strokeDasharray="4 3"
-        />
-        <text
-          x={margin.left + plotWidth - 140}
-          y={floorY - 6}
-          fill="var(--warning, #E9B949)"
-          fontSize="11px"
-          fontFamily="var(--font-mono, monospace)"
-          fontWeight={600}
-        >
-          FLOOR ({throughputFloorTps}k tok/s)
-        </text>
 
         {/* Axes lines */}
         <line
@@ -205,7 +146,7 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
         />
 
         {/* X Axis Labels */}
-        {[20, 30, 40, 50, 60, 70, 80].map((xVal) => (
+        {xTicks.map((xVal) => (
           <text
             key={`lbl-x-${xVal}`}
             x={scaleX(xVal)}
@@ -215,7 +156,7 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
             fontFamily="var(--font-mono, monospace)"
             textAnchor="middle"
           >
-            {xVal}
+            {formatNumber(xVal, 1)}
           </text>
         ))}
         <text
@@ -227,11 +168,11 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
           textAnchor="middle"
           fontWeight={600}
         >
-          End-to-End Latency P95 (ms) →
+          TTFT P95 (ms) →
         </text>
 
         {/* Y Axis Labels */}
-        {[40, 50, 60, 70, 80].map((yVal) => (
+        {yTicks.map((yVal) => (
           <text
             key={`lbl-y-${yVal}`}
             x={margin.left - 8}
@@ -241,7 +182,7 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
             fontFamily="var(--font-mono, monospace)"
             textAnchor="end"
           >
-            {yVal}k
+            {formatNumber(yVal, 1)}
           </text>
         ))}
         <text
@@ -257,11 +198,12 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
 
         {/* Candidate Points (Measured points only with shape-encoded semantics) */}
         {candidates.map((c) => {
+          if (c.p95 == null || c.throughput == null) return null;
           const cx = scaleX(c.p95);
           const cy = scaleY(c.throughput);
           const isSelected = c.id === selectedCandidateId;
-          const isWinner = c.tag === 'WINNER';
-          const isBaseline = c.id === 'C-01';
+          const isWinner = c.tag === 'WINNER' && c.feasible;
+          const isBaseline = c.id === baselineCandidateId;
 
           return (
             <g
@@ -363,11 +305,11 @@ export const TradeoffPlot: React.FC<TradeoffPlotProps> = ({
           <div style={{ fontWeight: 700, marginBottom: '4px', color: hoveredCandidate.feasible ? 'var(--primary-bright, #95D500)' : 'var(--error, #FF5555)' }}>
             {hoveredCandidate.id} · {hoveredCandidate.name} ({hoveredCandidate.feasible ? 'FEASIBLE' : 'INFEASIBLE'})
           </div>
-          <div>P95 Latency: {formatLatency(hoveredCandidate.p95)}</div>
           <div>TTFT P95: {formatLatency(hoveredCandidate.ttftP95)}</div>
           <div>ITL P95: {formatLatency(hoveredCandidate.itlP95)}</div>
-          <div>Throughput: {formatThroughput(hoveredCandidate.throughput * 1000)}</div>
-          <div>KV Cache: {hoveredCandidate.kvCache} · Batch: {hoveredCandidate.batch}</div>
+          <div>End-to-end P95: {formatLatency(hoveredCandidate.e2eP95)}</div>
+          <div>Throughput: {formatNumber(hoveredCandidate.throughput, 1)} tok/s</div>
+          <div>KV Cache: {hoveredCandidate.kvCache ?? '—'} · Batch: {hoveredCandidate.batch ?? '—'}</div>
         </div>
       )}
     </div>

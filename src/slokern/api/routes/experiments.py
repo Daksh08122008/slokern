@@ -5,6 +5,7 @@ Authority: Aligned with AGENTS.md Section 1, 3, 4, 5, 7, 14 and DEC-0014
 """
 
 import json
+import math
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -47,6 +48,21 @@ def _find_experiment_dir(experiment_id: str, artifacts_root: str = "artifacts") 
     return None
 
 
+def _find_campaign_spec(experiment_id: str, fixtures_root: str = "fixtures/campaigns") -> Optional[Dict[str, Any]]:
+    """Return the persisted campaign spec matching an experiment ID, if present."""
+    root = Path(fixtures_root)
+    if not root.is_dir():
+        return None
+    for spec_file in sorted(root.glob("*.json")):
+        try:
+            spec = json.loads(spec_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if spec.get("experiment_id") == experiment_id:
+            return spec
+    return None
+
+
 def list_experiments(artifacts_root: str = "artifacts") -> List[Dict[str, Any]]:
     """
     Discovers all persisted experiments across the filesystem hierarchy.
@@ -80,6 +96,7 @@ def list_experiments(artifacts_root: str = "artifacts") -> List[Dict[str, Any]]:
 
     for d in exp_dirs:
         exp_id = d.name
+        campaign_spec = _find_campaign_spec(exp_id)
 
         # Read search_result.json
         search_res = None
@@ -95,14 +112,27 @@ def list_experiments(artifacts_root: str = "artifacts") -> List[Dict[str, Any]]:
         run_subdirs = [r for r in runs_dir.iterdir() if r.is_dir()] if runs_dir.is_dir() else []
         runs_count = len(run_subdirs)
 
-        sample_run_id = run_subdirs[0].name if run_subdirs else ""
-        model_name = "meta-llama/Meta-Llama-3-8B-Instruct"
-        runtime_name = "vllm-fake"
-        is_simulated = True
-        evidence_class = "DEMO DATA"
-        offered_load = 10.0
-        achieved_load = 10.0
-        error_rate = 0.0
+        selected_candidate = search_res.get("selected_candidate_id") if search_res else None
+        sample_run_id = ""
+        if selected_candidate:
+            for run_dir in run_subdirs:
+                try:
+                    run_record = json.loads((run_dir / "run_record.json").read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if run_record.get("candidate_id") == selected_candidate:
+                    sample_run_id = run_dir.name
+                    break
+        if not sample_run_id and run_subdirs:
+            sample_run_id = run_subdirs[0].name
+        model_name = "Unavailable"
+        runtime_name = "Unavailable"
+        evidence_class = "UNVERIFIED"
+        achieved_load = None
+        error_rate = None
+        measurement_validity = None
+        client_saturation = None
+        exclusions_count = None
 
         if sample_run_id:
             status = get_run_status(sample_run_id, artifacts_root=artifacts_root)
@@ -111,7 +141,7 @@ def list_experiments(artifacts_root: str = "artifacts") -> List[Dict[str, Any]]:
                 model_name = ac.get("model_name", model_name)
                 runtime_name = ac.get("runtime_name", runtime_name)
                 fp = ac.get("environment_fingerprint", {})
-                is_simulated = fp.get("is_simulated", True)
+                is_simulated = fp.get("is_simulated")
                 if fp.get("mode") == "DEMO DATA" or is_simulated:
                     evidence_class = "DEMO DATA"
                 elif fp.get("provider") == "nebius":
@@ -119,11 +149,16 @@ def list_experiments(artifacts_root: str = "artifacts") -> List[Dict[str, Any]]:
                 else:
                     evidence_class = "UNVERIFIED"
 
-            if status.get("metric_set"):
-                ms = status["metric_set"]
-                offered_load = ms.get("offered_load_rps", 10.0)
-                achieved_load = ms.get("achieved_load_rps", 10.0)
-                error_rate = ms.get("error_rate", 0.0)
+            ms = status.get("metric_set") or {}
+            achieved_load = ms.get("achieved_load_rps")
+            error_rate = ms.get("error_rate")
+            client_saturation = ms.get("generator_saturated")
+            feas = status.get("feasibility_result") or {}
+            measurement_validity = feas.get("validity_status")
+            raw_count = status.get("raw_measurements_count")
+            sample_count = ms.get("sample_count")
+            if isinstance(raw_count, int) and isinstance(sample_count, int):
+                exclusions_count = raw_count - sample_count
 
         # Verification status
         verif_file = d / "verification_record.json"
@@ -141,8 +176,23 @@ def list_experiments(artifacts_root: str = "artifacts") -> List[Dict[str, Any]]:
             except Exception:
                 verif_status = "Pending"
 
-        selected_candidate = search_res.get("selected_candidate_id", "15594344d2bf") if search_res else "C-01"
-        feasibility_status = "Feasible"
+        selected_candidate_data = next(
+            (candidate for candidate in get_experiment_candidates(exp_id, artifacts_root)
+             if candidate.get("id") == selected_candidate),
+            None,
+        ) if selected_candidate else None
+        selected_verdict = (
+            selected_candidate_data.get("feasibilityVerdict")
+            if selected_candidate_data else "INCONCLUSIVE"
+        )
+        feasibility_status = {
+            "FEASIBLE": "Feasible",
+            "INFEASIBLE": "Infeasible",
+            "INCONCLUSIVE": "Inconclusive",
+        }.get(selected_verdict, "Inconclusive")
+        tested_candidates = (search_res or {}).get("tested_candidates", [])
+        space = (campaign_spec or {}).get("search_space", {})
+        search_space_count = math.prod(len(values) for values in space.values()) if space else None
 
         mtime = d.stat().st_mtime
         updated_str = datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -150,26 +200,35 @@ def list_experiments(artifacts_root: str = "artifacts") -> List[Dict[str, Any]]:
         results.append({
             "id": exp_id,
             "run": sample_run_id or "run-none",
-            "workload": "chat-completions-prod",
+            "workload": (campaign_spec or {}).get("workload", {}).get("workload_name", "Metadata unavailable"),
+            "arrivalMode": (campaign_spec or {}).get("workload", {}).get("arrival_mode"),
+            "targetOfferedRateRps": (campaign_spec or {}).get("workload", {}).get("target_offered_rate"),
+            "sloConstraints": (campaign_spec or {}).get("slo", {}).get("constraints", []),
             "model": model_name,
             "state": "Completed" if runs_count > 0 else "Pending",
             "feasibility": feasibility_status,
             "verification": verif_status,
             "updated": updated_str,
-            "candidateId": selected_candidate,
+            "candidateId": selected_candidate or "",
+            "baselineCandidateId": (search_res or {}).get("baseline_candidate_id"),
             "runsCount": runs_count,
             "evidenceClassification": evidence_class,
-            "durationSeconds": 60,
-            "requestedRateRps": offered_load,
+            "durationSeconds": (campaign_spec or {}).get("workload", {}).get("measurement_duration_s"),
+            "verificationDurationMultiplier": (campaign_spec or {}).get("verification_policy", {}).get("duration_multiplier"),
+            "requestedRateRps": (campaign_spec or {}).get("workload", {}).get("target_offered_rate"),
             "achievedRateRps": achieved_load,
-            "measurementValidity": "VALID",
-            "clientSaturation": False,
-            "errorRatePct": error_rate * 100,
-            "exclusionsCount": 5,
+            "measurementValidity": measurement_validity,
+            "clientSaturation": client_saturation,
+            "errorRatePct": error_rate * 100 if error_rate is not None else None,
+            "exclusionsCount": exclusions_count,
             "selected_candidate_id": selected_candidate,
-            "ranking_objective": search_res.get("ranking_objective", "max_throughput_under_slo") if search_res else "max_throughput_under_slo",
-            "stopping_reason": search_res.get("stopping_reason", "space_exhausted") if search_res else "space_exhausted",
-            "selection_rationale": search_res.get("selection_rationale", "") if search_res else "",
+            "candidateEvaluationsCount": len(tested_candidates),
+            "candidateBudget": (campaign_spec or {}).get("budget", {}).get("max_candidates"),
+            "searchSpaceCandidateCount": search_space_count,
+            "rankingObjective": search_res.get("ranking_objective") if search_res else None,
+            "ranking_objective": search_res.get("ranking_objective") if search_res else None,
+            "stopping_reason": search_res.get("stopping_reason") if search_res else None,
+            "selection_rationale": search_res.get("selection_rationale") if search_res else None,
         })
 
     return results
@@ -263,44 +322,58 @@ def get_experiment_candidates(experiment_id: str, artifacts_root: str = "artifac
         m = run_data.get("metric_set") or {}
         feas = run_data.get("feasibility_result") or {}
 
-        ttft_p50 = m.get("ttft_ms", {}).get("p50", 14.0)
-        ttft_p95 = m.get("ttft_ms", {}).get("p95", 14.1)
-        ttft_p99 = m.get("ttft_ms", {}).get("p99", 14.2)
-        itl_p95 = m.get("itl_ms", {}).get("p95", 8.1)
-        e2e_p95 = m.get("e2e_latency_ms", {}).get("p95", 136.0)
-        throughput = m.get("token_throughput_tps", 160.0)
-        err_pct = m.get("error_rate", 0.0) * 100
+        ttft_p50 = m.get("ttft_ms", {}).get("p50")
+        ttft_p95 = m.get("ttft_ms", {}).get("p95")
+        ttft_p99 = m.get("ttft_ms", {}).get("p99")
+        itl_p95 = m.get("itl_ms", {}).get("p95")
+        e2e_p95 = m.get("e2e_latency_ms", {}).get("p95")
+        throughput = m.get("token_throughput_tps")
+        err_pct = m.get("error_rate")
+        err_pct = err_pct * 100 if err_pct is not None else None
 
-        is_feasible = (
-            feas.get("overall_verdict") == FeasibilityVerdict.FEASIBLE.value
-            or run_data.get("is_feasible", True)
-        )
+        verdict = feas.get("overall_verdict", "INCONCLUSIVE")
+        is_feasible = verdict == FeasibilityVerdict.FEASIBLE.value
         is_winner = (cid == winner_id)
-        tag = "WINNER" if is_winner else ("FEASIBLE" if is_feasible else "INFEASIBLE")
+        tag = "WINNER" if is_winner and is_feasible else verdict
+        evaluations = feas.get("constraint_evaluations", [])
+        failed_reason_codes = [
+            item.get("reason_code", item.get("reason"))
+            for item in evaluations
+            if item.get("passed") is False and item.get("reason_code", item.get("reason"))
+        ]
+        reason_codes = failed_reason_codes or [
+            item.get("reason_code", item.get("reason"))
+            for item in evaluations
+            if item.get("reason_code", item.get("reason"))
+        ]
 
+        config_summary = []
+        if eff.get("max_num_seqs") is not None:
+            config_summary.append(f"max_seqs={eff['max_num_seqs']}")
+        if eff.get("max_num_batched_tokens") is not None:
+            config_summary.append(f"max_batched_tokens={eff['max_num_batched_tokens']}")
         candidate_obj = {
             "id": cid,
             "name": f"Candidate {cid[:8]}",
-            "subtitle": f"Run {run_id} · max_seqs={eff.get('max_num_seqs', 32)}",
-            "batch": eff.get("max_num_batched_tokens", 2048) // 512,
-            "concurrency": eff.get("max_num_seqs", 32),
-            "kvCache": eff.get("kv_cache_dtype", "auto").upper(),
-            "p50": round(ttft_p50, 1),
-            "p95": round(ttft_p95, 1),
-            "p99": round(ttft_p99, 1),
-            "throughput": round(throughput, 1),
-            "error": round(err_pct, 2),
-            "gpu": int(eff.get("gpu_memory_utilization", 0.9) * 100),
+            "subtitle": f"Run {run_id}" + (f" · {', '.join(config_summary)}" if config_summary else ""),
+            "batch": eff["max_num_batched_tokens"] // 512 if eff.get("max_num_batched_tokens") is not None else None,
+            "concurrency": eff.get("max_num_seqs"),
+            "kvCache": eff["kv_cache_dtype"].upper() if eff.get("kv_cache_dtype") is not None else None,
+            "p50": round(ttft_p50, 1) if ttft_p50 is not None else None,
+            "p95": round(ttft_p95, 1) if ttft_p95 is not None else None,
+            "p99": round(ttft_p99, 1) if ttft_p99 is not None else None,
+            "throughput": round(throughput, 1) if throughput is not None else None,
+            "error": round(err_pct, 2) if err_pct is not None else None,
+            "gpu": int(eff["gpu_memory_utilization"] * 100) if eff.get("gpu_memory_utilization") is not None else None,
             "feasible": is_feasible,
-            "feasibilityVerdict": feas.get("overall_verdict", "FEASIBLE"),
-            "evidenceValidity": feas.get("validity_status", "VALID"),
-            "reason": (
-                f"Meets all declared hard constraints with {round(2500 - ttft_p95, 1)} ms TTFT headroom."
-                if is_feasible else "Hard constraint breached"
-            ),
+            "feasibilityVerdict": verdict,
+            "evidenceValidity": feas.get("validity_status"),
+            "reason": feas.get("audit_notes", "Evaluator result unavailable."),
+            "reasonCodes": reason_codes,
             "tag": tag,
-            "ttftP95": round(ttft_p95, 1),
-            "itlP95": round(itl_p95, 1),
+            "ttftP95": round(ttft_p95, 1) if ttft_p95 is not None else None,
+            "itlP95": round(itl_p95, 1) if itl_p95 is not None else None,
+            "e2eP95": round(e2e_p95, 1) if e2e_p95 is not None else None,
             "run_id": run_id,
             "rawConfig": applied,
             "metricSet": m,
@@ -353,7 +426,20 @@ def get_experiment_verification(experiment_id: str, artifacts_root: str = "artif
         except Exception:
             pass
 
-    selected_cand = search_res.get("selected_candidate_id", "15594344d2bf") if search_res else "None"
+    selected_cand = search_res.get("selected_candidate_id") if search_res else None
+    original_run_id = None
+    runs_dir = exp_dir / "runs"
+    if selected_cand and runs_dir.is_dir():
+        for run_dir in runs_dir.iterdir():
+            if not run_dir.is_dir():
+                continue
+            try:
+                run_record = json.loads((run_dir / "run_record.json").read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if run_record.get("candidate_id") == selected_cand and not run_record.get("is_verification_run"):
+                original_run_id = run_record.get("run_id", run_dir.name)
+                break
 
     return {
         "status": "pending",
@@ -362,7 +448,7 @@ def get_experiment_verification(experiment_id: str, artifacts_root: str = "artif
         "verification_id": "verif-pending",
         "experiment_id": experiment_id,
         "candidate_id": selected_cand,
-        "original_run_id": "run-83697f4a197e",
+        "original_run_id": original_run_id,
         "verification_run_id": None,
         "final_decision_notes": (
             "Independent verification rerun has not yet been executed for this campaign. "

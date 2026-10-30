@@ -23,7 +23,7 @@ export interface CandidateStatusInput {
   candidateId: string;
   isFeasible: boolean;
   feasibilityVerdict?: FeasibilityVerdict | string;
-  evidenceValidity?: ExtendedEvidenceState | string;
+  evidenceValidity?: ExtendedEvidenceState | string | null;
   isStale?: boolean;
 }
 
@@ -54,7 +54,19 @@ export function deriveVerifiedWinner(
 ): VerificationDerivationResult {
   // 1. Check Feasibility
   const feasibility = candidate.feasibilityVerdict?.toUpperCase() || (candidate.isFeasible ? 'FEASIBLE' : 'INFEASIBLE');
-  const evidence = (candidate.evidenceValidity?.toUpperCase() as ExtendedEvidenceState) || (candidate.isStale ? 'STALE' : 'VALID');
+  const evidence = (candidate.evidenceValidity?.toUpperCase() as ExtendedEvidenceState | 'UNKNOWN') || (candidate.isStale ? 'STALE' : 'UNKNOWN');
+
+  if (evidence === 'UNKNOWN') {
+    return {
+      isVerifiedWinner: false,
+      statusType: 'inconclusive',
+      badgeLabel: 'EVIDENCE STATUS UNAVAILABLE',
+      reasonText: 'Evidence validity is missing; a verified recommendation cannot be derived.',
+      hasDistinctRunId: false,
+      isDriftAcceptable: false,
+      toleranceDeclared: false,
+    };
+  }
 
   if (candidate.isStale || evidence === 'STALE') {
     return {

@@ -53,6 +53,14 @@ describe('Status Model & Deterministic Verification (DEC-0014)', () => {
     assert.equal(res.toleranceDeclared, true);
   });
 
+  it('Missing evidence validity cannot produce a verified recommendation', () => {
+    const { evidenceValidity: _evidenceValidity, ...candidate } = baseCandidate;
+    const res = deriveVerifiedWinner(candidate, 'run_search_01', validVerificationRecord);
+    assert.equal(res.isVerifiedWinner, false);
+    assert.equal(res.statusType, 'inconclusive');
+    assert.equal(res.badgeLabel, 'EVIDENCE STATUS UNAVAILABLE');
+  });
+
   it('Test 2: Infeasible candidate fails verification derivation', () => {
     const infeasibleCandidate = {
       ...baseCandidate,

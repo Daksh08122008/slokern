@@ -1,5 +1,7 @@
 # SLOKern Implementation Status & MVP Scope Freeze
 
+> **Decision-integrity reconciliation (2026-10-30):** Targeted API and frontend changes now read the selected audit campaign's workload, constraints, candidate measurements, evaluator results, search metadata, smoke evidence, and verification comparisons from persisted sources. Validation for this change: API route tests 3/3, frontend tests 19/19, production frontend build passed. This does not promote TASK-17 or TASK-18 to complete: overall API/SSE integration remains deferred and the UI retains explicit DEMO DATA paths. Five selected run records still contain stale raw-artifact URIs; they were not edited pending approval. Full findings and candidate evidence: [decision-integrity audit](decision-integrity-audit.md).
+
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  
 > **Document Type:** October 19 Audit & Scope Freeze Deliverable (Reconciled Day 5 Audit & Offline Campaign Verification)
 > **Audit Date:** 2026-10-26 13:15:00 UTC (Sprint Day 5 Implementation Audit & Repair)
@@ -86,8 +88,8 @@
 | **SUB-08** | Experiment Orchestration & Run Lifecycle | `IMPLEMENTED (SingleRunExecutor & 2×2 Grid Search)` | `UNIT` | `SYNTHETIC VERIFIED (DEMO DATA)` | Rajdeep (CONFIRMED) | None |
 | **SUB-09** | Independent Verification Engine | `IMPLEMENTED & VERIFIED (Verification Protocol + DriftPolicy + Campaign Rerun)` | `UNIT, CONTRACT & CAMPAIGN (22 verification + 17 contract tests pass)` | `VERIFIED OFFLINE` | Rajdeep (CONFIRMED) | None |
 | **SUB-10** | Report Artifact Generator | `IMPLEMENTED (ReportBuilder & Markdown Exporter)` | `UNIT & CAMPAIGN VERIFIED` | `NONE` | Rajdeep (CONFIRMED) | None |
-| **SUB-11** | Control Plane API & CLI | `IMPLEMENTED & VERIFIED (FULL INTEGRATION)` | `UNIT & INTEGRATION (15 API unit + 1 E2E integration test pass)` | `NONE` | Rajdeep (CONFIRMED) | None |
-| **SUB-12** | Frontend Command Center & Presentation | `IMPLEMENTED & VERIFIED (LIVE HYDRATED & SCREENSHOTS)` | `VITE BUILD & PLAYWRIGHT/EDGE SCREENSHOTS (7 1080p images)` | `DEMO DATA LABELED` | Rajdeep (CONFIRMED) | None |
+| **SUB-11** | Control Plane API & CLI | `CLI IMPLEMENTED; CAMPAIGN READ API PARTIAL; REST/SSE DEFERRED` | `TARGETED API UNIT (3 tests pass); broader integration NOT RUN this audit` | `STALE ARTIFACT URIs` | Rajdeep (CONFIRMED) | TASK-17 deferred |
+| **SUB-12** | Frontend Command Center & Presentation | `DEMO UI; TARGETED CAMPAIGN HYDRATION PARTIAL` | `FRONTEND TESTS (19 pass) + VITE PRODUCTION BUILD` | `DEMO DATA; LIVE VERIFY PENDING` | Rajdeep (CONFIRMED) | TASK-17 deferred |
 | **SUB-13** | CI/CD, Packaging & Test Automation | `PARTIAL` | `UNIT` | `BLOCKED(by=BLK-13)` | Rajdeep (CONFIRMED) | BLK-13 |
 
 
@@ -186,15 +188,15 @@
   FastAPI application (`src/slokern/api/app.py`) is formally deferred post-hackathon per DEC-0015 to protect critical path delivery.
 - **Evidence:** `src/slokern/cli/main.py`, `src/slokern/cli/commands/`, `tests/unit/cli/` (27/27 unit tests pass).
 - **Dependencies:** `SUB-08` (Runner), `SUB-09` (Verification), `SUB-10` (Reporting).
-- **Risks:** None for CLI runner.
+- **Risks:** Campaign list/candidate read paths use local persisted artifacts. For `exp-audit-offline-campaign`, five run-record raw URIs point outside the selected artifact tree; full artifact provenance remains unresolved. Broad API/SSE integration is still deferred.
 - **Status:** **RESOLVED (TASK-13 COMPLETE).** CLI functional and fully verified.
 
 ### SUB-12: Frontend Command Center & Presentation
 - **Intended Behavior:** React + Vite cyber-technical command center visualizing specifications, live run progress, comparisons, and report badges.
-- **Actual Behavior:** **IMPLEMENTED (DEMO DATA UI) / API INTEGRATION DEFERRED.** Delivered in PR #2 (`a450175`). Full React + Vite dashboard (`frontend/src/App.tsx`, 2553 lines, `DESIGN.md`, `frontend/package.json`) with 9 workflow pages (Overview, Experiments, Specify, Tuning Lab, Measure, Verify, Reports, Runtime Profile, Settings), 2D Pareto frontier visualizer, and strict `DEMO DATA` labeling. Built-in offline demo fixtures allow standalone presentation decoupled from backend execution. Live API integration (`TASK-17`) remains deferred post-hackathon.
+- **Actual Behavior:** **IMPLEMENTED (DEMO DATA UI) / TARGETED CAMPAIGN API HYDRATION PARTIAL.** The Overview and Tuning Lab now consume campaign workload, constraints, evaluator results, candidate metrics, search objective, budget, and stopping metadata from the persisted campaign API when available. Offline demo fixtures remain as labeled fallback; full live API integration (`TASK-17`) and live verification remain deferred.
 - **Evidence:** `frontend/src/App.tsx` (2553 lines), `frontend/package.json`, `DESIGN.md`, PR #2 (`a450175`).
 - **Dependencies:** SUB-11 (API, deferred).
-- **Risks:** Decoupled presentation runs on fixtures; must maintain clear `DEMO DATA` labeling until live API integration is delivered.
+- **Risks:** Selected audit campaign has five search runs and no independent verification record; verification remains PENDING. Five stale raw-artifact URIs remain in persisted records. Maintain clear `DEMO DATA` labeling and do not imply live verification.
 - **Next Testable Step:** Maintain offline fixtures with strict `DEMO DATA` watermarks; complete backend verification engine (`TASK-11`) before reconsidering live API wiring.
 
 

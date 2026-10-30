@@ -12,6 +12,8 @@
 
 ## 1. Executive Execution Dashboard
 
+**Decision-integrity reconciliation (2026-10-30):** The selected audit campaign artifact tree contains five search evaluations, but no independent verification record; prior summary text describing a 5-search + 1-verification campaign applies to a separate historical artifact tree and must not be read as evidence for the dashboard-selected campaign. This pass corrected the artifact-backed campaign API/UI mapping and added regression tests. See [decision-integrity audit](docs/decision-integrity-audit.md). The five stored raw-artifact URIs still point to missing paths and require approval before persisted artifacts are edited; TASK-17/TASK-18 remain partial/deferred overall.
+
 **Deployment-profile reconciliation (2026-10-23):** The accepted model-family target remains Nemotron-3-Nano-30B-A3B FP8 (ADR 0001-B). A later proposal requests Nebius Serverless AI, vLLM 0.12.0, and a new five-point profile; it is not yet ratified or validated against the current adapter/search implementation. The linked [9B H100 VM alternative study](docs/deployment-decision-2026-10-23.md) is explicitly non-authoritative. See DEC-0013. No implementation or validation status is promoted.
 
 ### 1.0 Quick Status at a Glance (The 5 Core Questions)

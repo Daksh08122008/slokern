@@ -165,6 +165,7 @@ export interface ConstraintEvaluation {
   observed_value?: number | null;
   passed?: boolean | null;
   reason: ReasonCode;
+  reason_code?: ReasonCode;
 }
 
 export interface FeasibilityResult {
@@ -177,6 +178,7 @@ export interface FeasibilityResult {
   constraint_evaluations: ConstraintEvaluation[];
   reasons: ReasonCode[];
   notes?: string;
+  audit_notes?: string;
 }
 
 export interface RunRecord {
@@ -240,8 +242,8 @@ export interface VerificationRecord {
   verification_id: string;
   experiment_id: string;
   candidate_id: string;
-  original_run_id: string;
-  verification_run_id: string;
+  original_run_id?: string | null;
+  verification_run_id?: string | null;
   verification_verdict: VerificationState;
   final_decision_notes?: string | null;
   drift_analysis?: DriftAnalysis | null;
@@ -303,6 +305,14 @@ export interface RunStatusResponse {
   is_feasible: boolean;
   metric_set?: MetricSet | null;
   feasibility_result?: FeasibilityResult | null;
+  applied_config?: {
+    effective_settings?: {
+      max_num_batched_tokens?: number;
+      max_num_seqs?: number;
+      kv_cache_dtype?: string;
+      gpu_memory_utilization?: number;
+    };
+  } | null;
   raw_measurements_count: number;
   artifact_paths?: Record<string, string>;
   workload?: WorkloadSpec;
