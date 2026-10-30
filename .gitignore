@@ -55,12 +55,15 @@ htmlcov/
 !.agents/teamwork/sentinel_victory_auditor_1/
 .agents/teamwork/sentinel_victory_auditor_1/*
 !.agents/teamwork/sentinel_victory_auditor_1/independent_audit_verification.py
+.agents/teamwork/sentinel_victory_auditor_1/independent_audit_verification.py
 .jules/
 .codex/
 .mcp.json
 .impeccable/
 frontend/.agents/
 frontend/skills-lock.json
+skills-lock.json
+.vscode/settings.json
 
 # Historical one-off scripts and reports
 scratch/
