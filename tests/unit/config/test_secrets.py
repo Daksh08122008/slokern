@@ -67,6 +67,7 @@ def test_env_var_precedence(monkeypatch, tmp_path):
     monkeypatch.setenv("NEBIUS_API_KEY", "env-key-value-12345")
 
     secrets_file = tmp_path / "secrets.env"
+    secrets_file.touch(mode=0o600)
     secrets_file.write_text("NEBIUS_API_KEY=file-key-value-99999\n", encoding="utf-8")
     monkeypatch.setenv("SLOKERN_SECRETS_FILE", str(secrets_file))
 
@@ -85,6 +86,7 @@ def test_local_secrets_file_discovery(monkeypatch, tmp_path):
     monkeypatch.delenv("NEBIUS_BASE_URL", raising=False)
 
     secrets_file = tmp_path / "my_secrets.env"
+    secrets_file.touch(mode=0o600)
     secrets_file.write_text(
         "NEBIUS_API_KEY=file-key-from-custom-path-12345\n"
         "NEBIUS_BASE_URL=https://custom.endpoint.nebius.ai/v1\n",
@@ -106,6 +108,7 @@ def test_json_secrets_file(monkeypatch, tmp_path):
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
 
     secrets_file = tmp_path / "secrets.json"
+    secrets_file.touch(mode=0o600)
     secrets_file.write_text(
         json.dumps({"NEBIUS_API_KEY": "json-secret-key-12345"}),
         encoding="utf-8"
@@ -122,6 +125,7 @@ def test_json_secrets_file(monkeypatch, tmp_path):
 def test_missing_credentials(monkeypatch, tmp_path):
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
     empty_file = tmp_path / "empty.env"
+    empty_file.touch(mode=0o600)
     empty_file.write_text("", encoding="utf-8")
 
     status = get_secret_status("NEBIUS_API_KEY", secrets_file=empty_file)
@@ -175,6 +179,7 @@ def test_posix_permissions_rejected(monkeypatch, tmp_path):
         pytest.skip("POSIX permissions test only applies to POSIX platforms")
 
     secrets_file = tmp_path / "permissive.env"
+    secrets_file.touch(mode=0o600)
     secrets_file.write_text("NEBIUS_API_KEY=test-posix-key\n")
     # Set 0o666 (group/world readable)
     secrets_file.chmod(0o666)
@@ -232,6 +237,7 @@ def test_secrets_file_placeholder_detection(monkeypatch, tmp_path):
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
 
     f = tmp_path / "placeholder.env"
+    f.touch(mode=0o600)
     f.write_text("NEBIUS_API_KEY=your-nebius-api-key\n", encoding="utf-8")
     status = get_secret_status("NEBIUS_API_KEY", secrets_file=f)
     assert status.status == SecretSourceStatus.INVALID_CONFIGURATION
@@ -243,6 +249,7 @@ def test_secrets_file_shell_syntax_and_comments(monkeypatch, tmp_path):
     monkeypatch.delenv("NEBIUS_BASE_URL", raising=False)
 
     f = tmp_path / "shell_syntax.env"
+    f.touch(mode=0o600)
     f.write_text(
         'export NEBIUS_API_KEY="shell-parsed-key-12345"\n'
         'NEBIUS_BASE_URL=https://custom.endpoint.ai/v1 # inline comment\n',
@@ -257,12 +264,14 @@ def test_runtime_secrets_caching(monkeypatch, tmp_path):
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
 
     f = tmp_path / "cached_secrets.env"
+    f.touch(mode=0o600)
     f.write_text("NEBIUS_API_KEY=first-key-value\n", encoding="utf-8")
 
     loaded1 = load_runtime_secrets(force_reload=True, secrets_file=f)
     assert loaded1["NEBIUS_API_KEY"] == "first-key-value"
 
     # Modify file on disk; without force_reload, cached value is returned
+    f.touch(mode=0o600)
     f.write_text("NEBIUS_API_KEY=second-key-value\n", encoding="utf-8")
     loaded2 = load_runtime_secrets(force_reload=False, secrets_file=f)
     assert loaded2["NEBIUS_API_KEY"] == "first-key-value"
