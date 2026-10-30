@@ -11,6 +11,7 @@
 > **Hackathon Submission Deadline:** October 30, 2026, 10:00 AM PDT (10:30 PM IST / 17:00 UTC)  
 > **Remaining Sprint Time:** 3 days, 21 hours, 45 minutes (~93.75 hours)
 
+> **Incremental demo-runner check (2026-10-30):** `.\.venv\Scripts\python.exe run_demo.py` completed five fake-adapter search candidates and a separate verification rerun. The launcher now summarizes workload/SLOs, candidate verdicts, generated metrics, simulated settings, verification IDs, and raw-trace paths from the run artifacts. The `VERIFIED` verdict and measurements are synthetic **DEMO DATA** only; this does not establish live performance or complete TASK-16.
 
 ---
 
@@ -461,4 +462,3 @@ Scope freeze can only be reopened if:
   - `pytest tests/unit/api/`: 15 passed (including 404 on missing runs, 400 on traversal, 404 on empty trace, and disk recovery).
   - `pytest tests/integration/test_frontend_api_integration.py`: 12-stage lifecycle integration test passed 100%.
   - Full repository test suite: 484 passed, 13 skipped in 25.85s.
-
