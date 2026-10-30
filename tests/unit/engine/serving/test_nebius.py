@@ -337,3 +337,258 @@ def test_nebius_stream_data_without_space(mock_urlopen):
     chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
     assert len(chunks) >= 1
     assert chunks[0].token == "Hi"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_http_error(mock_urlopen) -> None:
+    err = urllib.error.HTTPError(
+        url="https://api.studio.nebius.ai/v1/chat/completions",
+        code=401,
+        msg="Unauthorized",
+        hdrs=None,
+        fp=io.BytesIO(b'{"error": "Invalid API key provided: secret_abc_12345"}'),
+    )
+    mock_urlopen.side_effect = err
+    adapter = NebiusServingAdapter(api_key="secret_abc_12345")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["http_status"] == 401
+    assert chunks[0].metadata["error_type"] == "authentication_error"
+    assert "secret_abc_12345" not in chunks[0].error
+    assert "***REDACTED***" in chunks[0].error
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_timeout_error(mock_urlopen) -> None:
+    err = TimeoutError("Connection timed out")
+    mock_urlopen.side_effect = err
+    adapter = NebiusServingAdapter(api_key="secret_abc_12345")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["error_type"] == "timeout"
+    assert "timed out" in chunks[0].error.lower()
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_network_error(mock_urlopen) -> None:
+    err = urllib.error.URLError("Connection refused")
+    mock_urlopen.side_effect = err
+    adapter = NebiusServingAdapter(api_key="secret_abc_12345")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["error_type"] == "network_error"
+    assert "refused" in chunks[0].error.lower()
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_http_error_permissions(mock_urlopen) -> None:
+    err = urllib.error.HTTPError(
+        url="https://api.studio.nebius.ai/v1/chat/completions",
+        code=403,
+        msg="Forbidden",
+        hdrs=None,
+        fp=io.BytesIO(b'{"error": "Forbidden"}'),
+    )
+    mock_urlopen.side_effect = err
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello")))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["error_type"] == "permission_denied"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_http_error_not_found(mock_urlopen) -> None:
+    err = urllib.error.HTTPError(
+        url="https://api.studio.nebius.ai/v1/chat/completions",
+        code=404,
+        msg="Not Found",
+        hdrs=None,
+        fp=io.BytesIO(b'{"error": "Not Found"}'),
+    )
+    mock_urlopen.side_effect = err
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello")))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["error_type"] == "not_found"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_http_error_server(mock_urlopen) -> None:
+    err = urllib.error.HTTPError(
+        url="https://api.studio.nebius.ai/v1/chat/completions",
+        code=500,
+        msg="Internal Server Error",
+        hdrs=None,
+        fp=io.BytesIO(b'{"error": "Server error"}'),
+    )
+    mock_urlopen.side_effect = err
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello")))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["error_type"] == "server_error"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_http_error_rate_limit(mock_urlopen) -> None:
+    err = urllib.error.HTTPError(
+        url="https://api.studio.nebius.ai/v1/chat/completions",
+        code=429,
+        msg="Too Many Requests",
+        hdrs=None,
+        fp=io.BytesIO(b'{"error": "Too Many Requests"}'),
+    )
+    mock_urlopen.side_effect = err
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello")))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["error_type"] == "rate_limit_exceeded"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_http_error_read_fail(mock_urlopen) -> None:
+    err = urllib.error.HTTPError(
+        url="https://api.studio.nebius.ai/v1/chat/completions",
+        code=500,
+        msg="Internal Server Error",
+        hdrs=None,
+        fp=io.BytesIO(b''),
+    )
+    err.read = MagicMock(side_effect=Exception("Read error"))
+    mock_urlopen.side_effect = err
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello")))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["error_type"] == "server_error"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_empty_line(mock_urlopen) -> None:
+    sse_data = [
+        b"\n",
+        b'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        b"data: [DONE]\n\n",
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) >= 1
+    assert chunks[0].token == "Hi"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_not_data_line(mock_urlopen) -> None:
+    sse_data = [
+        b"info: something\n",
+        b'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        b"data: [DONE]\n\n",
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) >= 1
+    assert chunks[0].token == "Hi"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_json_decode_error(mock_urlopen) -> None:
+    sse_data = [
+        b"data: invalid_json\n\n",
+        b'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        b"data: [DONE]\n\n",
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) >= 1
+    assert chunks[0].token == "Hi"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_no_choices(mock_urlopen) -> None:
+    sse_data = [
+        b'data: {"other_key": "value"}\n\n',
+        b'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        b"data: [DONE]\n\n",
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) >= 1
+    assert chunks[0].token == "Hi"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_no_token_no_finish(mock_urlopen) -> None:
+    sse_data = [
+        b'data: {"choices":[{"delta":{}}]}\n\n',
+        b'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        b"data: [DONE]\n\n",
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) >= 1
+    assert chunks[0].token == "Hi"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_exception(mock_urlopen) -> None:
+    mock_urlopen.side_effect = Exception("Some weird error")
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].metadata["error_type"] == "network_error"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_empty_stream(mock_urlopen) -> None:
+    sse_data = [] # No data
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].token == ""
+    assert chunks[0].metadata.get("empty_stream") is True
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_provider_error_in_data(mock_urlopen) -> None:
+    sse_data = [
+        b'data: {"error":{"message":"Model is overloaded, try again later"}}\n\n',
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].is_last is True
+    assert "Model is overloaded" in chunks[0].error
+    assert chunks[0].metadata["error_type"] == "provider_error"
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_generate_provider_error_in_data_string(mock_urlopen) -> None:
+    sse_data = [
+        b'data: {"error":"Model is overloaded, try again later"}\n\n',
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].is_last is True
+    assert "Model is overloaded" in chunks[0].error
+    assert chunks[0].metadata["error_type"] == "provider_error"
