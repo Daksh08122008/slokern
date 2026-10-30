@@ -1,5 +1,7 @@
 # SLOKern Implementation Status & MVP Scope Freeze
 
+> **Vercel deployment (2026-10-30):** Frontend static bundle deployed to production project `slokern`; deployment `dpl_GEB3EoUmbWRdEQGniAyqa5peeqf5` is **READY** with alias [`https://slokern.vercel.app`](https://slokern.vercel.app). Project SSO protection was disabled with user approval to make the demo publicly accessible. Direct HTTPS checks returned `200` for the app HTML, JavaScript bundle, and stylesheet. This is a static **DEMO DATA** deployment; no backend is deployed or configured. No TASK-17/TASK-18 completion or live API status is implied.
+
 > **Decision-integrity reconciliation (2026-10-30):** Targeted API and frontend changes now read the selected audit campaign's workload, constraints, candidate measurements, evaluator results, search metadata, smoke evidence, and verification comparisons from persisted sources. Validation for this change: API route tests 3/3, frontend tests 19/19, production frontend build passed. This does not promote TASK-17 or TASK-18 to complete: overall API/SSE integration remains deferred and the UI retains explicit DEMO DATA paths. Five selected run records still contain stale raw-artifact URIs; they were not edited pending approval. Full findings and candidate evidence: [decision-integrity audit](decision-integrity-audit.md).
 
 > **Product:** SLOKern — *Optimize inference. Verify performance.*  

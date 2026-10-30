@@ -18,7 +18,8 @@ import type {
 } from '../types/contracts';
 import type { UICandidate, UIExperiment } from '../lib/adapters/viewModel';
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://127.0.0.1:8000';
+const runtimeEnv = (import.meta as any).env;
+const API_BASE = runtimeEnv?.VITE_API_URL ?? (runtimeEnv?.DEV ? 'http://127.0.0.1:8000' : '');
 
 class ApiClientError extends Error {
   status: number;

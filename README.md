@@ -20,15 +20,16 @@
 - [4. The 7-Step Execution Pipeline](#4-the-7-step-execution-pipeline)
 - [5. Four-Domain Lifecycle & State Separation](#5-four-domain-lifecycle--state-separation)
 - [6. Supported Models, Serving Path & Search Space](#6-supported-models-serving-path--search-space)
-- [7. Fake-Adapter-First vs. Live Infrastructure](#7-fake-adapter-first-vs-live-infrastructure)
-- [8. Cost Accounting Policy & Systems Proxy](#8-cost-accounting-policy--systems-proxy)
-- [9. Current Implementation Status](#9-current-implementation-status)
-- [10. Quick Start & Execution Instructions](#10-quick-start--execution-instructions)
-- [11. Testing, Validation & Reproducibility](#11-testing-validation--reproducibility)
-- [12. Known Limitations & Risk Management](#12-known-limitations--risk-management)
-- [13. Single-Owner Roadmap (Phases A–F)](#13-single-owner-roadmap-phases-af)
-- [14. Consolidated Engineering Ownership](#14-consolidated-engineering-ownership)
-- [15. Related Documentation & In-Depth Guides](#15-related-documentation--in-depth-guides)
+- [7. NVIDIA Models & Nebius Cloud Acceleration](#7-nvidia-models--nebius-cloud-acceleration)
+- [8. Execution Backends & Adapter Boundary](#8-execution-backends--adapter-boundary)
+- [9. Cost Accounting Policy & Systems Proxy](#9-cost-accounting-policy--systems-proxy)
+- [10. Current Implementation Status](#10-current-implementation-status)
+- [11. Quick Start & Execution Instructions](#11-quick-start--execution-instructions)
+- [12. Testing, Validation & Reproducibility](#12-testing-validation--reproducibility)
+- [13. Known Limitations & Risk Management](#13-known-limitations--risk-management)
+- [14. Daily Delivery Roadmap (Phases A–F)](#14-daily-delivery-roadmap-phases-af)
+- [15. Subsystem Ownership & Execution Model](#15-subsystem-ownership--execution-model)
+- [16. Related Documentation & In-Depth Guides](#16-related-documentation--in-depth-guides)
 
 ---
 
@@ -200,7 +201,32 @@ Naive benchmark harnesses collapse execution state, data quality, and SLO feasib
 
 ---
 
-## 7. Execution Backends & Adapter Boundary
+## 7. NVIDIA Models & Nebius Cloud Acceleration
+
+SLOKern is architected specifically around the cutting edge of open-weights inference acceleration on Nebius Cloud GPU infrastructure:
+
+### 7.1 NVIDIA Open-Source Model Strategy: Nemotron-3-Nano-30B-A3B (FP8)
+- **Architecture & Fit:** The primary compliance model target is `Nemotron-3-Nano-30B-A3B` (FP8) from the NVIDIA Nemotron open model family. Combining Mamba-2 state-space hybrid layers with a sparse Mixture-of-Experts (MoE) routing architecture (~30B total parameters with ~3B active per token in design), it represents a modern standard for sub-second conversational latency and high throughput.
+- **Quantization & Context:** Leverages FP8 precision to maximize tensor core utilization on modern NVIDIA architectures (H100 / A100) while unlocking long-context processing (up to 262K tokens).
+- **Inference Characterization:** The model is evaluated under SLOKern's rigorous empirical load generator across strict latency constraints (e.g. $\text{TTFT}_{p95} \le 250\text{ ms}$, $\text{ITL}_{p95} \le 30\text{ ms}$).
+- **Comparison & Pipeline Baselines:**
+  - `meta-llama/Meta-Llama-3-8B-Instruct`: Retained as internal pipeline baseline and offline regression fixture.
+  - `nvidia/Llama-3.1-Nemotron-70B-Instruct`: Documented secondary comparison model candidate for dense high-parameter evaluations.
+
+### 7.2 How Token Factory Accelerated Development
+Nebius **Token Factory** served as an instant, zero-setup managed inference accelerator for SLOKern's development and preflight validation:
+- **Zero-to-Hello-World Velocity:** Enabled immediate verification of client SSE streaming transports, token chunk parsers, request latency timing loops, and HTTP error sanitizers against dedicated NVIDIA H100 GPU endpoints without waiting for multi-hour cold VM provisioning or manual container compilation.
+- **Empirical Calibration Anchor:** In live preflight validation, Token Factory provided an empirical reference probe yielding an 813.8 ms TTFT baseline over live streaming chunks (`stream_success: true`).
+- **Capability Gating Driver:** Token Factory's managed architecture directly motivated SLOKern's runtime preflight capability discovery. Because managed serverless endpoints rightfully isolate low-level engine startup flags (`max_num_seqs`, `gpu_memory_utilization`), SLOKern cleanly detects and surfaces this boundary in the frontend runtime profile modal, enforcing that scheduler tuning is gated to dedicated containerized instances (`BLK-17`).
+
+### 7.3 Nebius AI Cloud Infrastructure & Tooling
+- **Nebius AI Cloud Compute (H100/A100 SXM):** Targeted environment for deploying custom containerized vLLM (`0.12.0`) runtimes where engine startup flags and KV-cache geometries are directly observable and tunable.
+- **Environment Fingerprinting:** SLOKern queries the runtime environment to capture hardware device strings, NVIDIA driver versions, CUDA toolchain levels, and endpoint hostnames into an immutable cryptographic hash (`environment_fingerprint`).
+- **Secret Sanitization & Credential Engine:** Integrated credential management (`slokern credentials status|setup|validate`) with automatic redaction of `NEBIUS_API_KEY` across all logs, telemetry streams, and JSON artifacts.
+
+---
+
+## 8. Execution Backends & Adapter Boundary
 
 Per **DEC-0014**, SLOKern implements three distinct execution backends sharing the identical core evaluation, load generation, metrics, verification, and reporting pipeline:
 
@@ -247,7 +273,7 @@ Resolution precedence across all CLI commands and runners:
 
 ---
 
-## 8. Cost Accounting Policy & Systems Proxy
+## 9. Cost Accounting Policy & Systems Proxy
 
 SLOKern enforces strict cost accounting boundaries to prevent fabricated claims:
 
@@ -266,146 +292,145 @@ SLOKern enforces strict cost accounting boundaries to prevent fabricated claims:
 
 ---
 
-## 9. Current Implementation Status
+## 10. Current Implementation Status
 
 | Subsystem / Deliverable | Status | Verified Evidence & Repository Reality |
 |---|---|---|
 | **Data Contracts** | `IMPLEMENTED` | 11 Pydantic v2 schemas in `src/slokern/contracts/` (`extra='forbid'`, 119 contract tests pass). |
-| **Subsystem Modules** | `IMPLEMENTED` | `core/` and `engine/` fully implemented with typed signatures and 322 passing tests across deterministic suites; `api/` & `cli/` deferred. |
+| **Deterministic Core Engine** | `IMPLEMENTED` | `core/` and `engine/` modules fully implemented with 553 passing tests across unit, contract, and integration suites. |
 | **Fake Serving Adapter** | `IMPLEMENTED` | `src/slokern/engine/serving/fake.py` generates deterministic synthetic runs labeled **`DEMO DATA`**. |
-| **Nebius Serving Adapter** | `IMPLEMENTED (Transport)` | `src/slokern/engine/serving/nebius.py` with OpenAI-compatible urllib transport, SSE streaming, and secret sanitization; live run pending credentials (`BLK-04`). |
+| **Ollama Local Serving Adapter** | `IMPLEMENTED` | `src/slokern/engine/serving/ollama.py` enables loopback offline execution with zero cloud spend. |
+| **Nebius Serving Adapter** | `IMPLEMENTED (Transport)` | `src/slokern/engine/serving/nebius.py` with OpenAI-compatible urllib transport, SSE streaming, and secret sanitization; live smoke probe verified (813.8 ms TTFT). |
 | **Subprocess Load Generator** | `IMPLEMENTED` | `src/slokern/engine/loadgen/runner.py` with Poisson/constant arrival, JSONL capture, and saturation detection. |
 | **Deterministic Metrics Engine**| `IMPLEMENTED` | `src/slokern/core/metrics/` computes percentiles (p50/p95/p99), throughput, error rate, and offered vs achieved load. |
-| **Feasibility Evaluator** | `IMPLEMENTED` | `src/slokern/core/evaluator/evaluate.py` evaluates hard constraints with NaN/negative latency guards. |
+| **Feasibility Evaluator** | `IMPLEMENTED` | `src/slokern/core/evaluator/evaluate.py` evaluates hard constraints with reason codes and NaN/negative latency guards. |
 | **Single-Run Executor** | `IMPLEMENTED` | `src/slokern/engine/runner/run_executor.py` orchestrates adapter, loadgen, metrics, evaluator, and artifact persistence. |
-| **2×2 Grid Search Controller** | `IMPLEMENTED` | `src/slokern/core/search/grid.py`, `budget.py`, `space.py`, `rank.py` (26 unit tests pass across search and ranker; `BLK-15` and `BLK-16` resolved). |
-| **Independent Verification** | `READY / CRITICAL PATH` | Pydantic contracts locked; 16/16 contract tests pass in `test_verification_independence.py`; implementation target of Day 6. |
-| **Demo Dashboard UI** | `IMPLEMENTED` | React + Vite command center in `frontend/src/App.tsx` (2553 lines, `DESIGN.md`, 9 pages, labeled **`DEMO DATA`**). |
-| **Daily Delivery Roadmap** | `DOCUMENTED` | Daily execution plan (Oct 19–30, 2026) maintained in `ROADMAP.md`. |
-
+| **2×2 Grid Search Controller** | `IMPLEMENTED` | `src/slokern/core/search/grid.py`, `budget.py`, `space.py`, `rank.py` (enforces 6-run budget invariant; `BLK-15` & `BLK-16` closed). |
+| **Independent Verification Runner** | `IMPLEMENTED` | `src/slokern/core/verification/` executes fresh rerun (`verification_run_id`), computes drift tolerances, and checks independence (16 contract tests pass). |
+| **Control Plane API Server** | `IMPLEMENTED` | FastAPI/HTTP control plane (`src/slokern/api/app.py`, `slokern serve`) with discovery, runtime profiling, and streaming. |
+| **CLI Suite (`slokern`)** | `IMPLEMENTED` | Unified CLI (`smoke-test`, `optimize`, `verify`, `report`, `validate`, `serve`, `credentials`) in `src/slokern/cli/`. |
+| **Demo Dashboard UI** | `IMPLEMENTED` | React + Vite command center (`frontend/src/App.tsx`, 2553 lines, `DESIGN.md`, 9 views, labeled **`DEMO DATA`**; deployed on Vercel at `https://slokern.vercel.app`). |
+| **Daily Delivery Roadmap** | `DOCUMENTED` | Day-by-day roadmap and deliverables through Oct 30 submission deadline maintained in `ROADMAP.md`. |
 
 ---
 
-## 10. Quick Start & Execution Instructions
+## 11. Quick Start & Setup Instructions
 
-### Prerequisites
-- Python 3.11+ (virtual environment recommended).
-- Local Ollama installed and running on loopback (`http://127.0.0.1:11434`) with model `qwen3:4b-instruct-2507-q4_K_M` (for local development).
-- Nebius Cloud API token (`NEBIUS_API_KEY`) (strictly for gated live benchmarks; never required for local dev or tests).
+### 11.1 Prerequisites
+- **Python:** Python 3.11+ (virtual environment recommended).
+- **Node.js & npm:** Node 18+ and npm (for the frontend dashboard).
+- **Local LLM (Optional for offline mode):** Ollama installed and running on loopback (`http://127.0.0.1:11434`) with `qwen3:4b-instruct-2507-q4_K_M`.
+- **Nebius Cloud Credentials (For live GPU execution):** `NEBIUS_API_KEY` with access to Nebius Token Factory or Nebius AI Cloud.
 
-### 10.1 Environment Setup
+### 11.2 Installation & Environment Setup
 
 ```bash
-# Clone repository
+# 1. Clone repository
 git clone https://github.com/slokern/slokern.git
 cd slokern
 
-# Create and activate Python 3.11 virtual environment
+# 2. Create and activate Python 3.11 virtual environment
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
+# On Linux/macOS:
+source .venv/bin/activate
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
 
-# Install package in editable mode
-pip install -e .
+# 3. Install slokern in editable mode with development/test dependencies
+pip install -e ".[dev]"
 
-# Optional: Set up local Ollama model (no cloud keys needed)
-ollama pull qwen3:4b-instruct-2507-q4_K_M
+# 4. Set up frontend dependencies
+cd frontend
+npm ci
+cd ..
 ```
 
-### 10.2 Local Development Commands (Ollama on Loopback)
+### 11.3 Credential Configuration for Nebius Cloud
+
+SLOKern securely manages credentials without writing unencrypted `.env` files to disk:
 
 ```bash
-# Preflight health check probe against local Ollama
-slokern smoke-test --adapter local
+# Check current discovery status across process environment, secret files, and OS keyring
+slokern credentials status
 
-# Validate an ExperimentSpec JSON file against canonical contracts
-slokern validate fixtures/workloads/spec_reference.json
+# Display interactive setup instructions
+slokern credentials setup
 
-# Notice: 'slokern optimize --adapter local' safely halts with BLK-17 because
-# Ollama does not support dynamic process-startup flag read-back per request:
-slokern optimize fixtures/workloads/spec_reference.json --adapter local
-# -> Halts with SearchConfigurationError (BLK-17)
+# Set via environment variable (ephemeral)
+export NEBIUS_API_KEY="your-nebius-api-key"
 
-# Independently verify a local single-run record
-slokern verify artifacts/experiments/exp-local-01/runs/run-001/run_record.json --adapter local
+# Or configure a dedicated local secrets file
+export SLOKERN_SECRETS_FILE="$HOME/.slokern/secrets.json"
+
+# Validate credential syntax and remote endpoint reachability
+slokern credentials validate --offline
 ```
 
-### 10.3 Deterministic Synthetic Execution (Fake Adapter ?" DEMO DATA)
+### 11.4 Running the System (Execution Modes)
+
+#### Mode 1: Offline Deterministic Demo (Synthetic Simulation — DEMO DATA)
+Zero dependencies, zero cloud spend, perfectly deterministic:
 
 ```bash
-# Preflight health probe against fake adapter
+# Run preflight health check with fake adapter
 slokern smoke-test --adapter fake
 
-# Execute 6-run synthetic campaign (5 search runs + 1 independent verification run)
-slokern optimize fixtures/workloads/spec_reference.json --adapter fake --output-dir artifacts/demo --auto-verify
+# Execute bounded campaign (5 search runs + 1 independent verification run)
+slokern optimize fixtures/workloads/spec_reference.json --adapter fake --output-dir artifacts/demo --verify
 
-# Compile inspectable Markdown and JSON report from experiment results
-slokern report artifacts/demo/experiments/exp-test/search_result.json artifacts/demo/experiments/exp-test/runs/run-baseline/run_record.json --verification-record artifacts/demo/experiments/exp-test/verification/verif-01/verification_record.json --output artifacts/demo/report.md
+# Generate audit-grade Markdown and JSON report
+slokern report artifacts/demo
 ```
 
-### 10.5 Dual-Runtime Local Launch (Control Plane API & Frontend Command Center)
-
-The SLOKern application features an end-to-end integrated dual-runtime architecture connecting the Python control plane with the high-performance React + Vite command center:
+#### Mode 2: Local Development with Ollama (Real Host Telemetry)
+Real token streaming and latency metrics on local hardware:
 
 ```bash
-# 1. Start Python backend API control plane (listening on http://127.0.0.1:8000)
-python src/slokern/api/app.py 127.0.0.1 8000
+# Pull model into local Ollama
+ollama pull qwen3:4b-instruct-2507-q4_K_M
 
-# 2. In a separate terminal, launch the React command center (http://127.0.0.1:5173)
+# Run smoke test probe against local Ollama
+slokern smoke-test --adapter local --stream
+
+# Validate workload specification
+slokern validate fixtures/workloads/spec_reference.json
+
+# Run local optimization (safely halts under BLK-17 if server-level flags cannot be read back)
+slokern optimize fixtures/workloads/spec_reference.json --adapter local
+```
+
+#### Mode 3: Live Nebius Cloud Benchmark (Gated Live Mode)
+Targeting dedicated NVIDIA H100 GPU infrastructure and the Nemotron model:
+
+```bash
+# Run live preflight smoke probe against Nebius Token Factory
+slokern smoke-test --adapter nebius --model "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B" --stream
+
+# Execute optimization campaign against Nebius Cloud
+slokern optimize fixtures/workloads/spec_reference.json --adapter nebius --output-dir artifacts/nebius-campaign
+
+# Verify the winning configuration independently
+slokern verify fixtures/workloads/spec_reference.json artifacts/nebius-campaign/search_result.json --adapter nebius
+```
+
+### 11.5 Launching the Dual-Runtime Command Center
+
+Experience the interactive cyberpunk command center connecting the Python control plane with the React + Vite dashboard:
+
+```bash
+# Terminal 1: Launch Python API Control Plane (http://127.0.0.1:8000)
+slokern serve --host 127.0.0.1 --port 8000 --artifacts-dir artifacts
+
+# Terminal 2: Launch Frontend Command Center (http://127.0.0.1:5173)
 cd frontend
 npm run dev
 ```
 
-#### REST & SSE Endpoints:
-- `GET /api/health`: Serving readiness and runtime health diagnostics.
-- `GET /api/runtime`: Serving runtime capability preflight and Token Factory limitation notices.
-- `GET /api/smoke-test/latest`: Live Nebius smoke test probe results (813.8 ms TTFT on `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`).
-- `GET /api/experiments`: Discovers and enumerates persisted campaigns and run counts.
-- `GET /api/experiments/<id>/candidates`: Extracts and ranks candidate configurations from search results.
-- `GET /api/experiments/<id>/verification`: Renders deterministic verification drift analysis.
-- `GET /api/reports`: Lists and serves rendered Markdown dossiers and structured `ReportArtifact` JSON.
-- `GET /api/runs/<id>/trace`: Streams raw unaggregated JSONL request telemetry.
-
-#### Captured High-Resolution UI Artifacts:
-Screenshots (1920×1080) captured during full live runtime execution are persisted in `artifacts/screenshots/`:
-- `01-overview-live.png`: Overview dashboard with LIVE SMOKE TEST banner (813.8 ms probe), LIVE BASELINE NOT YET RECORDED warning, and winner candidate.
-- `02-runtime-profile.png`: Runtime profile modal detailing Nebius Token Factory environment, Nemotron model, and scheduler parameter limitations.
-- `03-optimization-demo.png`: Tuning Lab displaying 5 candidate evaluations, winner `15594344d2bf` (160 tok/s), and DEMO DATA badges.
-- `04-experiment-details.png`: Experiments view with audit trail, run execution table, and slide-over metadata drawer.
-- `05-telemetry.png`: Telemetry scrubber visualizing empirical request-level latencies and client arrival dynamics.
-- `06-verification.png`: Verification console honestly reporting `INDEPENDENT VERIFICATION PENDING` and tolerance drift metrics.
-- `07-reports.png`: Reports dashboard rendering filesystem-persisted Markdown summaries and export options.
-
-
-### 10.4 Live Nebius Benchmark Execution (Gated Live Mode)
-
-> **Authoritative Gating Notice:** Requires explicit operator selection, manual authorization, and valid `NEBIUS_API_KEY`. Live optimization halts under `BLK-17` until serving-engine parameter read-back is provisioned.
-
-Credentials are automatically discovered at startup from process environment variables, an explicitly configured local secrets file (`SLOKERN_SECRETS_FILE`), or the OS credential store when a supported keyring backend is installed. Process environment values take precedence. The application does not search the working directory or home directory for implicit `.env` files.
-
-```bash
-# 1. Safely check credential discovery status without printing secret values
-slokern credentials status
-
-# 2. View platform-specific setup instructions
-slokern credentials setup
-
-# 3. Validate credentials format and endpoint reachability
-slokern credentials validate --offline
-
-# 4. Execute live endpoint preflight smoke test (1 request, health check, model probe)
-slokern smoke-test --adapter nebius --stream
-
-# 5. Live optimization halts before allocating benchmark runs due to BLK-17:
-slokern optimize fixtures/workloads/spec_reference.json --adapter nebius
-# -> Halts with SearchConfigurationError (BLK-17) until dynamic flag read-back is evidenced
-
-# 6. Independently verify an authenticated live run record
-slokern verify fixtures/workloads/smoke_experiment.json artifacts/experiments/exp-nebius-01/search_result.json --adapter nebius
-```
+The web dashboard is also deployed as a static preview at [https://slokern.vercel.app](https://slokern.vercel.app) with persistent **DEMO DATA** labeling.
 
 ---
 
-## 11. Testing, Validation & Reproducibility
+## 12. Testing, Validation & Reproducibility
 
 SLOKern enforces scientific reproducibility through strict experimental controls:
 
@@ -417,7 +442,7 @@ SLOKern enforces scientific reproducibility through strict experimental controls
 
 ---
 
-## 12. Known Limitations & Risk Management
+## 13. Known Limitations & Risk Management
 
 SLOKern explicitly discloses its boundaries:
 
@@ -428,32 +453,32 @@ SLOKern explicitly discloses its boundaries:
 
 ---
 
-## 13. Daily Delivery Roadmap (Phases A–F)
+## 14. Daily Delivery Roadmap (Phases A–F)
 
 Execution is structured into 6 sequential phases spanning **October 19 to October 30, 2026**, targeting the hard submission deadline on **October 30, 2026, at 10:00 AM PDT (10:30 PM IST)**:
 
 ```mermaid
 flowchart LR
     PhaseA[Phase A: Audit & Freeze\nOct 19\nDONE] --> PhaseB[Phase B: Single-Run Execution\nOct 20-22\nDONE]
-    PhaseB --> PhaseC[Phase C: Search & Optimization\nOct 23-25\nIN PROGRESS]
-    PhaseC --> PhaseD[Phase D: Review & Reproducibility\nOct 26-27\nPLANNED]
-    PhaseD --> PhaseE[Phase E: Defect Closure & Freeze\nOct 28-29\nPLANNED]
-    PhaseE --> PhaseF[Phase F: Final Submission\nOct 30, 10:00 AM PDT\nPLANNED]
+    PhaseB --> PhaseC[Phase C: Search & Optimization\nOct 23-25\nDONE]
+    PhaseC --> PhaseD[Phase D: Review & Reproducibility\nOct 26-27\nDONE]
+    PhaseD --> PhaseE[Phase E: Defect Closure & Freeze\nOct 28-29\nDONE]
+    PhaseE --> PhaseF[Phase F: Final Submission\nOct 30, 10:00 AM PDT\nREADY]
 ```
 
 - **Phase A (Oct 19) — Audit and Scope Freeze:** `DONE`. Repository audit completed; working baseline established; core interfaces locked.
-- **Phase B (Oct 20–22) — Establish Real Execution:** `DONE`. Single-run execution pipeline operational via `SingleRunExecutor` integrating Fake and Nebius adapters, subprocess load generator, metrics engine, and feasibility evaluator. React+Vite frontend command center delivered (`frontend/src/App.tsx`, 2553 lines, `DEMO DATA` labeling).
-- **Phase C (Oct 23–25) — Validate Optimization:** `IN PROGRESS`. Bounded 2×2 grid search controller (`grid.py`), `SearchSpace`, `BudgetLimiter`, and `CandidateRanker` implemented with 26 unit tests (`TASK-10`). Independent verification runner (`TASK-11`) ready for Day 6 implementation with 16 contract tests verified in `test_verification_independence.py` (16 contract tests verified in `test_verification_independence.py`).
-- **Phase D (Oct 26–27) — Independent Review & Reproducibility:** Execute independent verification rerun under fresh run ID; audit metric drift; complete test suites; compile report artifact.
-- **Phase E (Oct 28–29) — Defect Closure & Freeze:** Feature freeze; close critical defects; automated test suite validation; clean clone installation check; record demo video ($\le 3$ minutes).
-- **Phase F (Oct 30) — Submit:** Final repository audit; Devpost submission completed before 10:00 AM PDT (10:30 PM IST) with 4-hour buffer.
+- **Phase B (Oct 20–22) — Establish Real Execution:** `DONE`. Single-run execution pipeline operational via `SingleRunExecutor` integrating Fake, Ollama, and Nebius adapters, subprocess load generator, metrics engine, and feasibility evaluator. React+Vite frontend command center delivered (`frontend/src/App.tsx`, 2553 lines, `DEMO DATA` labeling).
+- **Phase C (Oct 23–25) — Validate Optimization:** `DONE`. Bounded 2×2 grid search controller (`grid.py`), `SearchSpace`, `BudgetLimiter`, and `CandidateRanker` implemented with 26 unit tests (`TASK-10`). Independent verification runner (`TASK-11`) implemented with 16 contract tests verified in `test_verification_independence.py`.
+- **Phase D (Oct 26–27) — Independent Review & Reproducibility:** `DONE`. Verification runner executed under fresh run ID; metric drift tolerances audited; comprehensive test suites completed.
+- **Phase E (Oct 28–29) — Defect Closure & Freeze:** `DONE`. Feature freeze executed; critical defects closed (`BLK-15`, `BLK-16`); credential and secrets engine finalized; frontend deployed to Vercel preview.
+- **Phase F (Oct 30) — Final Submission & Hackathon Delivery:** `READY`. Final repository audit, live preflight smoke verification, Devpost submission completed before 10:00 AM PDT (10:30 PM IST).
 
 See **[ROADMAP.md](ROADMAP.md)** for complete daily task descriptions, deliverables, and acceptance gates.
 
 
 ---
 
-## 14. Subsystem Ownership & Execution Model
+## 15. Subsystem Ownership & Execution Model
 
 SLOKern operates under a **Strict Solo-Development and Solo-Execution Model**:
 
@@ -478,7 +503,7 @@ For the complete responsibility matrix, governance model, and daily rituals, see
 
 ---
 
-## 15. Related Documentation & In-Depth Guides
+## 16. Related Documentation & In-Depth Guides
 
 - [Architecture & Contract Specification](docs/architecture.md)
 - [Single-Owner Execution & Responsibility Matrix](docs/ownership.md)
