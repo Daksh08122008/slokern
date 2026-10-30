@@ -23,16 +23,18 @@ def test_smoke_live_endpoint():
     If NEBIUS_API_KEY is set, verifies health check, applies configuration, probes streaming,
     and captures environment fingerprint.
     """
-    api_key = os.environ.get("NEBIUS_API_KEY", "").strip()
+    from slokern.config.secrets import load_runtime_secrets
+    secrets = load_runtime_secrets()
+    api_key = secrets.get("NEBIUS_API_KEY", "") or os.environ.get("NEBIUS_API_KEY", "").strip()
     if not api_key:
         pytest.skip(
-            "NEBIUS_API_KEY environment variable is unset. Skipping live cloud probe per "
-            "ROADMAP.md Section 6.1 (BLK-04 fallback policy). Set NEBIUS_API_KEY and "
-            "NEBIUS_BASE_URL to execute live preflight probe."
+            "NEBIUS_API_KEY is not configured in environment or approved secret sources. "
+            "Skipping live cloud probe per ROADMAP.md Section 6.1 (BLK-04 fallback policy). "
+            "Configure NEBIUS_API_KEY via environment or 'slokern credentials setup' to execute."
         )
 
-    base_url = os.environ.get("NEBIUS_BASE_URL", "https://api.studio.nebius.ai/v1")
-    model_id = os.environ.get("NEBIUS_MODEL_ID", "meta-llama/Meta-Llama-3-8B-Instruct")
+    base_url = os.environ.get("NEBIUS_BASE_URL", "https://api.tokenfactory.nebius.com/v1")
+    model_id = os.environ.get("NEBIUS_MODEL_ID", NebiusServingAdapter.DEFAULT_MODEL)
 
     adapter = NebiusServingAdapter(
         model_name=model_id,

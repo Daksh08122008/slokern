@@ -3,14 +3,18 @@ Purpose: Unit tests for report CLI command.
 Owner: Rajdeep
 """
 
+import json
+
 from slokern.cli.commands.report import report_command
 from slokern.contracts.enums import (
     ArrivalMode,
+    ExecutionStatus,
     FeasibilityVerdict,
     RankingObjective,
     VerificationState,
 )
 from slokern.contracts.search import CandidateSummary, SearchResult
+from slokern.contracts.run import RunRecord
 from slokern.contracts.spec import (
     ExperimentBudget,
     ExperimentSpec,
@@ -82,6 +86,27 @@ def test_report_success_generation(tmp_path, capsys):
     (exp_dir / "experiment_spec.json").write_text(spec.model_dump_json())
     (exp_dir / "search_result.json").write_text(result.model_dump_json())
     (exp_dir / "verification_record.json").write_text(verif.model_dump_json())
+    run_dir = exp_dir / "runs" / "run-search-cand-win"
+    run_dir.mkdir(parents=True)
+    run_record = RunRecord(
+        run_id="run-search-cand-win",
+        experiment_id="exp-01",
+        candidate_id="cand-winner",
+        is_verification_run=False,
+        execution_status=ExecutionStatus.COMPLETED,
+        raw_artifact_uri="runs/run-search-cand-win/raw_measurements.jsonl",
+    )
+    (run_dir / "run_record.json").write_text(run_record.model_dump_json())
+    (run_dir / "applied_config.json").write_text(json.dumps({
+        "candidate_id": "cand-winner",
+        "model_name": "demo-model",
+        "runtime_name": "vllm-fake",
+        "requested_settings": {},
+        "effective_settings": {},
+        "parameter_status": {},
+        "environment_fingerprint": {"runtime_name": "vllm-fake", "is_simulated": True, "mode": "DEMO DATA"},
+    }))
+    (run_dir / "raw_measurements.jsonl").write_text('{"request_id":"demo-request"}\n')
 
     out_dir = tmp_path / "published"
     ret = report_command(str(exp_dir), output_dir=str(out_dir))
@@ -89,5 +114,10 @@ def test_report_success_generation(tmp_path, capsys):
 
     assert (out_dir / "report.json").exists()
     assert (out_dir / "report.md").exists()
+    report_data = json.loads((out_dir / "report.json").read_text())
+    assert report_data["environment_fingerprint"]["evidence_classification"] == "DEMO DATA"
+    assert report_data["selected_candidate"]["runtime_name"] == "vllm-fake"
+    assert "runs/run-search-cand-win/raw_measurements.jsonl" in report_data["artifact_paths"].values()
+    assert "**Evidence Classification:** **DEMO DATA**" in (out_dir / "report.md").read_text()
     out = capsys.readouterr().out
     assert "Report successfully published" in out

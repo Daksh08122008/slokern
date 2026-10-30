@@ -189,8 +189,8 @@ The October 21 audit revealed four cross-document contradictions across earlier 
 | **TASK-09** | Nebius Live Serving Adapter & Smoke Probe | `DONE / OFFLINE FALLBACK` | `UNIT` | Closed BLK-04 fallback | Rajdeep |
 | **TASK-10** | 2×2 Bounded Search Controller | `DONE` | `UNIT` | Closed BLK-11, BLK-15, BLK-16 | Rajdeep |
 | **TASK-11** | Independent Verification Engine | `DONE / VERIFIED` | `UNIT, CONTRACT & CAMPAIGN` | TASK-10, BLK-08 (28 unit + 17 contract tests pass) | Rajdeep |
-| **TASK-12** | Report Artifact Generator & Publisher | `BLOCKED` | `NONE` | TASK-11, BLK-09 | Rajdeep |
-| **TASK-13** | Minimal CLI Runner (`slokern verify`) | `BLOCKED` | `NONE` | TASK-12 | Rajdeep |
+| **TASK-12** | Report Artifact Generator & Publisher | `DONE / PROVENANCE FIXED` | `UNIT & FAKE CAMPAIGN` | TASK-11, BLK-09 | Rajdeep |
+| **TASK-13** | Minimal CLI Runner (`slokern verify`) | `PARTIAL / COMMANDS EXERCISED` | `UNIT & FAKE CAMPAIGN` | TASK-12; serve/validate commands not reverified this run | Rajdeep |
 | **TASK-14** | Benchmark Data Integrity & Trace Audit Suite | READY | UNIT | TASK-07 | Rajdeep |
 | **TASK-15** | Decision Correctness Verification Suite | IN PROGRESS (AUDIT) | CONTRACT | TASK-11 (16 contract tests pass) | Rajdeep |
 | **TASK-16** | End-to-End Smoke Test & Submission Package | `BLOCKED` | `NONE` | TASK-13, TASK-14, TASK-15, Live Runs | Rajdeep |
@@ -704,6 +704,7 @@ This day-by-day plan governs all development leading up to the submission deadli
   4. Automated secret scanner asserts zero API keys, tokens, or private endpoint URLs in generated output.
 - **Verify:** `pytest tests/unit/engine/reporting/` passes; generated report validates against `ReportArtifact` schema (resolving `BLK-09`).
 - **Completion Evidence:** `report_builder.py` compiles immutable artifacts; passes unit testing.
+- **2026-10-30 Provenance Correction:** `slokern report` now loads persisted applied configurations and run records, links raw traces with experiment-relative paths, and labels evidence `DEMO DATA`, `LIVE`, or `UNVERIFIED`. Previously it hard-coded `is_simulated=false` and generic model/runtime values. Verified with `pytest tests/unit/cli/commands/test_report.py tests/unit/engine/reporting/test_report_builder.py -q` (5 passed), then regenerated the fake-campaign report and confirmed `DEMO DATA`, `vllm-fake`, and six raw-trace references.
 
 ---
 
@@ -759,7 +760,7 @@ This day-by-day plan governs all development leading up to the submission deadli
 ---
 
 ### TASK-21 — Live Benchmark Readiness Review (Phase 6)
-- **Owner:** Rajdeep (CONFIRMED) • **Subsystem:** `SUB-05` • **Priority:** P1 (DEMO-CRITICAL) • **Status:** `PLANNED / BLOCKED (BLK-04, BLK-17)` • **Validation Level:** `MANUAL / RUNTIME AUDIT`
+- **Owner:** Rajdeep (CONFIRMED) • **Subsystem:** `SUB-05` • **Priority:** P1 (DEMO-CRITICAL) • **Status:** `PARTIAL / BLOCKED (BLK-04, BLK-17)` • **Validation Level:** `UNIT; LIVE NOT RUN`
 - **Objective:** Establish authoritative live benchmark readiness on Nebius Token Factory (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`) without prematurely running unverified campaigns.
 - **Needs:** `TASK-09`, `TASK-16`, `DEC-0013`, `DEC-0014`, `BLK-04`, `BLK-17`.
 - **Boundary & Isolation:** `src/slokern/engine/serving/nebius.py`, `tests/live/test_smoke_live.py`.
@@ -771,6 +772,7 @@ This day-by-day plan governs all development leading up to the submission deadli
   4. Confirm budget enforcement (5 search runs + 1 verification run) and evidence persistence for live execution.
   5. Record unresolved external dependencies and exact owner decision required from Rajdeep.
 - **Verify:** Live single-request preflight probe (`slokern smoke-test --adapter nebius`) returns valid completion when credentials provided.
+- **Credential Bootstrap Evidence (2026-10-30):** Startup discovery and safe credential status/setup/validation commands are implemented. Priority is process environment, explicit `SLOKERN_SECRETS_FILE`, then optional OS keyring. Implicit `.env` search has been removed; POSIX secret files with group/other access are rejected. Targeted tests: 62 passed, 1 skipped. Windows ACL validation, authorized live authentication/model confirmation, and server-side engine settings remain unverified. See BLK-04 and `docs/blocker-register.md`.
 - **Completion Evidence:** Formal readiness audit published in project documentation before live campaign execution.
 
 ---

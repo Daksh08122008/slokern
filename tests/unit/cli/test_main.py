@@ -36,7 +36,6 @@ def test_main_routes_to_smoke_test():
             adapter="fake",
             model=None,
             base_url=None,
-            api_key=None,
             prompt="hello",
         )
 
@@ -94,4 +93,34 @@ def test_main_routes_to_validate():
         assert ret == 0
         mock_cmd.assert_called_once_with(
             spec_file="spec.json",
+        )
+
+
+def test_main_routes_to_credentials_status():
+    with patch("slokern.cli.main.credentials_status_command", return_value=0) as mock_cmd:
+        ret = main(["credentials", "status", "--json"])
+        assert ret == 0
+        mock_cmd.assert_called_once_with(
+            secrets_file=None,
+            json_output=True,
+        )
+
+
+def test_main_routes_to_credentials_setup():
+    with patch("slokern.cli.main.credentials_setup_command", return_value=0) as mock_cmd:
+        ret = main(["credentials", "setup", "--source", "env"])
+        assert ret == 0
+        mock_cmd.assert_called_once_with(
+            source="env",
+        )
+
+
+def test_main_routes_to_credentials_validate():
+    with patch("slokern.cli.main.credentials_validate_command", return_value=0) as mock_cmd:
+        ret = main(["credentials", "validate", "--offline", "--timeout", "10.0"])
+        assert ret == 0
+        mock_cmd.assert_called_once_with(
+            offline=True,
+            secrets_file=None,
+            timeout_s=10.0,
         )

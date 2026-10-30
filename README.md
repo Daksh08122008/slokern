@@ -346,19 +346,27 @@ slokern report artifacts/demo/experiments/exp-test/search_result.json artifacts/
 
 > **Authoritative Gating Notice:** Requires explicit operator selection, manual authorization, and valid `NEBIUS_API_KEY`. Live optimization halts under `BLK-17` until serving-engine parameter read-back is provisioned.
 
+Credentials are automatically discovered at startup from process environment variables, an explicitly configured local secrets file (`SLOKERN_SECRETS_FILE`), or the OS credential store when a supported keyring backend is installed. Process environment values take precedence. The application does not search the working directory or home directory for implicit `.env` files.
+
 ```bash
-# Set Nebius credentials in environment
-export NEBIUS_API_KEY="your-nebius-api-key"  # Windows: $env:NEBIUS_API_KEY="..."
+# 1. Safely check credential discovery status without printing secret values
+slokern credentials status
 
-# 1. Execute live endpoint preflight smoke test (1 request, health check, model probe)
-slokern smoke-test --adapter nebius
+# 2. View platform-specific setup instructions
+slokern credentials setup
 
-# 2. Live optimization halts before allocating benchmark runs due to BLK-17:
+# 3. Validate credentials format and endpoint reachability
+slokern credentials validate --offline
+
+# 4. Execute live endpoint preflight smoke test (1 request, health check, model probe)
+slokern smoke-test --adapter nebius --stream
+
+# 5. Live optimization halts before allocating benchmark runs due to BLK-17:
 slokern optimize fixtures/workloads/spec_reference.json --adapter nebius
 # -> Halts with SearchConfigurationError (BLK-17) until dynamic flag read-back is evidenced
 
-# 3. Independently verify an authenticated live run record
-slokern verify artifacts/experiments/exp-nebius-01/runs/run-001/run_record.json --adapter nebius
+# 6. Independently verify an authenticated live run record
+slokern verify fixtures/workloads/smoke_experiment.json artifacts/experiments/exp-nebius-01/search_result.json --adapter nebius
 ```
 
 ---

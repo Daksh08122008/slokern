@@ -286,6 +286,9 @@ def run_server(
     port: int = DEFAULT_API_PORT,
     artifacts_root: str = "artifacts",
 ) -> None:
+    from slokern.config.secrets import load_runtime_secrets
+    load_runtime_secrets()
+
     server = create_api_server(host=host, port=port, artifacts_root=artifacts_root)
     print(f"[SLOKern API Control Plane] Listening on http://{host}:{port}")
     print(f"  Artifacts directory: {artifacts_root}")

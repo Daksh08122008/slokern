@@ -41,11 +41,15 @@ def create_serving_adapter(
         return OllamaServingAdapter(**local_kwargs)
 
     elif normalized == "nebius":
-        api_key = kwargs.get("api_key") or os.environ.get("NEBIUS_API_KEY", "")
+        api_key = kwargs.get("api_key")
+        if not api_key:
+            from slokern.config.secrets import load_runtime_secrets
+            secrets = load_runtime_secrets()
+            api_key = secrets.get("NEBIUS_API_KEY") or os.environ.get("NEBIUS_API_KEY", "")
         if not api_key or not api_key.strip():
             raise ConfigurationError(
                 "Missing required credentials for Nebius backend: NEBIUS_API_KEY must be set "
-                "in environment or passed explicitly. Zero silent fallback per DEC-0014."
+                "in environment or configured in an approved local secret source. Zero silent fallback per DEC-0014."
             )
         nebius_kwargs = {
             k: v for k, v in kwargs.items()

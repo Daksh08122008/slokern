@@ -73,6 +73,8 @@ def render_markdown_report(report: ReportArtifact) -> str:
     lines.append(f"> **Report ID:** `{report.report_id}`  ")
     lines.append(f"> **Generated At:** `{report.created_at}`  ")
     lines.append(f"> **Experiment ID:** `{report.experiment_spec.experiment_id}`  ")
+    classification = report.environment_fingerprint.get("evidence_classification", "UNVERIFIED")
+    lines.append(f"> **Evidence Classification:** **{classification}**  ")
     lines.append("")
 
     # Status Callout

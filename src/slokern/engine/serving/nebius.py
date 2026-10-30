@@ -78,7 +78,7 @@ class NebiusServingAdapter(BaseServingAdapter):
     that every exception, remote response, or diagnostic path redacts all bearer tokens.
     """
 
-    DEFAULT_BASE_URL = "https://api.studio.nebius.ai/v1"
+    DEFAULT_BASE_URL = "https://api.tokenfactory.nebius.com/v1"
     DEFAULT_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
 
     def __init__(
@@ -93,20 +93,23 @@ class NebiusServingAdapter(BaseServingAdapter):
         resolved_model = model_name or os.environ.get("NEBIUS_MODEL_ID", self.DEFAULT_MODEL)
         super().__init__(model_name=resolved_model, runtime_name=runtime_name)
 
-        self._api_key = api_key or os.environ.get("NEBIUS_API_KEY", "")
+        if not api_key:
+            from slokern.config.secrets import load_runtime_secrets
+            secrets = load_runtime_secrets()
+            self._api_key = secrets.get("NEBIUS_API_KEY", "") or os.environ.get("NEBIUS_API_KEY", "")
+        else:
+            self._api_key = api_key
 
         raw_url = (base_url or os.environ.get("NEBIUS_BASE_URL", self.DEFAULT_BASE_URL)).rstrip("/")
-        parsed = urllib.parse.urlparse(raw_url)
-
-        if parsed.scheme not in ("http", "https"):
-            raise ConfigurationError(f"Invalid Nebius base_url '{raw_url}': scheme must be http or https")
-
-        if parsed.username or parsed.password or "@" in parsed.netloc:
-            raise ConfigurationError(f"URL credentials (userinfo) are prohibited in Nebius base_url '{raw_url}'")
+        from slokern.config.secrets import validate_endpoint_url
+        is_valid_url, url_err = validate_endpoint_url(raw_url)
+        if not is_valid_url:
+            raise ConfigurationError(f"Invalid Nebius base_url '{raw_url}': {url_err}")
 
         self.base_url = raw_url
         self.timeout_s = timeout_s
         self.capabilities = capabilities or _build_nebius_capabilities(runtime_name, resolved_model)
+
 
     @property
     def has_api_key(self) -> bool:
@@ -163,6 +166,71 @@ class NebiusServingAdapter(BaseServingAdapter):
                 return resp.status == 200
         except Exception:
             return False
+
+    def check_readiness(self) -> Dict[str, Any]:
+        """
+        Detailed readiness check probing endpoint reachability, credentials, and model presence.
+        Returns a dictionary with 'ready' (bool), 'model_confirmed' (bool), 'error' (Optional[str]),
+        and 'message' (Optional[str]). Zero secrets leaked.
+        """
+        if not self.has_api_key:
+            return {
+                "ready": False,
+                "model_confirmed": False,
+                "error": "Missing credentials: NEBIUS_API_KEY is not configured.",
+                "message": None,
+            }
+
+        endpoint = f"{self.base_url}/models"
+        req = urllib.request.Request(
+            endpoint,
+            headers=self._build_headers(),
+            method="GET",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=min(10.0, self.timeout_s)) as resp:
+                if resp.status == 200:
+                    body = resp.read().decode("utf-8")
+                    data = json.loads(body)
+                    models = [m.get("id") for m in data.get("data", []) if isinstance(m, dict)]
+                    model_confirmed = (
+                        (self.model_name in models)
+                        or ("*" in models)
+                        or any(self.model_name.lower() == str(m).lower() for m in models)
+                    )
+                    if model_confirmed:
+                        msg = f"Endpoint reachable; model '{self.model_name}' confirmed in catalog ({len(models)} model(s) available)."
+                    else:
+                        msg = f"Endpoint reachable ({len(models)} model(s) available); model '{self.model_name}' not confirmed in catalog."
+                    return {
+                        "ready": True,
+                        "model_confirmed": model_confirmed,
+                        "error": None,
+                        "message": msg,
+                    }
+                return {
+                    "ready": False,
+                    "model_confirmed": False,
+                    "error": f"Endpoint returned HTTP {resp.status}",
+                    "message": None,
+                }
+        except urllib.error.HTTPError as exc:
+            sanitized = self._sanitize(f"HTTP {exc.code} {exc.reason}")
+            return {
+                "ready": False,
+                "model_confirmed": False,
+                "error": sanitized,
+                "message": None,
+            }
+        except Exception as exc:
+            sanitized = self._sanitize(f"Connection failure: {exc}")
+            return {
+                "ready": False,
+                "model_confirmed": False,
+                "error": sanitized,
+                "message": None,
+            }
+
 
     def apply_config(
         self,
@@ -290,7 +358,18 @@ class NebiusServingAdapter(BaseServingAdapter):
             except Exception:
                 pass
             sanitized_err = self._sanitize(f"HTTP {exc.code} {exc.reason}: {error_body}")
-            error_type = "cuda_out_of_memory" if "out of memory" in sanitized_err.lower() else "server_error"
+            if exc.code == 401:
+                error_type = "authentication_error"
+            elif exc.code == 403:
+                error_type = "permission_denied"
+            elif exc.code == 404:
+                error_type = "not_found"
+            elif exc.code == 429:
+                error_type = "rate_limit_exceeded"
+            elif "out of memory" in sanitized_err.lower():
+                error_type = "cuda_out_of_memory"
+            else:
+                error_type = "server_error"
 
             return ServingResponse(
                 request_id=req.request_id,
@@ -339,7 +418,7 @@ class NebiusServingAdapter(BaseServingAdapter):
         payload = {
             "model": self.model_name,
             "messages": [{"role": "user", "content": req.prompt}],
-            "max_tokens": req.max_tokens,
+            "max_tokens": min(req.max_tokens, 4096),
             "temperature": req.temperature,
             "stream": True,
         }
@@ -355,23 +434,56 @@ class NebiusServingAdapter(BaseServingAdapter):
         t_start = time.time()
         last_chunk_time = t_start
         chunk_index = 0
+        current_event: Optional[str] = None
 
         try:
             with urllib.request.urlopen(http_req, timeout=self.timeout_s) as resp:
                 for raw_line in resp:
                     line = raw_line.decode("utf-8").strip()
                     if not line:
-                        continue
-                    if line == "data: [DONE]":
-                        break
-                    if not line.startswith("data: "):
+                        current_event = None
                         continue
 
-                    json_payload = line[6:].strip()
+                    # Track SSE event name if present (e.g. "event: error")
+                    if line.startswith("event:"):
+                        current_event = line[6:].strip()
+                        continue
+
+                    if not line.startswith("data:"):
+                        continue
+
+                    json_payload = line[5:]
+                    if json_payload.startswith(" "):
+                        json_payload = json_payload[1:]
+                    json_payload = json_payload.strip()
+
+                    if json_payload == "[DONE]":
+                        break
+
                     try:
                         chunk_data = json.loads(json_payload)
                     except json.JSONDecodeError:
                         continue
+
+                    # Handle provider error event embedded in SSE stream or flagged by event: error
+                    is_error_event = (current_event in ("error", "provider_error")) or (
+                        "error" in chunk_data and bool(chunk_data["error"])
+                    )
+                    if is_error_event:
+                        err_obj = chunk_data.get("error", chunk_data)
+                        err_msg = err_obj.get("message", str(err_obj)) if isinstance(err_obj, dict) else str(err_obj)
+                        sanitized_err = self._sanitize(f"Provider stream error: {err_msg}")
+                        yield TokenChunk(
+                            token="",
+                            token_id=chunk_index + 1,
+                            index=chunk_index,
+                            timestamp_ms=round((time.time() - t_start) * 1000.0, 2),
+                            latency_ms=round((time.time() - last_chunk_time) * 1000.0, 2),
+                            is_last=True,
+                            error=sanitized_err,
+                            metadata={"provider": "nebius", "live": True, "error_type": "provider_error"},
+                        )
+                        return
 
                     choices = chunk_data.get("choices", [])
                     if not choices:
@@ -389,7 +501,7 @@ class NebiusServingAdapter(BaseServingAdapter):
                     elapsed_ms = round((now - t_start) * 1000.0, 2)
 
                     if chunk_index == 0:
-                        interval_ms = elapsed_ms  # TTFT
+                        interval_ms = elapsed_ms  # TTFT: request dispatch to first content token
                     else:
                         interval_ms = round((now - last_chunk_time) * 1000.0, 2)  # ITL
 
@@ -410,6 +522,21 @@ class NebiusServingAdapter(BaseServingAdapter):
                     if is_last:
                         break
 
+                if chunk_index == 0:
+                    # Clean completion but zero tokens returned (empty stream)
+                    now = time.time()
+                    elapsed_ms = round((now - t_start) * 1000.0, 2)
+                    yield TokenChunk(
+                        token="",
+                        token_id=1,
+                        index=0,
+                        timestamp_ms=elapsed_ms,
+                        latency_ms=elapsed_ms,
+                        is_last=True,
+                        error=None,
+                        metadata={"provider": "nebius", "live": True, "empty_stream": True},
+                    )
+
         except urllib.error.HTTPError as exc:
             elapsed_ms = round((time.time() - t_start) * 1000.0, 2)
             error_body = ""
@@ -418,6 +545,17 @@ class NebiusServingAdapter(BaseServingAdapter):
             except Exception:
                 pass
             sanitized_err = self._sanitize(f"HTTP {exc.code} {exc.reason}: {error_body}")
+            if exc.code == 401:
+                error_type = "authentication_error"
+            elif exc.code == 403:
+                error_type = "permission_denied"
+            elif exc.code == 404:
+                error_type = "not_found"
+            elif exc.code == 429:
+                error_type = "rate_limit_exceeded"
+            else:
+                error_type = "server_error"
+
             yield TokenChunk(
                 token="",
                 token_id=chunk_index + 1,
@@ -426,12 +564,13 @@ class NebiusServingAdapter(BaseServingAdapter):
                 latency_ms=elapsed_ms,
                 is_last=True,
                 error=sanitized_err,
-                metadata={"provider": "nebius", "live": True, "http_status": exc.code},
+                metadata={"provider": "nebius", "live": True, "error_type": error_type, "http_status": exc.code},
             )
 
         except Exception as exc:
             elapsed_ms = round((time.time() - t_start) * 1000.0, 2)
             sanitized_err = self._sanitize(f"Serving stream error: {exc}")
+            is_timeout = "timed out" in str(exc).lower() or isinstance(exc, TimeoutError)
             yield TokenChunk(
                 token="",
                 token_id=chunk_index + 1,
@@ -440,8 +579,9 @@ class NebiusServingAdapter(BaseServingAdapter):
                 latency_ms=elapsed_ms,
                 is_last=True,
                 error=sanitized_err,
-                metadata={"provider": "nebius", "live": True},
+                metadata={"provider": "nebius", "live": True, "error_type": "timeout" if is_timeout else "network_error"},
             )
+
 
 
 # Backward compatibility alias for scaffold callers

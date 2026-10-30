@@ -11,6 +11,7 @@ from typing import Optional
 from slokern.contracts.config import CandidateConfig
 from slokern.contracts.enums import FeasibilityVerdict
 from slokern.contracts.report import BaselineSummary, SearchSummary
+from slokern.contracts.run import RunRecord
 from slokern.contracts.search import SearchResult
 from slokern.contracts.spec import ExperimentSpec
 from slokern.contracts.verification import VerificationRecord
@@ -121,30 +122,47 @@ def report_command(
         rankings=rankings,
     )
 
-    selected_cand = None
-    if search_result.selected_candidate_id:
-        selected_cand = CandidateConfig(
-            candidate_id=search_result.selected_candidate_id,
-            model_name="default-model",
-            runtime_name="default-runtime",
-            requested_settings={},
-            effective_settings={},
-            parameter_status={},
-            environment_fingerprint={},
-        )
-
-    # Collect artifact paths
+    # Recover the actual adapter configuration and evidence provenance from
+    # persisted run artifacts; candidate IDs alone cannot establish runtime.
+    candidate_configs: dict[str, CandidateConfig] = {}
     artifacts_map = {
-        "search_result": str(search_res_path.resolve()),
+        "search_result": search_res_path.relative_to(exp_path).as_posix(),
     }
     if verif_record_path.exists():
-        artifacts_map["verification_record"] = str(verif_record_path.resolve())
+        artifacts_map["verification_record"] = verif_record_path.relative_to(exp_path).as_posix()
 
-    env_fp = {
-        "experiment_id": search_result.experiment_id,
-        "runtime_name": "slokern-engine",
-        "is_simulated": False,
-    }
+    runs_dir = exp_path / "runs"
+    if runs_dir.exists():
+        for run_record_path in sorted(runs_dir.glob("*/run_record.json")):
+            run_record = RunRecord.model_validate_json(run_record_path.read_text(encoding="utf-8"))
+            if run_record.experiment_id != search_result.experiment_id:
+                continue
+            run_dir = run_record_path.parent
+            applied_config_path = run_dir / "applied_config.json"
+            if applied_config_path.exists():
+                candidate_config = CandidateConfig.model_validate_json(
+                    applied_config_path.read_text(encoding="utf-8")
+                )
+                candidate_configs.setdefault(run_record.candidate_id, candidate_config)
+            raw_trace_path = run_dir / "raw_measurements.jsonl"
+            if raw_trace_path.exists():
+                artifacts_map[f"raw_trace_{run_record.run_id}"] = raw_trace_path.relative_to(exp_path).as_posix()
+
+    selected_cand = candidate_configs.get(search_result.selected_candidate_id or "")
+    provenance_config = selected_cand or candidate_configs.get(baseline_cand_id)
+    if provenance_config:
+        env_fp = dict(provenance_config.environment_fingerprint)
+        env_fp["evidence_classification"] = (
+            "DEMO DATA" if env_fp.get("is_simulated") is True else "LIVE"
+        )
+    else:
+        env_fp = {
+            "runtime_name": "unknown",
+            "is_simulated": None,
+            "evidence_classification": "UNVERIFIED",
+            "provenance_note": "No applied_config.json was available for the selected or baseline run.",
+        }
+
     limits = {
         "search_space": "2x2 bounded grid",
         "capability_gating": "BLK-17 strictly enforced",

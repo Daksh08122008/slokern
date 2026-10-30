@@ -58,6 +58,13 @@ def test_nebius_adapter_initialization_and_fingerprint():
     assert "test-key-12345" not in json.dumps(fp)
 
 
+def test_nebius_default_base_url_uses_token_factory_endpoint(monkeypatch):
+    monkeypatch.delenv("NEBIUS_BASE_URL", raising=False)
+    adapter = NebiusServingAdapter(api_key="dummy-test-key")
+
+    assert adapter.base_url == "https://api.tokenfactory.nebius.com/v1"
+
+
 def test_nebius_adapter_apply_config():
     adapter = NebiusServingAdapter(
         model_name="meta-llama/Meta-Llama-3-8B-Instruct",
@@ -196,3 +203,137 @@ def test_nebius_cloud_adapter_alias():
     adapter = NebiusCloudAdapter(api_key="key-test")
     assert isinstance(adapter, NebiusServingAdapter)
     assert adapter.has_api_key is True
+
+
+@patch("urllib.request.urlopen")
+def test_nebius_check_readiness(mock_urlopen):
+    # Test readiness success
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = json.dumps({
+        "data": [{"id": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"}]
+    }).encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test-key-12345")
+    res = adapter.check_readiness()
+    assert res["ready"] is True
+    assert res["model_confirmed"] is True
+
+    # Test readiness without credentials
+    unauth_adapter = NebiusServingAdapter(api_key="")
+    unauth_adapter._api_key = ""
+    res = unauth_adapter.check_readiness()
+    assert res["ready"] is False
+    assert "Missing credentials" in res["error"]
+
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_provider_error(mock_urlopen):
+    sse_data = [
+        b'data: {"error":{"message":"Rate limit exceeded for model","code":429}}\n\n',
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test-key-12345")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].is_last is True
+    assert "Rate limit exceeded" in chunks[0].error
+    assert chunks[0].metadata["error_type"] == "provider_error"
+
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_empty_completion(mock_urlopen):
+    sse_data = [
+        b'data: [DONE]\n\n',
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test-key-12345")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].is_last is True
+    assert chunks[0].token == ""
+    assert chunks[0].metadata.get("empty_stream") is True
+
+
+@patch("urllib.request.urlopen")
+def test_nebius_generate_rate_limit_429(mock_urlopen):
+    err = urllib.error.HTTPError(
+        url="https://api.studio.nebius.ai/v1/chat/completions",
+        code=429,
+        msg="Too Many Requests",
+        hdrs=None,
+        fp=io.BytesIO(b'{"error": "Too Many Requests"}'),
+    )
+    mock_urlopen.side_effect = err
+
+    adapter = NebiusServingAdapter(api_key="test-key-12345")
+    resp = adapter.generate(ServingRequest(prompt="Hello"))
+    assert resp.status_code == 429
+    assert resp.error_type == "rate_limit_exceeded"
+
+
+@patch("urllib.request.urlopen")
+def test_nebius_check_readiness_model_not_confirmed(mock_urlopen):
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = json.dumps({
+        "data": [{"id": "meta-llama/Meta-Llama-3-8B-Instruct"}]
+    }).encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(
+        model_name="nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+        api_key="test-key-12345",
+    )
+    res = adapter.check_readiness()
+    assert res["ready"] is True
+    # Must NOT rubber-stamp confirmation
+    assert res["model_confirmed"] is False
+    assert "not confirmed in catalog" in res["message"]
+
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_event_error_header(mock_urlopen):
+    sse_data = [
+        b"event: error\n",
+        b'data: {"message": "Model is overloaded, try again later", "code": 503}\n\n',
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test-key-12345")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) == 1
+    assert chunks[0].is_last is True
+    assert "Model is overloaded" in chunks[0].error
+    assert chunks[0].metadata["error_type"] == "provider_error"
+
+
+@patch("urllib.request.urlopen")
+def test_nebius_stream_data_without_space(mock_urlopen):
+    sse_data = [
+        b'data:{"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        b"data:[DONE]\n\n",
+    ]
+    mock_resp = MagicMock()
+    mock_resp.__iter__.return_value = iter(sse_data)
+    mock_resp.__enter__.return_value = mock_resp
+    mock_urlopen.return_value = mock_resp
+
+    adapter = NebiusServingAdapter(api_key="test-key-12345")
+    chunks = list(adapter.stream_generate(ServingRequest(prompt="Hello", max_tokens=16)))
+    assert len(chunks) >= 1
+    assert chunks[0].token == "Hi"

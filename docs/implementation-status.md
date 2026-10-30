@@ -129,7 +129,7 @@
 
 ### SUB-05: Serving Adapter & Runtime Infrastructure
 - **Intended Behavior:** Interface for serving runtimes (capabilities, apply, environment fingerprint, health); fake adapter for offline testing; Nebius Cloud adapter for live serving.
-- **Actual Behavior:** `FakeServingAdapter` supports offline synthetic runs labeled **`DEMO DATA`**. `NebiusServingAdapter` uses stdlib urllib for OpenAI-compatible completions and sanitizes handled API-key/Bearer-token errors. Its local `apply_config()` does not transmit or read back `max_num_seqs` or `max_num_batched_tokens`; the live smoke test skipped because credentials were absent. Secret handling was checked in mocked unit paths; live behavior is unverified.
+- **Actual Behavior:** `FakeServingAdapter` supports offline synthetic runs labeled **`DEMO DATA`**. `NebiusServingAdapter` uses stdlib urllib for OpenAI-compatible completions and sanitizes handled API-key/Bearer-token errors. Startup discovery checks process environment, an explicitly configured secrets file, then an optional OS keyring; it does not scan implicit `.env` paths. POSIX secrets files with group/other permissions are rejected. Windows ACL privacy for local secret files is not validated, so Windows users should use process environment or an OS credential store. Its local `apply_config()` does not transmit or read back `max_num_seqs` or `max_num_batched_tokens`; live smoke/authentication remain NOT RUN. Secret handling was checked in mocked unit paths only.
 - **Evidence:** Current requested deterministic subset: 322 passed; `tests/live/test_smoke_live.py`: 1 skipped. See `BLK-04` and `BLK-17`.
 - **Dependencies:** DEC-01, BLK-04.
 - **Risks:** Endpoint reachability, engine-control application/read-back, model identity, and live inference remain unverified; standard API requests alone do not establish GPU serving optimization.
@@ -169,8 +169,8 @@
 
 ### SUB-10: Report Artifact Generator
 - **Intended Behavior:** Generates a self-contained, immutable Markdown and JSON `ReportArtifact` linking headline numbers directly to raw measurement traces, environment fingerprints, cost disclosure, and verification records.
-- **Actual Behavior:** **IMPLEMENTED & VERIFIED (BLK-09 CLOSED).** `src/slokern/engine/reporting/report_builder.py` compiles canonical `ReportArtifact` contracts adhering to `schemas/ReportArtifact.json` and renders human-readable Markdown reports (`report.md`) disclosing specifications, baseline metrics, candidate comparison tables, drift comparisons, and verification verdicts with automated secret redaction.
-- **Evidence:** `src/slokern/engine/reporting/report_builder.py`, `tests/unit/engine/reporting/test_report_builder.py` passes cleanly; verified on `exp-audit-offline-campaign`.
+- **Actual Behavior:** **IMPLEMENTED & VERIFIED (BLK-09 CLOSED).** `src/slokern/engine/reporting/report_builder.py` compiles canonical `ReportArtifact` contracts and renders JSON/Markdown with automated secret redaction. The CLI report command reconstructs applied model/runtime/environment provenance from persisted run artifacts, links raw traces using experiment-relative paths, and marks evidence `DEMO DATA`, `LIVE`, or `UNVERIFIED`.
+- **Evidence:** `tests/unit/cli/commands/test_report.py` and `tests/unit/engine/reporting/test_report_builder.py` passed 5/5 on 2026-10-30; a fake-adapter campaign report contained `DEMO DATA`, `vllm-fake`, and six raw trace references.
 - **Dependencies:** `SUB-02` (Contracts), `SUB-08` (Run artifacts), `SUB-09` (Verification).
 - **Risks:** None for offline reporting. Secret sanitization asserted.
 - **Status:** **RESOLVED (BLK-09 CLOSED).** Fully integrated into CLI `slokern report`.
