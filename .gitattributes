@@ -1,0 +1,15 @@
+# Keep local and agent-only tooling out of `git archive` release bundles.
+.agents/** export-ignore
+.mcp.json export-ignore
+.vscode/** export-ignore
+skills-lock.json export-ignore
+frontend/skills-lock.json export-ignore
+
+# Generated caches and build output are not release source.
+**/__pycache__/** export-ignore
+.pytest_cache/** export-ignore
+.mypy_cache/** export-ignore
+.ruff_cache/** export-ignore
+frontend/node_modules/** export-ignore
+frontend/dist/** export-ignore
+build/** export-ignore
