@@ -130,7 +130,12 @@ Work progresses in strict dependency order. Never proceed to downstream stages i
   - Canonical TypeScript contract definitions in `frontend/src/types/contracts.ts` and typed API client in `frontend/src/api/client.ts`.
   - Frontend features: live preflight smoke probe on Runtime Profile with actionable serving readiness diagnostics, live benchmark dispatch with SSE progress streaming on Live Monitor, measured candidate card with physical JSONL provenance and BLK-17 capability gating notice on Tuning Lab, independent verification rerun with fresh run ID and drift analysis on Verification Lab, on-demand Markdown report generation and dossier download on Evidence & Reports, and browser download of unaggregated JSONL traces (`/api/runs/:id/trace`) with duplicate action guards.
   - Automated test coverage: 15 API unit tests (`tests/unit/api/`) and full end-to-end lifecycle integration test (`tests/integration/test_frontend_api_integration.py` with 12 lifecycle verification stages) passing 100%. Full repository test suite: 484 passed, 13 skipped in 25.85s. Frontend compiles with 0 TypeScript/JSX errors (`npm run build`).
-- [ ] **Step 9: Demo Hardening & Rehearsal (Rajdeep):**
+- [x] **Step 9: Demo Hardening & UI Integration (Rajdeep):**
+  - Full dual-runtime launch verified: Python API (`http://127.0.0.1:8000`) and React frontend (`http://127.0.0.1:5173`).
+  - Real project evidence hydrated from filesystem: Live Nebius smoke test (`artifacts/smoke_test_result.json`) and 5-candidate offline optimization campaign (`artifacts/audit-offline-validation/experiments/exp-audit-offline-campaign/`).
+  - Honest provenance badges rendered: `LIVE SMOKE TEST` (813.8 ms TTFT), `LIVE BASELINE NOT YET RECORDED`, `DEMO DATA · OFFLINE OPTIMIZATION` (winner `15594344d2bf`, 160 tok/s), and `INDEPENDENT VERIFICATION PENDING`.
+  - 7 high-resolution screenshots (1920×1080) verified and persisted in `artifacts/screenshots/` (`01-overview-live.png` through `07-reports.png`).
+  - Automated tests passing: 181 backend unit/contract/integration tests (`pytest`) and 13 frontend tests (`npm test`); Vite production build succeeded cleanly (`npm run build`).
   - Run clean environment setup test and offline synthetic walkthrough.
   - Validate demo script timing ($\le 3$ minutes).
 

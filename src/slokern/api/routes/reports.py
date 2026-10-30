@@ -32,7 +32,13 @@ def get_report_data(experiment_id: str, artifacts_root: str = "artifacts") -> Di
     Fetches compiled report artifact and Markdown representation for experiment_id.
     """
     exp_dir = Path(artifacts_root) / "experiments" / experiment_id
-    md_file = exp_dir / "report.md"
+    if not (exp_dir / "report.md").exists():
+        matches = list(Path(artifacts_root).glob(f"**/experiments/{experiment_id}"))
+        for m in matches:
+            if (m / "report.md").exists():
+                exp_dir = m
+                break
+    md_file = exp_dir / "report.md" 
     json_file = exp_dir / "report.json"
     legacy_json_file = exp_dir / "report_artifact.json"
 

@@ -342,6 +342,40 @@ slokern optimize fixtures/workloads/spec_reference.json --adapter fake --output-
 slokern report artifacts/demo/experiments/exp-test/search_result.json artifacts/demo/experiments/exp-test/runs/run-baseline/run_record.json --verification-record artifacts/demo/experiments/exp-test/verification/verif-01/verification_record.json --output artifacts/demo/report.md
 ```
 
+### 10.5 Dual-Runtime Local Launch (Control Plane API & Frontend Command Center)
+
+The SLOKern application features an end-to-end integrated dual-runtime architecture connecting the Python control plane with the high-performance React + Vite command center:
+
+```bash
+# 1. Start Python backend API control plane (listening on http://127.0.0.1:8000)
+python src/slokern/api/app.py 127.0.0.1 8000
+
+# 2. In a separate terminal, launch the React command center (http://127.0.0.1:5173)
+cd frontend
+npm run dev
+```
+
+#### REST & SSE Endpoints:
+- `GET /api/health`: Serving readiness and runtime health diagnostics.
+- `GET /api/runtime`: Serving runtime capability preflight and Token Factory limitation notices.
+- `GET /api/smoke-test/latest`: Live Nebius smoke test probe results (813.8 ms TTFT on `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`).
+- `GET /api/experiments`: Discovers and enumerates persisted campaigns and run counts.
+- `GET /api/experiments/<id>/candidates`: Extracts and ranks candidate configurations from search results.
+- `GET /api/experiments/<id>/verification`: Renders deterministic verification drift analysis.
+- `GET /api/reports`: Lists and serves rendered Markdown dossiers and structured `ReportArtifact` JSON.
+- `GET /api/runs/<id>/trace`: Streams raw unaggregated JSONL request telemetry.
+
+#### Captured High-Resolution UI Artifacts:
+Screenshots (1920×1080) captured during full live runtime execution are persisted in `artifacts/screenshots/`:
+- `01-overview-live.png`: Overview dashboard with LIVE SMOKE TEST banner (813.8 ms probe), LIVE BASELINE NOT YET RECORDED warning, and winner candidate.
+- `02-runtime-profile.png`: Runtime profile modal detailing Nebius Token Factory environment, Nemotron model, and scheduler parameter limitations.
+- `03-optimization-demo.png`: Tuning Lab displaying 5 candidate evaluations, winner `15594344d2bf` (160 tok/s), and DEMO DATA badges.
+- `04-experiment-details.png`: Experiments view with audit trail, run execution table, and slide-over metadata drawer.
+- `05-telemetry.png`: Telemetry scrubber visualizing empirical request-level latencies and client arrival dynamics.
+- `06-verification.png`: Verification console honestly reporting `INDEPENDENT VERIFICATION PENDING` and tolerance drift metrics.
+- `07-reports.png`: Reports dashboard rendering filesystem-persisted Markdown summaries and export options.
+
+
 ### 10.4 Live Nebius Benchmark Execution (Gated Live Mode)
 
 > **Authoritative Gating Notice:** Requires explicit operator selection, manual authorization, and valid `NEBIUS_API_KEY`. Live optimization halts under `BLK-17` until serving-engine parameter read-back is provisioned.

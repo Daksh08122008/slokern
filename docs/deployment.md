@@ -9,6 +9,26 @@
 
 ---
 
+## 0. Live Nebius Preflight Smoke Test & Dual-Runtime Architecture
+
+### Live Smoke Test Outcomes
+- **Status:** PASSED (HTTP 200)
+- **Timestamp:** `2026-10-30T03:33:51.615565+00:00`
+- **Provider & Host:** Nebius Cloud (`api.tokenfactory.nebius.com`)
+- **Serving Adapter:** `vllm-nebius`
+- **Target Model:** `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`
+- **Measured Probe TTFT:** 813.8 ms
+- **Total Probe Latency:** 813.8 ms (Input: 5 tokens, Output: 1 token)
+- **Streaming Verification:** First chunk received in 813.8 ms (`stream_success: true`)
+- **Serving Limitation:** Nebius Token Factory does not expose runtime vLLM scheduler startup controls (`max_num_seqs`, `gpu_memory_utilization`). Controls are marked unsupported in runtime profile.
+- **Evidence Classification:** `LIVE` (Single probe; distinct from full benchmark baseline).
+
+### Dual-Runtime Local Operation
+- **Backend API Server:** `python src/slokern/api/app.py 127.0.0.1 8000`
+- **Frontend Command Center:** `npm run dev --prefix frontend` (Vite on `http://127.0.0.1:5173`)
+- **Screenshots:** 7 full-resolution (1920×1080) screenshots captured in `artifacts/screenshots/`.
+
+
 ## 1. Target Infrastructure & Serving Environment
 
 For the Nebius × NVIDIA Global AI Hackathon, SLOKern's accepted model-family candidate is planned for Nebius infrastructure; no deployment is currently verified:

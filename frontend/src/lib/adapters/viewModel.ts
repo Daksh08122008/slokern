@@ -56,6 +56,8 @@ export interface UIExperiment {
   clientSaturation?: boolean;
   errorRatePct?: number;
   exclusionsCount?: number;
+  evidenceClassification?: string;
+  runsCount?: number;
 }
 
 export function mapRunStatusToCandidate(run: RunStatusResponse): UICandidate {

@@ -86,8 +86,8 @@
 | **SUB-08** | Experiment Orchestration & Run Lifecycle | `IMPLEMENTED (SingleRunExecutor & 2×2 Grid Search)` | `UNIT` | `SYNTHETIC VERIFIED (DEMO DATA)` | Rajdeep (CONFIRMED) | None |
 | **SUB-09** | Independent Verification Engine | `IMPLEMENTED & VERIFIED (Verification Protocol + DriftPolicy + Campaign Rerun)` | `UNIT, CONTRACT & CAMPAIGN (22 verification + 17 contract tests pass)` | `VERIFIED OFFLINE` | Rajdeep (CONFIRMED) | None |
 | **SUB-10** | Report Artifact Generator | `IMPLEMENTED (ReportBuilder & Markdown Exporter)` | `UNIT & CAMPAIGN VERIFIED` | `NONE` | Rajdeep (CONFIRMED) | None |
-| **SUB-11** | Control Plane API & CLI | `IMPLEMENTED & VERIFIED (VERTICAL SLICE)` | `UNIT & INTEGRATION (9 API unit + 1 E2E integration test pass)` | `NONE` | Rajdeep (CONFIRMED) | None |
-| **SUB-12** | Frontend Command Center & Presentation | `IMPLEMENTED & VERIFIED (VERTICAL SLICE)` | `VITE BUILD & INTEGRATION (0 TS errors; E2E connected)` | `DEMO DATA LABELED` | Rajdeep (CONFIRMED) | None |
+| **SUB-11** | Control Plane API & CLI | `IMPLEMENTED & VERIFIED (FULL INTEGRATION)` | `UNIT & INTEGRATION (15 API unit + 1 E2E integration test pass)` | `NONE` | Rajdeep (CONFIRMED) | None |
+| **SUB-12** | Frontend Command Center & Presentation | `IMPLEMENTED & VERIFIED (LIVE HYDRATED & SCREENSHOTS)` | `VITE BUILD & PLAYWRIGHT/EDGE SCREENSHOTS (7 1080p images)` | `DEMO DATA LABELED` | Rajdeep (CONFIRMED) | None |
 | **SUB-13** | CI/CD, Packaging & Test Automation | `PARTIAL` | `UNIT` | `BLOCKED(by=BLK-13)` | Rajdeep (CONFIRMED) | BLK-13 |
 
 

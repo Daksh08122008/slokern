@@ -1,18 +1,22 @@
 /**
  * SLOKern Frontend API Client
- * Typed fetch client connecting the React UI to the Python FastAPI control plane.
+ * Typed fetch client connecting the React UI to the Python control plane.
  * Authority: Aligned with AGENTS.md Section 3, 11, and DEC-0014
  */
 
 import type {
   HealthResponse,
   SmokeTestResponse,
+  SmokeTestArtifactResponse,
+  RuntimeProfileResponse,
+  ReportSummaryResponse,
   SingleRunDispatchResponse,
   RunStatusResponse,
   RunProgressEvent,
   VerificationRecord,
   ReportArtifact,
 } from '../types/contracts';
+import type { UICandidate, UIExperiment } from '../lib/adapters/viewModel';
 
 const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -54,6 +58,39 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export async function checkHealth(adapter?: string): Promise<HealthResponse> {
   const query = adapter ? `?adapter=${encodeURIComponent(adapter)}` : '';
   return request<HealthResponse>(`/api/health${query}`, { method: 'GET' });
+}
+
+export async function getRuntimeProfile(): Promise<RuntimeProfileResponse> {
+  return request<RuntimeProfileResponse>('/api/runtime', { method: 'GET' });
+}
+
+export async function getLatestSmokeTest(): Promise<SmokeTestArtifactResponse> {
+  return request<SmokeTestArtifactResponse>('/api/smoke-test/latest', { method: 'GET' });
+}
+
+export async function listExperiments(): Promise<UIExperiment[]> {
+  return request<UIExperiment[]>('/api/experiments', { method: 'GET' });
+}
+
+export async function getExperimentDetail(experimentId: string): Promise<any> {
+  return request<any>(`/api/experiments/${encodeURIComponent(experimentId)}`, { method: 'GET' });
+}
+
+export async function getExperimentCandidates(experimentId: string): Promise<UICandidate[]> {
+  return request<UICandidate[]>(`/api/experiments/${encodeURIComponent(experimentId)}/candidates`, {
+    method: 'GET',
+  });
+}
+
+export async function getExperimentVerification(experimentId: string): Promise<VerificationRecord> {
+  return request<VerificationRecord>(
+    `/api/experiments/${encodeURIComponent(experimentId)}/verification`,
+    { method: 'GET' }
+  );
+}
+
+export async function listReports(): Promise<ReportSummaryResponse[]> {
+  return request<ReportSummaryResponse[]>('/api/reports', { method: 'GET' });
 }
 
 export async function runSmokeProbe(
@@ -132,7 +169,6 @@ export function subscribeRunProgress(
   let isCancelled = false;
   let pollInterval: any = null;
 
-  // Polling fallback function
   const startPolling = () => {
     if (pollInterval) return;
     pollInterval = setInterval(async () => {
@@ -150,7 +186,13 @@ export function subscribeRunProgress(
           onError(status.error || 'Execution failed');
         } else {
           const totalReqs = status.workload
-            ? Math.max(1, Math.round((status.workload.warmup_duration_s + status.workload.measurement_duration_s) * status.workload.target_offered_rate))
+            ? Math.max(
+                1,
+                Math.round(
+                  (status.workload.warmup_duration_s + status.workload.measurement_duration_s) *
+                    status.workload.target_offered_rate
+                )
+              )
             : 10;
           onProgress({
             type: 'progress',
@@ -208,4 +250,3 @@ export function subscribeRunProgress(
     };
   }
 }
-

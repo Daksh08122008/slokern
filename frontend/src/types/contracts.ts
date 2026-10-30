@@ -11,6 +11,7 @@ export type EvidenceValidity = 'VALID' | 'INVALID' | 'CONTAMINATED';
 export type FeasibilityVerdict = 'FEASIBLE' | 'INFEASIBLE' | 'INCONCLUSIVE';
 
 export type VerificationState =
+  | 'INDEPENDENT VERIFICATION PENDING'
   | 'NOT_RUN'
   | 'VERIFYING'
   | 'VERIFIED'
@@ -319,3 +320,63 @@ export interface RunProgressEvent {
   error?: string | null;
 }
 
+
+
+export interface SmokeTestArtifactResponse {
+  timestamp: string;
+  status: 'PASSED' | 'FAILED' | 'NONE';
+  adapter: string;
+  model: string;
+  endpoint_host: string;
+  provider: string;
+  is_simulated: boolean;
+  evidence_classification: 'LIVE' | 'DEMO DATA' | 'UNVERIFIED';
+  health_check: boolean;
+  model_confirmed: boolean;
+  probe_request: {
+    status_code: number;
+    ttft_ms: number;
+    total_latency_ms: number;
+    input_tokens: number;
+    output_tokens: number;
+    output_preview?: string;
+    error?: string | null;
+  };
+  streaming_probe?: {
+    chunk_count: number;
+    first_chunk_ttft_ms: number;
+    stream_success: boolean;
+  };
+  error?: string | null;
+}
+
+export interface RuntimeProfileResponse {
+  status: string;
+  adapter: string;
+  provider: string;
+  model: string;
+  endpoint_host: string;
+  endpoint_url: string;
+  is_healthy: boolean;
+  is_simulated: boolean;
+  evidence_classification: 'LIVE' | 'DEMO DATA' | 'UNVERIFIED';
+  capability_preflight: {
+    status: string;
+    limitation_note: string;
+    token_factory_constraint: boolean;
+    supported_serving_controls: string[];
+    unsupported_serving_controls: string[];
+  };
+  latest_smoke_test: SmokeTestArtifactResponse;
+}
+
+export interface ReportSummaryResponse {
+  experiment_id: string;
+  report_id: string;
+  created_at: string;
+  model: string;
+  evidence_classification: 'LIVE' | 'DEMO DATA' | 'UNVERIFIED';
+  selected_candidate_id: string;
+  has_markdown: boolean;
+  path: string;
+}

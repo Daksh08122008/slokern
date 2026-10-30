@@ -12,7 +12,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, Tuple, Union
 
-from slokern.api.routes.health import get_health, run_smoke_probe
+from slokern.api.routes.health import (
+    get_health,
+    get_latest_smoke_test,
+    get_runtime_profile,
+    run_smoke_probe,
+)
+from slokern.api.routes.experiments import (
+    list_experiments,
+    get_experiment_detail,
+    get_experiment_candidates,
+    get_experiment_verification,
+    list_all_reports,
+)
 from slokern.api.routes.reports import get_report_data
 from slokern.api.routes.runs import (
     dispatch_single_run,
@@ -111,8 +123,8 @@ def handle_api_request(
 
             if resolved_path is None:
                 for pat in (
-                    f"experiments/*/runs/{run_id}/raw_measurements.jsonl",
-                    f"experiments/*/runs/{run_id}/measurements.jsonl",
+                    f"**/runs/{run_id}/raw_measurements.jsonl",
+                    f"**/runs/{run_id}/measurements.jsonl",
                 ):
                     matches = list(Path(artifacts_root).glob(pat))
                     if matches and matches[0].exists() and matches[0].stat().st_size > 0:
@@ -143,6 +155,55 @@ def handle_api_request(
         if method == "POST" and clean_path == "/api/runs/verify":
             payload = parsed_body
             res = dispatch_verification_run(payload, artifacts_root=artifacts_root)
+            return 200, headers, json.dumps(res).encode("utf-8")
+
+        # GET /api/runtime
+        if method == "GET" and clean_path == "/api/runtime":
+            res = get_runtime_profile(artifacts_root=artifacts_root)
+            return 200, headers, json.dumps(res).encode("utf-8")
+
+        # GET /api/smoke-test/latest
+        if method == "GET" and clean_path == "/api/smoke-test/latest":
+            res = get_latest_smoke_test(artifacts_root=artifacts_root)
+            status = 200 if res.get("status") != "FAILED" else 500
+            return status, headers, json.dumps(res).encode("utf-8")
+
+        # GET /api/experiments
+        if method == "GET" and clean_path == "/api/experiments":
+            res = list_experiments(artifacts_root=artifacts_root)
+            return 200, headers, json.dumps(res).encode("utf-8")
+
+        # GET /api/experiments/<experiment_id>/candidates
+        match_cands = re.match(r"^/api/experiments/(.+)/candidates$", clean_path)
+        if method == "GET" and match_cands:
+            exp_id = match_cands.group(1)
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", exp_id):
+                return 400, headers, json.dumps({"error": f"Invalid experiment_id: {exp_id}"}).encode("utf-8")
+            res = get_experiment_candidates(exp_id, artifacts_root=artifacts_root)
+            return 200, headers, json.dumps(res).encode("utf-8")
+
+        # GET /api/experiments/<experiment_id>/verification
+        match_exp_verif = re.match(r"^/api/experiments/(.+)/verification$", clean_path)
+        if method == "GET" and match_exp_verif:
+            exp_id = match_exp_verif.group(1)
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", exp_id):
+                return 400, headers, json.dumps({"error": f"Invalid experiment_id: {exp_id}"}).encode("utf-8")
+            res = get_experiment_verification(exp_id, artifacts_root=artifacts_root)
+            return 200, headers, json.dumps(res).encode("utf-8")
+
+        # GET /api/experiments/<experiment_id>
+        match_exp = re.match(r"^/api/experiments/(.+)$", clean_path)
+        if method == "GET" and match_exp:
+            exp_id = match_exp.group(1)
+            if not re.match(r"^[a-zA-Z0-9_\-]+$", exp_id):
+                return 400, headers, json.dumps({"error": f"Invalid experiment_id: {exp_id}"}).encode("utf-8")
+            res = get_experiment_detail(exp_id, artifacts_root=artifacts_root)
+            status = 404 if "error" in res else 200
+            return status, headers, json.dumps(res).encode("utf-8")
+
+        # GET /api/reports
+        if method == "GET" and clean_path == "/api/reports":
+            res = list_all_reports(artifacts_root=artifacts_root)
             return 200, headers, json.dumps(res).encode("utf-8")
 
         # GET /api/reports/<experiment_id>

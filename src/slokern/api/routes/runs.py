@@ -249,12 +249,14 @@ def get_run_status(run_id: str, artifacts_root: str = "artifacts") -> Dict[str, 
     if not re.match(r"^[a-zA-Z0-9_\-]+$", run_id):
         return {"run_id": run_id, "error": f"Invalid run_id format: {run_id}"}
 
-    # Check filesystem: check both direct runs/ and SingleRunExecutor experiments/*/runs/
+    # Check filesystem: check direct runs/ and deep subdirectories
     run_dir = Path(artifacts_root) / "runs" / run_id
     if not (run_dir / "run_record.json").exists():
-        matches = list(Path(artifacts_root).glob(f"experiments/*/runs/{run_id}"))
-        if matches and (matches[0] / "run_record.json").exists():
-            run_dir = matches[0]
+        matches = list(Path(artifacts_root).glob(f"**/runs/{run_id}"))
+        for m in matches:
+            if (m / "run_record.json").exists():
+                run_dir = m
+                break
 
     rec_file = run_dir / "run_record.json"
     if rec_file.exists():
@@ -352,9 +354,8 @@ def list_recent_runs(artifacts_root: str = "artifacts", limit: int = 10) -> List
             if r_dir.is_dir() and r_dir.name not in seen_ids:
                 candidate_dirs.append(r_dir)
 
-    exp_runs = Path(artifacts_root).glob("experiments/*/runs/*")
-    for r_dir in exp_runs:
-        if r_dir.is_dir() and r_dir.name not in seen_ids:
+    for r_dir in Path(artifacts_root).glob("**/runs/*"):
+        if r_dir.is_dir() and r_dir.name not in seen_ids and (r_dir / "run_record.json").exists():
             candidate_dirs.append(r_dir)
 
     candidate_dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)

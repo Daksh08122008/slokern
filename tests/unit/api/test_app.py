@@ -36,9 +36,9 @@ def test_api_health_fake_adapter() -> None:
     assert data["fingerprint"]["is_simulated"] is True
 
 
-def test_api_smoke_test_fake_adapter() -> None:
+def test_api_smoke_test_fake_adapter(tmp_path: Path) -> None:
     payload = {"adapter": "fake", "prompt": "Test smoke probe"}
-    status, headers, body = handle_api_request("POST", "/api/smoke-test", body=payload)
+    status, headers, body = handle_api_request("POST", "/api/smoke-test", body=payload, artifacts_root=str(tmp_path))
     assert status == 200
     data = json.loads(body.decode("utf-8"))
     assert data["status"] == "success"
